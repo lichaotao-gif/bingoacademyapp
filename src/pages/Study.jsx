@@ -997,11 +997,26 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
   const resultEntries = Object.entries(segmentResults)
   const totalAnswers = resultEntries.length
   const correctCount = resultEntries.filter(([, correct]) => correct).length
+  const correctRate = totalAnswers > 0 ? Math.round((correctCount / totalAnswers) * 100) : 100
   const learningStatus = totalAnswers > 0
-    ? `互动答题共 ${totalAnswers} 题，答对 ${correctCount} 题${totalAnswers === correctCount ? '，全部正确。' : `，正确率 ${Math.round((correctCount / totalAnswers) * 100)}%。`}`
+    ? `互动答题共 ${totalAnswers} 题，答对 ${correctCount} 题${totalAnswers === correctCount ? '，全部正确。' : `，正确率 ${correctRate}%。`}`
     : '本课已完成所有环节学习。'
 
-  return { line1, line2, line3, partList, knowledgePoints, learningStatus, totalAnswers, correctCount }
+  // 综合评价：结合课程内容与学情生成
+  const lessonTitle = lesson.title || '本课'
+  const knowledgeSummary = knowledgePoints.length > 0 ? knowledgePoints.slice(0, 4).join('、') : partList
+  let comprehensiveEvaluation = ''
+  if (totalAnswers === 0) {
+    comprehensiveEvaluation = `本课「${lessonTitle}」以视频、体验与跟读等环节为主，您已完整参与全部 ${segments?.length || 1} 个环节。建议课后回顾「${knowledgeSummary}」等内容，巩固学习效果。`
+  } else if (correctCount === totalAnswers) {
+    comprehensiveEvaluation = `结合本课「${lessonTitle}」的内容（含${partList}），您在 ${totalAnswers} 道互动题中全部答对，表现优秀，已较好掌握本课知识点。建议继续保持，完成后续课时。`
+  } else if (correctRate >= 80) {
+    comprehensiveEvaluation = `本课「${lessonTitle}」涵盖${knowledgeSummary}等，您完成了全部环节，互动答题正确率 ${correctRate}%，对本课重点掌握较好。建议简要回顾错题，巩固后再进入下一课。`
+  } else {
+    comprehensiveEvaluation = `本课「${lessonTitle}」涉及${knowledgeSummary}等内容，您已完成学习，当前互动正确率 ${correctRate}%。建议重点回顾错题与「${knowledgeSummary}」相关部分，巩固后再继续下一课，效果会更好。`
+  }
+
+  return { line1, line2, line3, partList, knowledgePoints, learningStatus, totalAnswers, correctCount, comprehensiveEvaluation }
 }
 
 // ─── 课时播放器：始终一屏一个环节 + 底部固定 上一步 / 快捷 / 下一步 ─────────────────
@@ -1072,6 +1087,12 @@ function LessonPlayer({ lesson, onClose }) {
                   <p className="font-medium text-slate-800 mb-1.5">答题等学情</p>
                   <p className="text-slate-600 text-sm leading-relaxed">{summary.learningStatus}</p>
                 </div>
+                {summary.comprehensiveEvaluation && (
+                  <div className="pt-3 border-t border-slate-200/80">
+                    <p className="font-medium text-slate-800 mb-1.5">综合评价</p>
+                    <p className="text-slate-700 text-sm leading-relaxed">{summary.comprehensiveEvaluation}</p>
+                  </div>
+                )}
               </div>
               <p className="text-sm text-slate-500 mt-4">继续加油，完成全部课时可获得学习证书</p>
               <button
@@ -1171,8 +1192,43 @@ function LessonPlayer({ lesson, onClose }) {
   )
 }
 
+// ─── 根据课程与课时生成整门课程学习总结（多维度，让学生感觉学有所值） ─────────────────
+function buildCourseSummary(course) {
+  const lessons = course.lessons || []
+  const totalCount = lessons.length
+  const lessonTitles = lessons.map((l) => l.title).filter(Boolean)
+  const totalMinutes = lessons.reduce((sum, l) => {
+    const d = l.duration
+    if (typeof d === 'number') return sum + d
+    if (typeof d === 'string' && d.includes('分钟')) return sum + parseInt(d, 10) || 0
+    return sum + 40
+  }, 0)
+  const hours = Math.floor(totalMinutes / 60)
+  const mins = totalMinutes % 60
+  const timeStr = hours > 0 ? `约 ${hours} 小时${mins > 0 ? mins + ' 分钟' : ''}` : `约 ${totalMinutes} 分钟`
+  const segmentCount = lessons.reduce((s, l) => s + (l.segments?.length || 1), 0)
+
+  return {
+    courseTitle: course.title,
+    totalLessons: totalCount,
+    totalTime: timeStr,
+    totalSegments: segmentCount,
+    lessonTitles,
+    completionLine: `您已完成「${course.title}」全部 ${totalCount} 课时，共 ${segmentCount} 个学习环节。`,
+    scopeIntro: '本课程您已系统学习以下内容：',
+    outcomes: [
+      '完成从入门到巩固的完整学习路径',
+      '通过视频、互动题、练习与实验等多形式掌握核心知识点',
+      '具备本课程所对应的能力水平，可应用于后续学习或实践',
+    ],
+    timeInvested: `累计学习时长 ${timeStr}，您的坚持与投入值得肯定。`,
+    encouragement: '恭喜您完成整门课程！建议适时回顾重点课时，巩固记忆；完成考核后可领取学习证书，为学习之旅留下证明。',
+    certificateTip: '前往「领取证书」即可获得本课程学习证书。',
+  }
+}
+
 // ─── 单门课程卡片（可展开） ─────────────────────────────────
-function CourseCard({ course, onPlayLesson }) {
+function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
   const [expanded, setExpanded] = useState(false)
   const [watched, setWatched] = useState(() =>
     Object.fromEntries(course.lessons.map(l => [l.id, l.watched]))
@@ -1181,6 +1237,7 @@ function CourseCard({ course, onPlayLesson }) {
   const watchedCount = Object.values(watched).filter(Boolean).length
   const totalCount = course.lessons.length
   const progressPct = Math.round((watchedCount / totalCount) * 100)
+  const allCompleted = progressPct === 100
 
   const progressColor =
     progressPct === 100 ? 'bg-emerald-500' :
@@ -1288,6 +1345,34 @@ function CourseCard({ course, onPlayLesson }) {
             )
           })}
 
+          {/* 课时列表最后：整个课程的学习总结入口（始终显示，全部完成后可点击） */}
+          {onShowCourseSummary && (
+            <div className="border-t border-slate-100">
+              {allCompleted ? (
+                <button
+                  type="button"
+                  onClick={() => onShowCourseSummary(course)}
+                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-primary/5 transition text-left"
+                >
+                  <div className="shrink-0 w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm">📋</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-bingo-dark">整个课程的学习总结</p>
+                    <p className="text-xs text-slate-500">查看本课程学习总结与综合评价</p>
+                  </div>
+                  <span className="shrink-0 text-slate-400">→</span>
+                </button>
+              ) : (
+                <div className="w-full flex items-center gap-3 px-5 py-3.5 text-left text-slate-400">
+                  <div className="shrink-0 w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-sm">📋</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-500">整个课程的学习总结</p>
+                    <p className="text-xs text-slate-400">完成全部 {totalCount} 课时后可查看</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 课程底部：证书/完成提示 */}
           <div className="px-5 py-3 bg-slate-50/70 flex items-center justify-between gap-4">
             {progressPct === 100 ? (
@@ -1322,6 +1407,7 @@ const FIRST_LESSON_WITH_SEGMENTS = MY_COURSES[0]?.lessons?.find((l) => l.segment
 // ─── 主页面 ─────────────────────────────────────────────────
 export default function Study() {
   const [playingLesson, setPlayingLesson] = useState(null)
+  const [courseSummaryCourse, setCourseSummaryCourse] = useState(null)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -1366,7 +1452,7 @@ export default function Study() {
         </div>
         <div className="space-y-3">
           {MY_COURSES.map(course => (
-            <CourseCard key={course.id} course={course} onPlayLesson={setPlayingLesson} />
+            <CourseCard key={course.id} course={course} onPlayLesson={setPlayingLesson} onShowCourseSummary={setCourseSummaryCourse} />
           ))}
         </div>
       </section>
@@ -1408,6 +1494,85 @@ export default function Study() {
         <LessonPlayer lesson={playingLesson} onClose={() => setPlayingLesson(null)} />,
         document.body
       )}
+
+      {/* 整个课程的学习总结弹层（多维度总结，让学生感觉学有所值） */}
+      {courseSummaryCourse && (() => {
+        const s = buildCourseSummary(courseSummaryCourse)
+        return createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="课程学习总结"
+            className="fixed inset-0 w-screen z-[99999] flex flex-col bg-slate-900"
+            style={{ height: '100dvh', maxHeight: '100dvh' }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0 flex flex-col flex-1 min-h-0 bg-white lg:shadow-none shadow-2xl rounded-t-2xl lg:rounded-none overflow-auto"
+              style={{ height: '100%' }}
+            >
+              <div className="flex-1 flex flex-col items-center p-6 lg:p-10">
+                <div className="w-full max-w-lg mx-auto text-center mb-6">
+                  <div className="text-5xl lg:text-6xl mb-3">🎓</div>
+                  <h2 className="text-xl lg:text-2xl font-bold text-bingo-dark mb-1">课程学习总结</h2>
+                  <p className="text-sm text-slate-500">{s.courseTitle}</p>
+                </div>
+                <div className="w-full max-w-lg mx-auto rounded-2xl border border-slate-200 bg-slate-50/80 p-5 lg:p-6 text-left space-y-4 overflow-auto max-h-[60vh]">
+                  <section>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-1.5">📊 完成情况</h3>
+                    <p className="text-slate-700 text-sm leading-relaxed">{s.completionLine}</p>
+                  </section>
+                  <section>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-1.5">📚 课程涵盖</h3>
+                    <p className="text-slate-600 text-sm mb-2">{s.scopeIntro}</p>
+                    <ul className="text-slate-600 text-sm space-y-0.5 list-disc list-inside">
+                      {s.lessonTitles.slice(0, 12).map((title, i) => (
+                        <li key={i}>{title}</li>
+                      ))}
+                      {s.lessonTitles.length > 12 && <li className="text-slate-500">…共 {s.lessonTitles.length} 课时</li>}
+                    </ul>
+                  </section>
+                  <section>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-1.5">✨ 学习收获</h3>
+                    <ul className="text-slate-600 text-sm space-y-0.5 list-disc list-inside">
+                      {s.outcomes.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+                  <section>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-1.5">⏱ 学习投入</h3>
+                    <p className="text-slate-600 text-sm leading-relaxed">{s.timeInvested}</p>
+                  </section>
+                  <section className="pt-2 border-t border-slate-200/80">
+                    <p className="text-slate-700 text-sm leading-relaxed">{s.encouragement}</p>
+                  </section>
+                  <section className="rounded-lg bg-emerald-50 border border-emerald-200/80 p-3">
+                    <p className="text-emerald-800 text-sm font-medium">🏅 {s.certificateTip}</p>
+                  </section>
+                </div>
+                <div className="w-full max-w-lg mx-auto mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                  <Link
+                    to="/cert"
+                    onClick={() => setCourseSummaryCourse(null)}
+                    className="inline-flex justify-center py-3 px-5 rounded-xl text-base font-medium bg-emerald-500 text-white hover:bg-emerald-600"
+                  >
+                    领取证书
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setCourseSummaryCourse(null)}
+                    className="inline-flex justify-center py-3 px-5 rounded-xl text-base font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  >
+                    返回学习中心
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      })()}
     </div>
   )
 }
