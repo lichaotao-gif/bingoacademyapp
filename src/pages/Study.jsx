@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 
@@ -6,10 +6,13 @@ import { Link } from 'react-router-dom'
 const SEGMENT_LABELS = {
   video: '视频片段',
   choice: '选择题',
+  image_choice: '图片选择题',
   fill_blank: '填空题',
   match: '连线题',
   drag_drop: '拖拽题',
   game: '游戏环节',
+  voice: '语音跟读',
+  audio_choice: '语音题',
   ai_experiment: 'AI实验',
 }
 
@@ -33,9 +36,20 @@ const MY_COURSES = [
         watched: true,
         videoUrl: '#',
         segments: [
-          { id: 's1-v', type: 'video', sort: 0, payload: { url: 'https://example.com/v1.mp4', title: '什么是AI', duration: 300 } },
-          { id: 's1-c', type: 'choice', sort: 1, payload: { question: 'AI的全称是？', options: ['人工智慧', '人工智能', '自动推理'], correctIndex: 1, explanation: 'Artificial Intelligence（人工智能）' } },
-          { id: 's1-ai', type: 'ai_experiment', sort: 2, payload: { title: '人脸识别小实验', description: '体验图像识别，上传一张照片试试看', experimentId: 'face-demo' } },
+          { id: 's1-v1', type: 'video', sort: 0, payload: { url: 'https://example.com/v1.mp4', title: '什么是AI', duration: 300 } },
+          { id: 's1-c1', type: 'choice', sort: 1, payload: { question: 'AI的全称是？', options: ['人工智慧', '人工智能', '自动推理'], correctIndex: 1, explanation: 'Artificial Intelligence（人工智能）' } },
+          { id: 's1-v2', type: 'video', sort: 2, payload: { url: '', title: '认识AI应用', duration: 120 } },
+          { id: 's1-m', type: 'match', sort: 3, payload: { leftItems: ['AI', '机器学习', '深度学习'], rightItems: ['人工智能', '让电脑从数据中学习', '多层神经网络'], correctPairs: [[0, 0], [1, 1], [2, 2]], explanation: '正确连线帮助理解概念关系。' } },
+          { id: 's1-v3', type: 'video', sort: 4, payload: { url: '', title: '智能小故事', duration: 90 } },
+          { id: 's1-ic', type: 'image_choice', sort: 5, payload: { question: '下面哪一个是AI在生活中的应用？', options: ['智能音箱', '普通计算器', '手电筒', '机械闹钟'], optionImages: ['https://picsum.photos/seed/ai1/200/150', 'https://picsum.photos/seed/calc/200/150', 'https://picsum.photos/seed/light/200/150', 'https://picsum.photos/seed/clock/200/150'], correctIndex: 0, explanation: '智能音箱能对话、放音乐，背后有AI语音识别与理解。' } },
+          { id: 's1-game', type: 'game', sort: 6, payload: { gameType: 'flip_card', title: '翻翻卡游戏', config: { cards: [{ frontLabel: '?', backText: '人工智能' }, { frontLabel: '?', backText: '机器学习' }, { frontLabel: '?', backText: '深度学习' }], question: '根据上面三张卡的内容，以下哪一个是 AI 的核心技术？', options: ['人工智能', '机器学习', '深度学习', '以上都是'], correctIndex: 3, explanation: '人工智能是总称，机器学习与深度学习都是其核心技术，所以以上都是。' } } },
+          { id: 's1-v4', type: 'video', sort: 7, payload: { url: '', title: '本课小结', duration: 60 } },
+          { id: 's1-fb', type: 'fill_blank', sort: 8, payload: { question: '请填空：AI 是 ____ 的缩写。', blanks: ['人工智能'], explanation: 'Artificial Intelligence = 人工智能。' } },
+          { id: 's1-v5', type: 'video', sort: 9, payload: { url: '', title: '拓展：AI 能做什么', duration: 100 } },
+          { id: 's1-dd', type: 'drag_drop', sort: 10, payload: { prompt: '请按“从简单到复杂”排列：', items: ['识别图片', '下棋', '开车', '聊天'], correctOrder: [0, 1, 2, 3], explanation: 'AI 先学会看图、下棋，再发展到自动驾驶和自然对话。' } },
+          { id: 's1-voice', type: 'voice', sort: 11, payload: { title: '语音跟读', prompt: '请跟读下面的句子，练习发音。', textToRead: '人工智能让机器能够像人一样学习和思考。' } },
+          { id: 's1-audio', type: 'audio_choice', sort: 12, payload: { audioUrl: '/AI知识题.mp3', options: ['监督学习', '强化学习', '无监督学习', '自监督学习'], correctIndex: 3, explanation: '答案：自监督学习。' } },
+          { id: 's1-ai', type: 'ai_experiment', sort: 13, payload: { title: '人脸识别小实验', description: '体验图像识别，上传一张照片试试看', experimentId: 'face-demo' } },
         ],
       },
       {
@@ -226,6 +240,58 @@ function SegmentChoice({ segment, index, dark, onSegmentResult }) {
   )
 }
 
+// 图片选择题：选项可带图片（optionImages 与 options 一一对应）
+function SegmentImageChoice({ segment, index, dark, onSegmentResult }) {
+  const p = segment.payload
+  const options = p.options || []
+  const optionImages = p.optionImages || []
+  const [selected, setSelected] = useState(null)
+  const [submitted, setSubmitted] = useState(false)
+  const isCorrect = submitted && selected === p.correctIndex
+  const handleSubmit = () => {
+    setSubmitted(true)
+    if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === p.correctIndex)
+  }
+  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
+  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
+  const tag = dark ? 'bg-cyan-500/80 text-white px-2 py-0.5 rounded' : 'bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded'
+  const q = dark ? 'font-medium text-white mb-3' : 'font-medium text-bingo-dark mb-3'
+  const optBase = dark ? 'flex flex-col gap-1 p-3 rounded-lg border cursor-pointer transition text-slate-200 ' : 'flex flex-col gap-1 p-3 rounded-lg border cursor-pointer transition '
+  return (
+    <div className={card}>
+      <div className={meta}>
+        <span className={tag}>环节 {index + 1}</span>
+        <span>{SEGMENT_LABELS.image_choice}</span>
+      </div>
+      <p className={q}>{p.question}</p>
+      <div className="grid grid-cols-2 gap-3">
+        {options.map((opt, i) => (
+          <label
+            key={i}
+            className={`${optBase} ${selected === i ? (dark ? 'border-cyan-500 bg-cyan-500/20' : 'border-primary bg-primary/5') : dark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'} ${submitted && i === p.correctIndex ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''} ${submitted && selected === i && selected !== p.correctIndex ? (dark ? 'border-red-400 bg-red-500/20' : 'border-red-300 bg-red-50') : ''}`}
+          >
+            {optionImages[i] ? (
+              <img src={optionImages[i]} alt="" className="w-full aspect-video object-cover rounded-lg" />
+            ) : (
+              <span className="w-full aspect-video rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-2xl">🖼</span>
+            )}
+            <span className={dark ? 'text-slate-100 text-sm' : 'text-sm'}>{String.fromCharCode(65 + i)}. {opt}</span>
+            <input type="radio" name={`img-choice-${segment.id}`} checked={selected === i} onChange={() => setSelected(i)} disabled={submitted} className="sr-only" />
+          </label>
+        ))}
+      </div>
+      {!submitted ? (
+        <button onClick={handleSubmit} disabled={selected === null} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>提交</button>
+      ) : (
+        <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
+          {isCorrect ? '✓ 回答正确！' : '正确答案：' + (options[p.correctIndex] || '')}
+          {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SegmentFillBlank({ segment, index, dark, onSegmentResult }) {
   const p = segment.payload
   const [values, setValues] = useState(p.blanks.map(() => ''))
@@ -268,41 +334,141 @@ function SegmentMatch({ segment, index, dark, onSegmentResult }) {
   const p = segment.payload
   const left = p.leftItems || []
   const right = p.rightItems || []
-  const [pairs, setPairs] = useState([])
-  const [submitted, setSubmitted] = useState(false)
+  const correctPairs = p.correctPairs || left.map((_, i) => [i, i])
+  const [state, setState] = useState({
+    selectedLeftIndex: null,
+    selectedRightByLeft: left.map(() => null),
+    submitted: false,
+  })
+  const [linePositions, setLinePositions] = useState([])
+  const containerRef = useRef(null)
+  const leftRefs = useRef([])
+  const rightRefs = useRef([])
+  const { selectedLeftIndex, selectedRightByLeft, submitted } = state
+  const isCorrect =
+    correctPairs.length > 0 &&
+    correctPairs.every(([li, ri]) => selectedRightByLeft[li] === ri) &&
+    selectedRightByLeft.every((r) => r !== null)
+
+  useEffect(() => {
+    if (!containerRef.current || submitted) {
+      setLinePositions([])
+      return
+    }
+    const pairs = left.map((_, i) => selectedRightByLeft[i] !== null && [i, selectedRightByLeft[i]]).filter(Boolean)
+    if (pairs.length === 0) {
+      setLinePositions([])
+      return
+    }
+    const measure = () => {
+      const container = containerRef.current
+      if (!container) return
+      const cr = container.getBoundingClientRect()
+      const positions = pairs.map(([li, rj]) => {
+        const leftEl = leftRefs.current[li]
+        const rightEl = rightRefs.current[rj]
+        if (!leftEl || !rightEl) return null
+        const lr = leftEl.getBoundingClientRect()
+        const rr = rightEl.getBoundingClientRect()
+        return {
+          start: { x: lr.left - cr.left + lr.width, y: lr.top - cr.top + lr.height / 2 },
+          end: { x: rr.left - cr.left, y: rr.top - cr.top + rr.height / 2 },
+        }
+      }).filter(Boolean)
+      setLinePositions(positions)
+    }
+    const raf1 = requestAnimationFrame(() => {
+      requestAnimationFrame(measure)
+    })
+    return () => cancelAnimationFrame(raf1)
+  }, [selectedRightByLeft, submitted, left.length])
+
+  const handleClickLeft = (i) => {
+    if (state.submitted) return
+    setState((prev) => ({
+      ...prev,
+      selectedLeftIndex: prev.selectedLeftIndex === i ? null : i,
+    }))
+  }
+  const handleClickRight = (j) => {
+    if (state.submitted) return
+    setState((prev) => {
+      if (prev.selectedLeftIndex === null) return prev
+      const next = [...prev.selectedRightByLeft]
+      const leftIdx = prev.selectedLeftIndex
+      if (next[leftIdx] === j) {
+        next[leftIdx] = null
+      } else {
+        next[leftIdx] = j
+      }
+      return { ...prev, selectedRightByLeft: next, selectedLeftIndex: null }
+    })
+  }
+
   const handleSubmit = () => {
-    setSubmitted(true)
-    if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, true)
+    setState((prev) => ({ ...prev, submitted: true }))
+    if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, isCorrect)
   }
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
   const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
   const tag = dark ? 'bg-violet-500/80 text-white px-2 py-0.5 rounded' : 'bg-violet-100 text-violet-700 px-2 py-0.5 rounded'
-  const hint = dark ? 'text-sm text-slate-400 mb-3' : 'text-sm text-slate-600 mb-3'
-  const itemBox = dark ? 'px-3 py-2 bg-slate-700 rounded-lg text-sm text-slate-200' : 'px-3 py-2 bg-slate-100 rounded-lg text-sm'
+  const instructionCls = dark ? 'text-sm text-violet-200/90 bg-violet-500/20 rounded-lg px-3 py-2 mb-3 border border-violet-400/30' : 'text-sm text-violet-800 bg-violet-50 rounded-lg px-3 py-2 mb-3 border border-violet-200'
+  const itemBase = 'px-3 py-2 rounded-lg text-sm transition select-none '
+  const leftBox = (i) => itemBase + (dark ? 'bg-slate-700 text-slate-200 ' : 'bg-slate-100 ') + (!submitted ? 'cursor-pointer ' : '') + (selectedLeftIndex === i ? (dark ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-slate-800' : 'ring-2 ring-violet-500 ring-offset-2 ring-offset-white') : dark ? 'hover:bg-slate-600' : 'hover:bg-slate-200')
+  const rightBox = (j) => {
+    const usedBy = selectedRightByLeft.findIndex((r) => r === j)
+    const isConnected = usedBy >= 0
+    return itemBase + (dark ? 'bg-slate-700 text-slate-200 ' : 'bg-slate-100 ') + (!submitted ? 'cursor-pointer ' : '') + (isConnected ? (dark ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-slate-800 bg-emerald-500/20' : 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-white bg-emerald-50') : dark ? 'hover:bg-slate-600' : 'hover:bg-slate-200')
+  }
   return (
     <div className={card}>
       <div className={meta}>
         <span className={tag}>环节 {index + 1}</span>
         <span>{SEGMENT_LABELS.match}</span>
       </div>
-      <p className={hint}>将左侧与右侧正确连线</p>
-      <div className="flex gap-4 flex-wrap">
-        <div className="space-y-2">
+      <div className={instructionCls}>
+        <strong>操作说明：</strong>请先<strong>点击左侧一项</strong>（会高亮），再<strong>点击右侧一项</strong>，两条之间会画出连线；可再次点击已连线的项取消或修改。
+      </div>
+      <div ref={containerRef} className="relative flex gap-4 flex-wrap items-start min-h-[120px]">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: 'visible' }}>
+          {linePositions.map((pos, idx) => (
+            <line
+              key={idx}
+              x1={pos.start.x}
+              y1={pos.start.y}
+              x2={pos.end.x}
+              y2={pos.end.y}
+              stroke={dark ? 'rgb(52 211 153)' : 'rgb(16 185 129)'}
+              strokeWidth="2"
+              strokeLinecap="butt"
+            />
+          ))}
+        </svg>
+        <div className="space-y-2 flex-1 min-w-[120px] relative z-10">
+          <p className={dark ? 'text-xs text-slate-500 mb-1' : 'text-xs text-slate-500 mb-1'}>左侧</p>
           {left.map((item, i) => (
-            <div key={i} className={itemBox}>{item}</div>
+            <div key={i} ref={(el) => { leftRefs.current[i] = el }} role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); handleClickLeft(i); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleClickLeft(i); } }} className={leftBox(i)}>
+              {item}
+            </div>
           ))}
         </div>
-        <div className={dark ? 'text-slate-500 self-center' : 'text-slate-400 self-center'}>→</div>
-        <div className="space-y-2">
-          {right.map((item, i) => (
-            <div key={i} className={itemBox}>{item}</div>
+        <div className={dark ? 'text-slate-500 self-center relative z-10' : 'text-slate-400 self-center relative z-10'} aria-hidden>→</div>
+        <div className="space-y-2 flex-1 min-w-[120px] relative z-10">
+          <p className={dark ? 'text-xs text-slate-500 mb-1' : 'text-xs text-slate-500 mb-1'}>右侧</p>
+          {right.map((item, j) => (
+            <div key={j} ref={(el) => { rightRefs.current[j] = el }} role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); handleClickRight(j); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleClickRight(j); } }} className={rightBox(j)}>
+              {item}
+            </div>
           ))}
         </div>
       </div>
       {!submitted ? (
-        <button onClick={handleSubmit} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>完成连线</button>
+        <button onClick={handleSubmit} disabled={selectedRightByLeft.some((r) => r === null)} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>完成连线</button>
       ) : (
-        <div className={dark ? 'mt-3 p-3 rounded-lg text-sm bg-slate-700/50 text-slate-300' : 'mt-3 p-3 rounded-lg text-sm bg-slate-50 text-slate-700'}>已提交{p.explanation && <p className="mt-1">{p.explanation}</p>}</div>
+        <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-700'}`}>
+          {isCorrect ? '✓ 连线正确！' : '已提交'}
+          {p.explanation && <p className="mt-1">{p.explanation}</p>}
+        </div>
       )}
     </div>
   )
@@ -310,10 +476,43 @@ function SegmentMatch({ segment, index, dark, onSegmentResult }) {
 
 function SegmentDragDrop({ segment, index, dark, onSegmentResult }) {
   const p = segment.payload
-  const [order, setOrder] = useState((p.items || []).map((_, i) => i))
+  const items = p.items || []
+  const [order, setOrder] = useState(() => items.map((_, i) => i))
   const [submitted, setSubmitted] = useState(false)
-  const correctOrder = p.correctOrder || []
+  const [draggedIndex, setDraggedIndex] = useState(null)
+  const correctOrder = p.correctOrder || items.map((_, i) => i)
   const isCorrect = correctOrder.length === order.length && correctOrder.every((c, i) => c === order[i])
+
+  const handleDragStart = (e, fromPos) => {
+    if (submitted) return
+    setDraggedIndex(fromPos)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(fromPos))
+    e.target.classList.add('opacity-50')
+  }
+  const handleDragEnd = (e) => {
+    e.target.classList.remove('opacity-50')
+    setDraggedIndex(null)
+  }
+  const handleDragOver = (e, toPos) => {
+    e.preventDefault()
+    if (submitted || draggedIndex === null || draggedIndex === toPos) return
+    e.dataTransfer.dropEffect = 'move'
+  }
+  const handleDrop = (e, toPos) => {
+    e.preventDefault()
+    if (submitted || draggedIndex === null) return
+    const fromPos = draggedIndex
+    if (fromPos === toPos) return
+    setOrder((prev) => {
+      const next = [...prev]
+      const [removed] = next.splice(fromPos, 1)
+      next.splice(toPos, 0, removed)
+      return next
+    })
+    setDraggedIndex(null)
+  }
+
   const handleSubmit = () => {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, isCorrect)
@@ -322,7 +521,7 @@ function SegmentDragDrop({ segment, index, dark, onSegmentResult }) {
   const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
   const tag = dark ? 'bg-rose-500/80 text-white px-2 py-0.5 rounded' : 'bg-rose-100 text-rose-700 px-2 py-0.5 rounded'
   const promptCls = dark ? 'font-medium text-white mb-3' : 'font-medium text-bingo-dark mb-3'
-  const itemCls = dark ? 'px-3 py-2 bg-slate-700 rounded-lg text-sm text-slate-200' : 'px-3 py-2 bg-slate-100 rounded-lg text-sm'
+  const itemBase = dark ? 'px-3 py-2 bg-slate-700 rounded-lg text-sm text-slate-200 cursor-grab active:cursor-grabbing border border-slate-600' : 'px-3 py-2 bg-slate-100 rounded-lg text-sm cursor-grab active:cursor-grabbing border border-slate-200'
   return (
     <div className={card}>
       <div className={meta}>
@@ -330,9 +529,22 @@ function SegmentDragDrop({ segment, index, dark, onSegmentResult }) {
         <span>{SEGMENT_LABELS.drag_drop}</span>
       </div>
       <p className={promptCls}>{p.prompt || '请将下列选项拖拽到正确顺序'}</p>
+      <div className={dark ? 'text-sm text-rose-200/90 bg-rose-500/20 rounded-lg px-3 py-2 mb-3 border border-rose-400/30' : 'text-sm text-rose-800 bg-rose-50 rounded-lg px-3 py-2 mb-3 border border-rose-200'}>
+        <strong>操作说明：</strong>用鼠标<strong>按住方块并拖动</strong>到目标位置后松开，可多次拖动调整顺序；排好后点击下方「提交顺序」。
+      </div>
       <div className="flex flex-wrap gap-2">
-        {(p.items || []).map((item, i) => (
-          <span key={i} className={itemCls}>{item}</span>
+        {order.map((itemIndex, pos) => (
+          <span
+            key={`${itemIndex}-${pos}`}
+            draggable={!submitted}
+            onDragStart={(e) => handleDragStart(e, pos)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, pos)}
+            onDrop={(e) => handleDrop(e, pos)}
+            className={`${itemBase} ${!submitted ? 'hover:border-rose-400 dark:hover:border-rose-400' : ''}`}
+          >
+            {items[itemIndex]}
+          </span>
         ))}
       </div>
       {!submitted ? (
@@ -527,6 +739,134 @@ function SegmentAIExperiment({ segment, index, dark }) {
   )
 }
 
+// 语音题（听音选答）：题干是语音，选项是文字或图片
+function SegmentAudioChoice({ segment, index, dark, onSegmentResult }) {
+  const p = segment.payload
+  const options = p.options || []
+  const optionImages = p.optionImages || []
+  const audioUrl = p.audioUrl || p.questionAudio || ''
+  const [selected, setSelected] = useState(null)
+  const [submitted, setSubmitted] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useRef(null)
+  const isCorrect = submitted && selected === p.correctIndex
+  const handleSubmit = () => {
+    setSubmitted(true)
+    if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === p.correctIndex)
+  }
+  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
+  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
+  const tag = dark ? 'bg-orange-500/80 text-white px-2 py-0.5 rounded' : 'bg-orange-100 text-orange-700 px-2 py-0.5 rounded'
+  const hintCls = dark ? 'text-slate-400 text-sm mb-3' : 'text-slate-600 text-sm mb-3'
+  const optBase = 'flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition '
+  const hasImages = optionImages.some(Boolean)
+  return (
+    <div className={card}>
+      <div className={meta}>
+        <span className={tag}>环节 {index + 1}</span>
+        <span>{SEGMENT_LABELS.audio_choice}</span>
+      </div>
+      <p className={hintCls}>听语音题干，选择正确答案</p>
+      <div className={`mb-4 p-4 rounded-xl ${dark ? 'bg-slate-700/80' : 'bg-slate-100'}`}>
+        {audioUrl ? (
+          <>
+            <audio ref={audioRef} src={audioUrl} onPlay={() => setPlaying(true)} onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => (playing ? audioRef.current?.pause() : audioRef.current?.play())}
+                className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xl ${dark ? 'bg-orange-500 hover:bg-orange-400 text-white' : 'bg-orange-500 hover:bg-orange-400 text-white'}`}
+              >
+                {playing ? '⏸' : '▶'}
+              </button>
+              <span className={dark ? 'text-slate-300 text-sm' : 'text-slate-600 text-sm'}>{playing ? '正在播放题干…' : '点击播放语音题干'}</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-3 text-slate-500">
+            <span className="text-2xl">🎤</span>
+            <span className="text-sm">（暂无题干音频，请根据选项作答）</span>
+          </div>
+        )}
+      </div>
+      <p className={dark ? 'text-slate-300 text-sm mb-2' : 'text-slate-600 text-sm mb-2'}>选项（文字或图片）：</p>
+      <div className={hasImages ? 'grid grid-cols-2 gap-3' : 'space-y-2'}>
+        {options.map((opt, i) => (
+          <label
+            key={i}
+            className={`${optBase} ${dark ? 'text-slate-200 border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'} ${selected === i ? (dark ? 'border-orange-500 bg-orange-500/20' : 'border-orange-500 bg-orange-50') : ''} ${submitted && i === p.correctIndex ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''} ${submitted && selected === i && selected !== p.correctIndex ? (dark ? 'border-red-400 bg-red-500/20' : 'border-red-300 bg-red-50') : ''}`}
+          >
+            <input type="radio" name={`audio-choice-${segment.id}`} checked={selected === i} onChange={() => setSelected(i)} disabled={submitted} className="sr-only" />
+            {optionImages[i] ? (
+              <>
+                <img src={optionImages[i]} alt="" className="w-14 h-14 object-cover rounded shrink-0" />
+                <span className="text-sm">{String.fromCharCode(65 + i)}. {opt}</span>
+              </>
+            ) : (
+              <span className="text-sm">{String.fromCharCode(65 + i)}. {opt}</span>
+            )}
+          </label>
+        ))}
+      </div>
+      {!submitted ? (
+        <button onClick={handleSubmit} disabled={selected === null} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-orange-500 text-white' : 'bg-primary text-white'}`}>提交</button>
+      ) : (
+        <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
+          {isCorrect ? '✓ 回答正确！' : '正确答案：' + (options[p.correctIndex] || '')}
+          {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 语音跟读：跟读/录音（提交即记为完成）
+function SegmentVoice({ segment, index, dark, onSegmentResult }) {
+  const p = segment.payload
+  const [submitted, setSubmitted] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const handleSubmit = () => {
+    setSubmitted(true)
+    if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, true)
+  }
+  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-5' : 'rounded-xl border border-slate-200 bg-white p-5'
+  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
+  const tag = dark ? 'bg-orange-500/80 text-white px-2 py-0.5 rounded' : 'bg-orange-100 text-orange-700 px-2 py-0.5 rounded'
+  const titleCls = dark ? 'font-medium text-white mb-2' : 'font-medium text-bingo-dark mb-2'
+  const textCls = dark ? 'text-slate-300 text-sm' : 'text-slate-600 text-sm'
+  return (
+    <div className={card}>
+      <div className={meta}>
+        <span className={tag}>环节 {index + 1}</span>
+        <span>{SEGMENT_LABELS.voice}</span>
+      </div>
+      <p className={titleCls}>{p.title || '语音跟读'}</p>
+      {p.prompt && <p className={textCls}>{p.prompt}</p>}
+      {p.textToRead && (
+        <div className={`mt-3 p-4 rounded-xl ${dark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-800'}`}>
+          <p className="text-sm">{p.textToRead}</p>
+        </div>
+      )}
+      {!submitted ? (
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setRecording((r) => !r)}
+            className={`px-4 py-2.5 rounded-xl text-sm font-medium ${recording ? (dark ? 'bg-red-500 text-white' : 'bg-red-500 text-white') : dark ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            {recording ? '⏹ 停止录音' : '🎤 开始录音'}
+          </button>
+          <button onClick={handleSubmit} className={`px-4 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>
+            提交录音
+          </button>
+        </div>
+      ) : (
+        <div className={`mt-3 p-3 rounded-lg text-sm ${dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800'}`}>✓ 已完成语音作答</div>
+      )}
+    </div>
+  )
+}
+
 function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegmentResult }) {
   const common = { segment, index, dark, onSegmentResult }
   switch (segment.type) {
@@ -540,6 +880,8 @@ function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegme
       )
     case 'choice':
       return <SegmentChoice {...common} />
+    case 'image_choice':
+      return <SegmentImageChoice {...common} />
     case 'fill_blank':
       return <SegmentFillBlank {...common} />
     case 'match':
@@ -548,6 +890,10 @@ function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegme
       return <SegmentDragDrop {...common} />
     case 'game':
       return <SegmentGame {...common} />
+    case 'voice':
+      return <SegmentVoice {...common} />
+    case 'audio_choice':
+      return <SegmentAudioChoice {...common} />
     case 'ai_experiment':
       return <SegmentAIExperiment {...common} />
     default:
@@ -607,12 +953,18 @@ function getSegmentShortcut(segment) {
       return { label: '进入实验', key: 'ai_experiment' }
     case 'choice':
       return { label: '作答', key: 'choice' }
+    case 'image_choice':
+      return { label: '作答', key: 'image_choice' }
     case 'fill_blank':
       return { label: '作答', key: 'fill_blank' }
     case 'match':
       return { label: '连线', key: 'match' }
     case 'drag_drop':
       return { label: '拖拽作答', key: 'drag_drop' }
+    case 'voice':
+      return { label: '录音作答', key: 'voice' }
+    case 'audio_choice':
+      return { label: '听音选答', key: 'audio_choice' }
     default:
       return null
   }
@@ -630,10 +982,13 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
   const knowledgeLabels = {
     video: '视频学习与理解',
     choice: '选择题知识点巩固',
+    image_choice: '图片选择题观察与判断',
     fill_blank: '填空题知识点应用',
     match: '连线题逻辑关联',
     drag_drop: '拖拽题顺序与逻辑',
     game: '翻翻卡记忆与作答',
+    voice: '语音表达与跟读',
+    audio_choice: '听音选答与理解',
     ai_experiment: 'AI实验体验与认知',
   }
   const knowledgePoints = [...new Set((segments || []).map((s) => knowledgeLabels[s.type] || SEGMENT_LABELS[s.type]).filter(Boolean))]
