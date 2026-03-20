@@ -185,10 +185,26 @@ export interface DragDropSegmentPayload {
   explanation?: string
 }
 
+/** 找茬游戏配置（gameType === spot_difference） */
+export interface SpotDifferenceGameConfig {
+  /** 左侧图 URL */
+  leftImage: string
+  /** 右侧图 URL */
+  rightImage: string
+  /**
+   * 需在左侧图上点中的区域：x/y 为相对图片宽高的百分比 0–100，r 为允许误差（百分比距离，默认约 10）
+   */
+  spots: Array<{ x: number; y: number; r?: number }>
+  /** 操作提示文案 */
+  hint?: string
+  explanation?: string
+}
+
 /** 游戏环节 */
 export interface GameSegmentPayload {
   gameType: string
   title?: string
+  /** spot_difference 等参见 SpotDifferenceGameConfig */
   config?: Record<string, unknown>
 }
 

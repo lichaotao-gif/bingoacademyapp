@@ -51,8 +51,28 @@ const MY_COURSES = [
           { id: 's1-fb', type: 'fill_blank', sort: 8, payload: { question: '请填空：AI 是 ____ 的缩写。', blanks: ['人工智能'], explanation: 'Artificial Intelligence = 人工智能。' } },
           { id: 's1-v5', type: 'video', sort: 9, payload: { url: '', title: '拓展：AI 能做什么', duration: 100 } },
           { id: 's1-dd', type: 'drag_drop', sort: 10, payload: { prompt: '请按“从简单到复杂”排列：', items: ['识别图片', '下棋', '开车', '聊天'], correctOrder: [0, 1, 2, 3], explanation: 'AI 先学会看图、下棋，再发展到自动驾驶和自然对话。' } },
-          { id: 's1-audio', type: 'audio_choice', sort: 11, payload: { audioUrl: '/AI知识题.mp3', options: ['监督学习', '强化学习', '无监督学习', '自监督学习'], correctIndex: 3, explanation: '答案：自监督学习。' } },
-          { id: 's1-ai', type: 'ai_experiment', sort: 12, payload: { title: '人脸识别小实验', description: '体验图像识别，上传一张照片试试看', experimentId: 'face-demo' } },
+          {
+            id: 's1-spot',
+            type: 'game',
+            sort: 11,
+            payload: {
+              gameType: 'spot_difference',
+              title: '找茬：AI 实验室',
+              config: {
+                leftImage: 'https://picsum.photos/seed/ailab-left/480/320',
+                rightImage: 'https://picsum.photos/seed/ailab-right/480/320',
+                hint: '对比左右两图，在左侧图片上点击所有不同之处（共 3 处）',
+                spots: [
+                  { x: 22, y: 28, r: 11 },
+                  { x: 58, y: 45, r: 11 },
+                  { x: 78, y: 72, r: 10 },
+                ],
+                explanation: '找茬需要仔细观察细节与位置差异，锻炼观察力与专注力。',
+              },
+            },
+          },
+          { id: 's1-audio', type: 'audio_choice', sort: 12, payload: { audioUrl: '/AI知识题.mp3', options: ['监督学习', '强化学习', '无监督学习', '自监督学习'], correctIndex: 3, explanation: '答案：自监督学习。' } },
+          { id: 's1-ai', type: 'ai_experiment', sort: 13, payload: { title: '人脸识别小实验', description: '体验图像识别，上传一张照片试试看', experimentId: 'face-demo' } },
         ],
       },
       {
@@ -652,21 +672,169 @@ function SegmentDragDrop({ segment, index, dark, onSegmentResult }) {
   )
 }
 
-function SegmentGame({ segment, index, dark }) {
+/** 找茬：左右对比图，在左侧图上点击配置好的「不同点」区域（相对坐标 %） */
+function SpotDifferenceGame({ config, title, dark, onComplete }) {
+  const leftImage = config?.leftImage || ''
+  const rightImage = config?.rightImage || leftImage
+  const spots = Array.isArray(config?.spots) ? config.spots : []
+  const hint = config?.hint || '对比左右两图，在左侧图上点击不同之处'
+  const explanation = config?.explanation
+
+  const [found, setFound] = useState(() => new Set())
+  const [done, setDone] = useState(false)
+  const [wrongPulse, setWrongPulse] = useState(false)
+  const imgRef = useRef(null)
+
+  const pctDist = (x1, y1, x2, y2) => Math.hypot(x1 - x2, y1 - y2)
+
+  const handleLeftClick = (e) => {
+    if (done || spots.length === 0) return
+    const el = imgRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    if (rect.width < 8 || rect.height < 8) return
+    const px = ((e.clientX - rect.left) / rect.width) * 100
+    const py = ((e.clientY - rect.top) / rect.height) * 100
+
+    let hit = -1
+    for (let i = 0; i < spots.length; i++) {
+      if (found.has(i)) continue
+      const s = spots[i]
+      const r = typeof s.r === 'number' && !Number.isNaN(s.r) ? s.r : 10
+      if (pctDist(px, py, s.x, s.y) <= r) hit = i
+    }
+
+    if (hit < 0) {
+      setWrongPulse(true)
+      window.setTimeout(() => setWrongPulse(false), 380)
+      return
+    }
+
+    setFound((prev) => {
+      if (prev.has(hit)) return prev
+      const next = new Set(prev)
+      next.add(hit)
+      if (next.size >= spots.length) {
+        setDone(true)
+        if (typeof onComplete === 'function') onComplete(true)
+      }
+      return next
+    })
+  }
+
+  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4 sm:p-5' : 'rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-5'
+  const titleCls = dark ? 'font-semibold text-white text-center mb-2' : 'font-semibold text-bingo-dark text-center mb-2'
+  const subCls = dark ? 'text-slate-400 text-sm text-center mb-4' : 'text-slate-600 text-sm text-center mb-4'
+  const labelCls = dark ? 'text-slate-300 text-xs mb-1 font-medium' : 'text-slate-600 text-xs mb-1 font-medium'
+  const imgBox = `relative w-full overflow-hidden rounded-xl border-2 transition ${wrongPulse ? 'border-amber-400 ring-2 ring-amber-400/50' : dark ? 'border-slate-600' : 'border-slate-200'}`
+
+  if (!leftImage || !rightImage) {
+    return (
+      <div className={dark ? 'text-slate-400 text-sm text-center py-8' : 'text-slate-500 text-sm text-center py-8'}>
+        请配置左侧图与右侧图 URL
+      </div>
+    )
+  }
+
+  if (spots.length === 0) {
+    return (
+      <div className={dark ? 'text-slate-400 text-sm text-center py-8' : 'text-slate-500 text-sm text-center py-8'}>
+        请配置至少一处找茬坐标（百分比）
+      </div>
+    )
+  }
+
+  return (
+    <div className={card}>
+      {title ? <p className={titleCls}>{title}</p> : null}
+      <p className={subCls}>{hint}</p>
+      <p className={`text-center text-xs mb-3 ${dark ? 'text-cyan-300/90' : 'text-primary'}`}>
+        已找到 {found.size} / {spots.length} 处
+        {done ? ' · ✓ 全部找到！' : ''}
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <p className={labelCls}>左图（点击不同之处）</p>
+          <div
+            className={`${imgBox} cursor-crosshair select-none`}
+            role="presentation"
+            onClick={handleLeftClick}
+          >
+            <img ref={imgRef} src={leftImage} alt="" className="w-full h-auto block max-h-[min(52vh,28rem)] object-contain mx-auto bg-black/20" draggable={false} />
+            {spots.map((s, i) =>
+              found.has(i) ? (
+                <span
+                  key={i}
+                  className="absolute border-4 border-emerald-400 rounded-full bg-emerald-400/20 pointer-events-none animate-pulse"
+                  style={{
+                    left: `${s.x}%`,
+                    top: `${s.y}%`,
+                    width: `${(s.r ?? 10) * 2}%`,
+                    height: `${(s.r ?? 10) * 2}%`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                />
+              ) : null
+            )}
+          </div>
+        </div>
+        <div>
+          <p className={labelCls}>右图（对照）</p>
+          <div className={`relative w-full overflow-hidden rounded-xl border-2 ${dark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <img src={rightImage} alt="" className="w-full h-auto block max-h-[min(52vh,28rem)] object-contain mx-auto bg-black/20" draggable={false} />
+          </div>
+        </div>
+      </div>
+      {done && explanation ? (
+        <div className={`mt-4 p-3 rounded-lg text-sm ${dark ? 'bg-emerald-500/15 text-slate-200' : 'bg-emerald-50 text-emerald-900'}`}>{explanation}</div>
+      ) : null}
+    </div>
+  )
+}
+
+function SegmentGame({ segment, index, dark, onSegmentResult }) {
   const p = segment.payload
-  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-6 text-center' : 'rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-6 text-center'
-  const meta = dark ? 'flex items-center gap-2 justify-center mb-2 text-xs text-slate-400' : 'flex items-center gap-2 justify-center mb-2 text-xs text-slate-500'
+  const meta = dark ? 'flex items-center gap-2 justify-center mb-4 text-xs text-slate-400' : 'flex items-center gap-2 justify-center mb-4 text-xs text-slate-500'
   const tag = dark ? 'bg-lime-500/80 text-white px-2 py-0.5 rounded' : 'bg-lime-100 text-lime-700 px-2 py-0.5 rounded'
+  const outer = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4 sm:p-5' : 'rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-5'
+
+  if (p.gameType === 'spot_difference') {
+    const finish = (ok) => typeof onSegmentResult === 'function' && onSegmentResult(segment.id, ok)
+    return (
+      <div className={outer}>
+        <div className={meta}>
+          <span className={tag}>环节 {index + 1}</span>
+          <span>{SEGMENT_LABELS.game}</span>
+          <span>· 找茬</span>
+        </div>
+        <SpotDifferenceGame
+          config={p.config || {}}
+          title={p.title}
+          dark={dark}
+          onComplete={finish}
+        />
+      </div>
+    )
+  }
+
+  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-6 text-center' : 'rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-6 text-center'
+  const meta2 = dark ? 'flex items-center gap-2 justify-center mb-2 text-xs text-slate-400' : 'flex items-center gap-2 justify-center mb-2 text-xs text-slate-500'
   const titleCls = dark ? 'font-medium text-white' : 'font-medium text-bingo-dark'
   return (
     <div className={card}>
-      <div className={meta}>
+      <div className={meta2}>
         <span className={tag}>环节 {index + 1}</span>
         <span>{SEGMENT_LABELS.game}</span>
       </div>
       <p className="text-2xl mb-2">🎮</p>
       <p className={titleCls}>{p.title || p.gameType || '游戏环节'}</p>
-      <button className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>开始游戏</button>
+      <p className={`text-xs mt-2 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>当前游戏类型尚未在客户端实现，可配置为「找茬（spot_difference）」</p>
+      <button
+        type="button"
+        className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}
+      >
+        开始游戏
+      </button>
     </div>
   )
 }
@@ -798,7 +966,7 @@ function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegme
     case 'drag_drop':
       return <SegmentDragDrop {...common} />
     case 'game':
-      return <SegmentGame {...common} />
+      return <SegmentGame segment={segment} index={index} dark={dark} onSegmentResult={onSegmentResult} />
     case 'audio_choice':
       return <SegmentAudioChoice {...common} />
     case 'ai_experiment':
@@ -1275,6 +1443,8 @@ function buildCourseSummary(course) {
 // ─── 单门课程卡片（可展开） ─────────────────────────────────
 function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
   const [expanded, setExpanded] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [reviewText, setReviewText] = useState('')
   const [watched, setWatched] = useState(() =>
     Object.fromEntries(course.lessons.map(l => [l.id, l.watched]))
   )
@@ -1293,13 +1463,42 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
     setWatched(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
+  const handleRecommend = async () => {
+    const text = `我在 Bingo Academy 学习「${course.title}」，推荐给你一起学！`
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title: course.title, text })
+        return
+      }
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+        window.alert('推荐语已复制到剪贴板，可以粘贴发给好友～')
+        return
+      }
+    } catch {
+      /* 用户取消分享等 */
+    }
+    window.alert(`${text}\n\n（若未自动复制，请手动长按复制）`)
+  }
+
+  const submitReview = () => {
+    const trimmed = reviewText.trim()
+    if (!trimmed) {
+      window.alert('请先填写评价内容')
+      return
+    }
+    setReviewOpen(false)
+    setReviewText('')
+    window.alert(`感谢您对「${course.title}」的评价！\n（演示环境，未实际上传服务器）`)
+  }
+
   return (
-    <div className="card overflow-hidden border border-slate-200 hover:border-primary/30 transition">
-      {/* 课程头部 */}
+    <div className="card relative overflow-hidden border border-slate-200 hover:border-primary/30 transition">
+      {/* 课程头部（底部留白，避免与右下角按钮重叠） */}
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
-        className="w-full text-left p-5 flex items-start gap-4 hover:bg-slate-50/60 transition"
+        className="w-full text-left p-5 pb-12 sm:pb-11 flex items-start gap-4 hover:bg-slate-50/60 transition"
       >
         {/* 封面图标 */}
         <div className={`shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br ${course.color} flex items-center justify-center text-2xl`}>
@@ -1333,6 +1532,77 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
         {/* 展开箭头 */}
         <span className={`shrink-0 text-slate-400 transition-transform mt-1 ${expanded ? 'rotate-180' : ''}`}>▼</span>
       </button>
+
+      {/* 固定在整张课程卡右下角：推荐 / 评价 */}
+      <div className="pointer-events-none absolute bottom-3 right-3 z-20 flex flex-wrap justify-end gap-2 max-w-[min(100%,16rem)] sm:max-w-none">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            handleRecommend()
+          }}
+          className="pointer-events-auto text-xs px-3 py-1.5 rounded-lg font-medium border border-amber-200/90 bg-amber-50/95 text-amber-900 shadow-sm hover:bg-amber-100 transition backdrop-blur-sm"
+        >
+          我要推荐
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setReviewOpen(true)
+          }}
+          className="pointer-events-auto text-xs px-3 py-1.5 rounded-lg font-medium border border-primary/35 bg-white/95 text-primary shadow-sm hover:bg-primary/10 transition backdrop-blur-sm"
+        >
+          我要评价
+        </button>
+      </div>
+
+      {reviewOpen &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="课程评价"
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50"
+            onClick={() => setReviewOpen(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="font-bold text-bingo-dark text-base mb-1">评价课程</h3>
+              <p className="text-xs text-slate-500 mb-3 line-clamp-2">{course.title}</p>
+              <label htmlFor={`review-${course.id}`} className="sr-only">
+                评价内容
+              </label>
+              <textarea
+                id={`review-${course.id}`}
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                placeholder="学习感受、建议或想对老师说的话…"
+                rows={4}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-bingo-dark placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y min-h-[100px]"
+              />
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewOpen(false)}
+                  className="text-sm px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={submitReview}
+                  className="text-sm px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"
+                >
+                  提交评价
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* 展开的课时列表 */}
       {expanded && (
@@ -1418,8 +1688,8 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
             </div>
           )}
 
-          {/* 课程底部：证书/完成提示 */}
-          <div className="px-5 py-3 bg-slate-50/70 flex items-center justify-between gap-4">
+          {/* 课程底部：证书/完成提示（底部内边距避让右下角固定按钮） */}
+          <div className="px-5 py-3 pb-12 sm:pb-11 bg-slate-50/70 flex items-center justify-between gap-4">
             {progressPct === 100 ? (
               <>
                 <p className="text-sm text-emerald-700 font-medium">🎉 恭喜完成全部课时！</p>

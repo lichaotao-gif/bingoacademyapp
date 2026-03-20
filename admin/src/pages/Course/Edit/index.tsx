@@ -46,6 +46,7 @@ import type {
   MatchSegmentPayload,
   DragDropSegmentPayload,
   GameSegmentPayload,
+  SpotDifferenceGameConfig,
   AIExperimentSegmentPayload,
 } from '@/api/course'
 
@@ -82,7 +83,19 @@ function getDefaultPayload(type: LessonSegmentType): LessonSegmentPayload {
     case 'drag_drop':
       return { prompt: '', slots: [''], items: [''], correctOrder: [0], explanation: '' }
     case 'game':
-      return { gameType: '', title: '', config: {} }
+      return {
+        gameType: 'spot_difference',
+        title: '找茬小游戏',
+        config: {
+          leftImage: '',
+          rightImage: '',
+          spots: [
+            { x: 28, y: 35, r: 12 },
+            { x: 72, y: 60, r: 12 },
+          ],
+          hint: '对比左右两图，在左侧图上点击所有不同之处',
+        } satisfies SpotDifferenceGameConfig,
+      }
     case 'ai_experiment':
       return { title: '', description: '', experimentId: '', config: {} }
     default:
@@ -211,10 +224,67 @@ function SegmentForm({
     }
     case 'game': {
       const gp = p as GameSegmentPayload
+      const cfg = (gp.config || {}) as SpotDifferenceGameConfig
+      const spotsLines = Array.isArray(cfg.spots)
+        ? cfg.spots.map((s) => `${s.x},${s.y}${s.r != null ? `,${s.r}` : ''}`).join('\n')
+        : ''
+      const setConfig = (partial: Partial<SpotDifferenceGameConfig>) => {
+        onUpdatePayload(lessonIdx, segmentIdx, { ...gp, config: { ...cfg, ...partial } })
+      }
       return (
         <Space direction="vertical" style={{ width: '100%' }}>
           <Input placeholder="环节标题" value={gp.title} onChange={(e) => update('title', e.target.value)} />
-          <Input placeholder="游戏类型标识（可选，客户端演示仅显示占位）" value={gp.gameType} onChange={(e) => update('gameType', e.target.value)} />
+          <Select
+            placeholder="选择游戏类型"
+            style={{ width: '100%' }}
+            value={gp.gameType || undefined}
+            onChange={(v) => update('gameType', v ?? '')}
+            options={[{ value: 'spot_difference', label: '找茬（左右对比图）' }]}
+            allowClear
+          />
+          {gp.gameType === 'spot_difference' && (
+            <>
+              <Input
+                placeholder="左侧图 URL"
+                value={cfg.leftImage}
+                onChange={(e) => setConfig({ leftImage: e.target.value })}
+              />
+              <Input
+                placeholder="右侧图 URL"
+                value={cfg.rightImage}
+                onChange={(e) => setConfig({ rightImage: e.target.value })}
+              />
+              <Input.TextArea
+                placeholder="找茬点（相对左侧图百分比坐标）每行：x,y 或 x,y,r&#10;例：28,35,12"
+                value={spotsLines}
+                onChange={(e) => {
+                  const lines = e.target.value.split('\n').filter((line) => line.trim())
+                  const spots = lines
+                    .map((line) => {
+                      const parts = line.split(/[,，\s]+/).map((s) => parseFloat(s.trim()))
+                      if (parts.length < 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) return null
+                      const spot: { x: number; y: number; r?: number } = { x: parts[0], y: parts[1] }
+                      if (parts.length >= 3 && !Number.isNaN(parts[2])) spot.r = parts[2]
+                      return spot
+                    })
+                    .filter(Boolean) as SpotDifferenceGameConfig['spots']
+                  setConfig({ spots })
+                }}
+                rows={4}
+              />
+              <Input.TextArea
+                placeholder="操作提示（可选）"
+                value={cfg.hint}
+                onChange={(e) => setConfig({ hint: e.target.value })}
+                rows={2}
+              />
+              <Input
+                placeholder="解析 / 通关说明（可选）"
+                value={cfg.explanation}
+                onChange={(e) => setConfig({ explanation: e.target.value })}
+              />
+            </>
+          )}
         </Space>
       )
     }
