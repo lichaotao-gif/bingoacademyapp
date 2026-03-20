@@ -5,16 +5,20 @@ import { Link } from 'react-router-dom'
 // ─── 课时环节类型（与后台一致：视频+互动+游戏+AI实验 任意组合） ─────────────────
 const SEGMENT_LABELS = {
   video: '视频片段',
-  choice: '选择题',
+  choice: '单选题',
+  multi_choice: '多选题',
   image_choice: '图片选择题',
   fill_blank: '填空题',
   match: '连线题',
   drag_drop: '拖拽题',
   game: '游戏环节',
-  voice: '语音跟读',
   audio_choice: '语音题',
   ai_experiment: 'AI实验',
 }
+
+/** 视频环节未配置 posterUrl 时的默认封面（学习场景插图，Unsplash） */
+const DEFAULT_VIDEO_POSTER =
+  'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1280&q=80&auto=format&fit=crop'
 
 // ─── Mock 已购课程数据 ─────────────────────────────────────
 const MY_COURSES = [
@@ -38,18 +42,17 @@ const MY_COURSES = [
         segments: [
           { id: 's1-v1', type: 'video', sort: 0, payload: { url: 'https://example.com/v1.mp4', title: '什么是AI', duration: 300 } },
           { id: 's1-c1', type: 'choice', sort: 1, payload: { question: 'AI的全称是？', options: ['人工智慧', '人工智能', '自动推理'], correctIndex: 1, explanation: 'Artificial Intelligence（人工智能）' } },
-          { id: 's1-v2', type: 'video', sort: 2, payload: { url: '', title: '认识AI应用', duration: 120 } },
-          { id: 's1-m', type: 'match', sort: 3, payload: { leftItems: ['AI', '机器学习', '深度学习'], rightItems: ['人工智能', '让电脑从数据中学习', '多层神经网络'], correctPairs: [[0, 0], [1, 1], [2, 2]], explanation: '正确连线帮助理解概念关系。' } },
-          { id: 's1-v3', type: 'video', sort: 4, payload: { url: '', title: '智能小故事', duration: 90 } },
-          { id: 's1-ic', type: 'image_choice', sort: 5, payload: { question: '下面哪一个是AI在生活中的应用？', options: ['智能音箱', '普通计算器', '手电筒', '机械闹钟'], optionImages: ['https://picsum.photos/seed/ai1/200/150', 'https://picsum.photos/seed/calc/200/150', 'https://picsum.photos/seed/light/200/150', 'https://picsum.photos/seed/clock/200/150'], correctIndex: 0, explanation: '智能音箱能对话、放音乐，背后有AI语音识别与理解。' } },
-          { id: 's1-game', type: 'game', sort: 6, payload: { gameType: 'flip_card', title: '翻翻卡游戏', config: { cards: [{ frontLabel: '?', backText: '人工智能' }, { frontLabel: '?', backText: '机器学习' }, { frontLabel: '?', backText: '深度学习' }], question: '根据上面三张卡的内容，以下哪一个是 AI 的核心技术？', options: ['人工智能', '机器学习', '深度学习', '以上都是'], correctIndex: 3, explanation: '人工智能是总称，机器学习与深度学习都是其核心技术，所以以上都是。' } } },
+          { id: 's1-mc', type: 'multi_choice', sort: 2, payload: { question: '下列哪些属于人工智能相关方向？（多选）', options: ['机器学习', '深度学习', '普通计算器', '自然语言处理'], correctIndices: [0, 1, 3], explanation: '机器学习、深度学习与自然语言处理均为 AI 领域；普通计算器是固定程序，一般不视为 AI。' } },
+          { id: 's1-v2', type: 'video', sort: 3, payload: { url: '', title: '认识AI应用', duration: 120 } },
+          { id: 's1-m', type: 'match', sort: 4, payload: { leftItems: ['AI', '机器学习', '深度学习'], rightItems: ['人工智能', '让电脑从数据中学习', '多层神经网络'], correctPairs: [[0, 0], [1, 1], [2, 2]], explanation: '正确连线帮助理解概念关系。' } },
+          { id: 's1-v3', type: 'video', sort: 5, payload: { url: '', title: '智能小故事', duration: 90 } },
+          { id: 's1-ic', type: 'image_choice', sort: 6, payload: { question: '下面哪一个是AI在生活中的应用？', options: ['智能音箱', '普通计算器', '手电筒', '机械闹钟'], optionImages: ['https://picsum.photos/seed/ai1/200/150', 'https://picsum.photos/seed/calc/200/150', 'https://picsum.photos/seed/light/200/150', 'https://picsum.photos/seed/clock/200/150'], correctIndex: 0, explanation: '智能音箱能对话、放音乐，背后有AI语音识别与理解。' } },
           { id: 's1-v4', type: 'video', sort: 7, payload: { url: '', title: '本课小结', duration: 60 } },
           { id: 's1-fb', type: 'fill_blank', sort: 8, payload: { question: '请填空：AI 是 ____ 的缩写。', blanks: ['人工智能'], explanation: 'Artificial Intelligence = 人工智能。' } },
           { id: 's1-v5', type: 'video', sort: 9, payload: { url: '', title: '拓展：AI 能做什么', duration: 100 } },
           { id: 's1-dd', type: 'drag_drop', sort: 10, payload: { prompt: '请按“从简单到复杂”排列：', items: ['识别图片', '下棋', '开车', '聊天'], correctOrder: [0, 1, 2, 3], explanation: 'AI 先学会看图、下棋，再发展到自动驾驶和自然对话。' } },
-          { id: 's1-voice', type: 'voice', sort: 11, payload: { title: '语音跟读', prompt: '请跟读下面的句子，练习发音。', textToRead: '人工智能让机器能够像人一样学习和思考。' } },
-          { id: 's1-audio', type: 'audio_choice', sort: 12, payload: { audioUrl: '/AI知识题.mp3', options: ['监督学习', '强化学习', '无监督学习', '自监督学习'], correctIndex: 3, explanation: '答案：自监督学习。' } },
-          { id: 's1-ai', type: 'ai_experiment', sort: 13, payload: { title: '人脸识别小实验', description: '体验图像识别，上传一张照片试试看', experimentId: 'face-demo' } },
+          { id: 's1-audio', type: 'audio_choice', sort: 11, payload: { audioUrl: '/AI知识题.mp3', options: ['监督学习', '强化学习', '无监督学习', '自监督学习'], correctIndex: 3, explanation: '答案：自监督学习。' } },
+          { id: 's1-ai', type: 'ai_experiment', sort: 12, payload: { title: '人脸识别小实验', description: '体验图像识别，上传一张照片试试看', experimentId: 'face-demo' } },
         ],
       },
       {
@@ -60,26 +63,6 @@ const MY_COURSES = [
         videoUrl: '#',
         segments: [
           { id: 's2-v', type: 'video', sort: 0, payload: { url: '', title: '生活中的AI', duration: 180 } },
-          {
-            id: 's2-flip',
-            type: 'game',
-            sort: 1,
-            payload: {
-              gameType: 'flip_card',
-              title: '翻翻卡游戏',
-              config: {
-                cards: [
-                  { frontLabel: '?', backText: '人工智能' },
-                  { frontLabel: '?', backText: '机器学习' },
-                  { frontLabel: '?', backText: '深度学习' },
-                ],
-                question: '根据上面三张卡的内容，以下哪一个是 AI 的核心技术？',
-                options: ['人工智能', '机器学习', '深度学习', '以上都是'],
-                correctIndex: 3,
-                explanation: '人工智能是总称，机器学习与深度学习都是其核心技术，所以以上都是。',
-              },
-            },
-          },
         ],
       },
       { id: 'l3', title: '第3课 智能音箱是怎么工作的', duration: '40分钟', watched: true, videoUrl: '#' },
@@ -162,36 +145,88 @@ function SegmentVideo({ segment, index, controlledPlaying, onPlay, dark }) {
   const playing = onPlay != null ? controlledPlaying : internalPlaying
   const setPlaying = onPlay != null ? () => onPlay() : setInternalPlaying
   const posterUrl = p.posterUrl || p.poster
+  const effectivePoster = (typeof posterUrl === 'string' && posterUrl.trim()) || DEFAULT_VIDEO_POSTER
+  const wrapRef = useRef(null)
+  const videoRef = useRef(null)
+  const src = typeof p.url === 'string' ? p.url.trim() : ''
+  const hasStreamableUrl = /^https?:\/\//i.test(src)
+
+  const enterVideoFullscreen = () => {
+    const v = videoRef.current
+    if (v) {
+      if (v.requestFullscreen) {
+        v.requestFullscreen().catch(() => {})
+        return
+      }
+      if (v.webkitEnterFullscreen) {
+        v.webkitEnterFullscreen()
+        return
+      }
+    }
+    const w = wrapRef.current
+    if (!w) return
+    if (w.requestFullscreen) w.requestFullscreen().catch(() => {})
+    else if (w.webkitRequestFullscreen) w.webkitRequestFullscreen()
+  }
+
   return (
     <div className={`rounded-xl overflow-hidden border ${dark ? 'border-slate-600 bg-slate-800' : 'border-slate-200 bg-slate-900'}`}>
-      <div className={`flex items-center gap-2 px-3 py-2 text-xs ${dark ? 'bg-slate-700/80 text-slate-200' : 'bg-slate-800/80 text-white'}`}>
+      <div className={`flex items-center gap-2 px-3 py-2 text-xs flex-wrap ${dark ? 'bg-slate-700/80 text-slate-200' : 'bg-slate-800/80 text-white'}`}>
         <span className={dark ? 'bg-cyan-500/80 px-2 py-0.5 rounded text-white' : 'bg-primary/80 px-2 py-0.5 rounded text-white'}>环节 {index + 1}</span>
         <span>{SEGMENT_LABELS.video}</span>
-        {p.title && <span className="text-slate-300">· {p.title}</span>}
+        {p.title && <span className="text-slate-300 flex-1 min-w-[6rem] truncate">· {p.title}</span>}
+        <button
+          type="button"
+          onClick={enterVideoFullscreen}
+          className={`ml-auto shrink-0 px-2 py-1 rounded-md text-[11px] font-medium ${dark ? 'bg-slate-600 hover:bg-slate-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+        >
+          全屏
+        </button>
       </div>
-      <div className="aspect-video relative flex flex-col items-center justify-center text-white bg-slate-800/50">
+      <div ref={wrapRef} className="aspect-video relative flex flex-col items-center justify-center text-white bg-slate-900">
         {!playing ? (
           <>
-            {posterUrl ? (
-              <div className="absolute inset-0">
-                <img src={posterUrl} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center" />
-              </div>
-            ) : null}
+            <div className="absolute inset-0">
+              <img src={effectivePoster} alt="" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center" />
+            </div>
             <div className="relative z-10 text-5xl mb-2">▶️</div>
             <button onClick={() => setPlaying(true)} className={`relative z-10 px-6 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 hover:bg-cyan-400 text-white' : 'bg-primary hover:bg-primary/90 text-white'}`}>
               播放
             </button>
           </>
+        ) : hasStreamableUrl ? (
+          <video
+            ref={videoRef}
+            src={src}
+            className="absolute inset-0 w-full h-full object-contain bg-black"
+            controls
+            playsInline
+            controlsList="nodownload"
+            poster={effectivePoster}
+          >
+            您的浏览器不支持视频播放
+          </video>
         ) : (
-          <div className="text-center">
+          <div className="text-center px-4">
             <div className="text-4xl animate-pulse">🎬</div>
             <p className="text-sm mt-2">正在播放{p.duration ? ` · ${Math.floor(p.duration / 60)}:${String(p.duration % 60).padStart(2, '0')}` : ''}</p>
+            {!hasStreamableUrl && src && (
+              <p className="text-xs text-slate-400 mt-2">当前为演示地址，配置有效 http(s) 视频地址后可全屏观看</p>
+            )}
           </div>
         )}
       </div>
     </div>
   )
+}
+
+/** 多选题判分：选中集合与正确答案集合一致（序号去重后排序比较） */
+function sameMultiChoiceAnswer(selected, correct) {
+  const a = [...new Set((selected || []).filter((n) => Number.isInteger(n) && n >= 0))].sort((x, y) => x - y)
+  const b = [...new Set((correct || []).filter((n) => Number.isInteger(n) && n >= 0))].sort((x, y) => x - y)
+  if (a.length !== b.length) return false
+  return a.every((v, i) => v === b[i])
 }
 
 function SegmentChoice({ segment, index, dark, onSegmentResult }) {
@@ -233,6 +268,64 @@ function SegmentChoice({ segment, index, dark, onSegmentResult }) {
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : '正确答案：' + (p.options[p.correctIndex] || '')}
+          {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SegmentMultiChoice({ segment, index, dark, onSegmentResult }) {
+  const p = segment.payload
+  const options = p.options || []
+  const correctIndices = Array.isArray(p.correctIndices) ? p.correctIndices : []
+  const [selected, setSelected] = useState(() => [])
+  const [submitted, setSubmitted] = useState(false)
+  const isCorrect = submitted && sameMultiChoiceAnswer(selected, correctIndices)
+  const toggle = (i) => {
+    if (submitted) return
+    setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]))
+  }
+  const handleSubmit = () => {
+    setSubmitted(true)
+    if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, sameMultiChoiceAnswer(selected, correctIndices))
+  }
+  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
+  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
+  const tag = dark ? 'bg-cyan-500/80 text-white px-2 py-0.5 rounded' : 'bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded'
+  const q = dark ? 'font-medium text-white mb-1' : 'font-medium text-bingo-dark mb-1'
+  const optBase = dark ? 'flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition text-slate-200 ' : 'flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition '
+  const correctLetters = [...new Set(correctIndices)]
+    .filter((i) => i >= 0 && i < options.length)
+    .sort((a, b) => a - b)
+    .map((i) => String.fromCharCode(65 + i))
+    .join('、')
+  return (
+    <div className={card}>
+      <div className={meta}>
+        <span className={tag}>环节 {index + 1}</span>
+        <span>{SEGMENT_LABELS.multi_choice}</span>
+      </div>
+      <p className={q}>{p.question}</p>
+      <p className={`text-xs mb-3 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>可多选，请勾选所有你认为正确的选项</p>
+      <div className="space-y-2">
+        {options.map((opt, i) => (
+          <label
+            key={i}
+            className={`${optBase} ${selected.includes(i) ? (dark ? 'border-cyan-500 bg-cyan-500/20' : 'border-primary bg-primary/5') : dark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'} ${submitted && correctIndices.includes(i) ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''} ${submitted && selected.includes(i) && !correctIndices.includes(i) ? (dark ? 'border-red-400 bg-red-500/20' : 'border-red-300 bg-red-50') : ''}`}
+          >
+            <input type="checkbox" checked={selected.includes(i)} onChange={() => toggle(i)} disabled={submitted} className="text-primary rounded border-slate-300" />
+            <span className={dark ? 'text-slate-100' : ''}>{String.fromCharCode(65 + i)}. {opt}</span>
+          </label>
+        ))}
+      </div>
+      {!submitted ? (
+        <button onClick={handleSubmit} disabled={selected.length === 0} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>
+          提交
+        </button>
+      ) : (
+        <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
+          {isCorrect ? '✓ 回答正确！' : `正确答案：${correctLetters || '（见解析）'}`}
           {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
         </div>
       )}
@@ -559,147 +652,8 @@ function SegmentDragDrop({ segment, index, dark, onSegmentResult }) {
   )
 }
 
-// ─── 翻翻卡游戏：三张卡翻转显示文字/图片，然后问答 ─────────────────
-function FlipCardGame({ config, dark, onComplete }) {
-  const cards = config?.cards || [
-    { frontLabel: '?', backText: '人工智能' },
-    { frontLabel: '?', backText: '机器学习' },
-    { frontLabel: '?', backText: '深度学习' },
-  ]
-  const question = config?.question || '根据上面三张卡的内容，以下哪一个是 AI 的核心技术？'
-  const options = config?.options || ['人工智能', '机器学习', '深度学习', '以上都是']
-  const correctIndex = config?.correctIndex ?? 3
-  const explanation = config?.explanation
-
-  const [flipped, setFlipped] = useState(() => cards.map(() => false))
-  const [showQuestion, setShowQuestion] = useState(false)
-  const [selected, setSelected] = useState(null)
-  const [submitted, setSubmitted] = useState(false)
-
-  const allFlipped = flipped.every(Boolean)
-  const isCorrect = submitted && selected === correctIndex
-
-  const toggleCard = (i) => {
-    setFlipped((prev) => prev.map((v, j) => (j === i ? !v : v)))
-  }
-
-  const cardBg = dark ? 'bg-slate-700 border-slate-500' : 'bg-slate-100 border-slate-300'
-  const cardFrontBg = dark ? 'bg-slate-600' : 'bg-slate-200'
-  const cardBackBg = dark ? 'bg-slate-600' : 'bg-white'
-  const textCls = dark ? 'text-white' : 'text-bingo-dark'
-  const hintCls = dark ? 'text-slate-400' : 'text-slate-500'
-
-  return (
-    <div className="space-y-6">
-      <p className={`text-sm ${hintCls} text-center`}>点击卡片翻开，查看内容后作答</p>
-      {/* 每张卡 9:16 竖屏 */}
-      <div className="flex justify-center gap-3 sm:gap-4">
-        {cards.slice(0, 3).map((c, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => !submitted && toggleCard(i)}
-            className="relative w-[28%] max-w-[120px] rounded-xl border-2 overflow-hidden cursor-pointer touch-manipulation flex-shrink-0"
-            style={{ perspective: '600px', aspectRatio: '9/16' }}
-          >
-            <div
-              className="absolute inset-0 transition-transform duration-300"
-              style={{ transformStyle: 'preserve-3d', transform: flipped[i] ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
-            >
-              <div
-                className={`absolute inset-0 flex items-center justify-center rounded-xl border-2 ${cardFrontBg} ${cardBg}`}
-                style={{ backfaceVisibility: 'hidden' }}
-              >
-                <span className={`text-xl sm:text-2xl font-bold ${dark ? 'text-slate-300' : 'text-slate-500'}`}>
-                  {c.frontLabel || '?'}
-                </span>
-              </div>
-              <div
-                className={`absolute inset-0 flex items-center justify-center rounded-xl border-2 ${cardBackBg} ${cardBg} p-2`}
-                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-              >
-                {c.backImage ? (
-                  <img src={c.backImage} alt="" className="w-full h-full object-cover rounded" />
-                ) : (
-                  <span className={`text-xs sm:text-sm font-medium ${textCls} text-center break-all line-clamp-4`}>{c.backText || ''}</span>
-                )}
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {allFlipped && !submitted && (
-        <button
-          type="button"
-          onClick={() => setShowQuestion(true)}
-          className={`w-full py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}
-        >
-          查看题目
-        </button>
-      )}
-
-      {(showQuestion || submitted) && (
-        <div className={`rounded-xl border p-4 ${dark ? 'border-slate-600 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
-          <p className={`font-medium mb-3 ${textCls}`}>{question}</p>
-          <div className="space-y-2">
-            {options.map((opt, i) => (
-              <label
-                key={i}
-                className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition ${dark ? 'border-slate-600 text-slate-200' : 'border-slate-200'} ${selected === i ? (dark ? 'border-cyan-500 bg-cyan-500/20' : 'border-primary bg-primary/5') : ''} ${submitted && i === correctIndex ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''}`}
-              >
-                <input type="radio" name="flip-answer" checked={selected === i} onChange={() => setSelected(i)} disabled={submitted} className="sr-only" />
-                <span>{String.fromCharCode(65 + i)}. {opt}</span>
-              </label>
-            ))}
-          </div>
-          {!submitted ? (
-            <button
-              type="button"
-              onClick={() => {
-                setSubmitted(true)
-                if (typeof onComplete === 'function') onComplete(selected === correctIndex)
-              }}
-              disabled={selected === null}
-              className={`mt-3 w-full py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'} disabled:opacity-50`}
-            >
-              提交答案
-            </button>
-          ) : (
-            <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
-              {isCorrect ? '✓ 回答正确！' : `正确答案：${options[correctIndex]}`}
-              {explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{explanation}</p>}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function SegmentGame({ segment, index, dark, onSegmentResult }) {
+function SegmentGame({ segment, index, dark }) {
   const p = segment.payload
-  const isFlipCard = p.gameType === 'flip_card'
-  const config = p.config || {}
-
-  if (isFlipCard) {
-    const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-6' : 'rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-6'
-    const meta = dark ? 'flex items-center gap-2 justify-center mb-4 text-xs text-slate-400' : 'flex items-center gap-2 justify-center mb-4 text-xs text-slate-500'
-    const tag = dark ? 'bg-lime-500/80 text-white px-2 py-0.5 rounded' : 'bg-lime-100 text-lime-700 px-2 py-0.5 rounded'
-    const titleCls = dark ? 'font-medium text-white mb-4' : 'font-medium text-bingo-dark mb-4'
-    return (
-      <div className={card}>
-        <div className={meta}>
-          <span className={tag}>环节 {index + 1}</span>
-          <span>{SEGMENT_LABELS.game}</span>
-          <span>· 翻翻卡</span>
-        </div>
-        <p className={`text-center ${titleCls}`}>{p.title || '翻翻卡游戏'}</p>
-        <FlipCardGame config={config} dark={dark} onComplete={(correct) => typeof onSegmentResult === 'function' && onSegmentResult(segment.id, correct)} />
-      </div>
-    )
-  }
-
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-6 text-center' : 'rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-6 text-center'
   const meta = dark ? 'flex items-center gap-2 justify-center mb-2 text-xs text-slate-400' : 'flex items-center gap-2 justify-center mb-2 text-xs text-slate-500'
   const tag = dark ? 'bg-lime-500/80 text-white px-2 py-0.5 rounded' : 'bg-lime-100 text-lime-700 px-2 py-0.5 rounded'
@@ -820,53 +774,6 @@ function SegmentAudioChoice({ segment, index, dark, onSegmentResult }) {
   )
 }
 
-// 语音跟读：跟读/录音（提交即记为完成）
-function SegmentVoice({ segment, index, dark, onSegmentResult }) {
-  const p = segment.payload
-  const [submitted, setSubmitted] = useState(false)
-  const [recording, setRecording] = useState(false)
-  const handleSubmit = () => {
-    setSubmitted(true)
-    if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, true)
-  }
-  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-5' : 'rounded-xl border border-slate-200 bg-white p-5'
-  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
-  const tag = dark ? 'bg-orange-500/80 text-white px-2 py-0.5 rounded' : 'bg-orange-100 text-orange-700 px-2 py-0.5 rounded'
-  const titleCls = dark ? 'font-medium text-white mb-2' : 'font-medium text-bingo-dark mb-2'
-  const textCls = dark ? 'text-slate-300 text-sm' : 'text-slate-600 text-sm'
-  return (
-    <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.voice}</span>
-      </div>
-      <p className={titleCls}>{p.title || '语音跟读'}</p>
-      {p.prompt && <p className={textCls}>{p.prompt}</p>}
-      {p.textToRead && (
-        <div className={`mt-3 p-4 rounded-xl ${dark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-800'}`}>
-          <p className="text-sm">{p.textToRead}</p>
-        </div>
-      )}
-      {!submitted ? (
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setRecording((r) => !r)}
-            className={`px-4 py-2.5 rounded-xl text-sm font-medium ${recording ? (dark ? 'bg-red-500 text-white' : 'bg-red-500 text-white') : dark ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-700'}`}
-          >
-            {recording ? '⏹ 停止录音' : '🎤 开始录音'}
-          </button>
-          <button onClick={handleSubmit} className={`px-4 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>
-            提交录音
-          </button>
-        </div>
-      ) : (
-        <div className={`mt-3 p-3 rounded-lg text-sm ${dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800'}`}>✓ 已完成语音作答</div>
-      )}
-    </div>
-  )
-}
-
 function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegmentResult }) {
   const common = { segment, index, dark, onSegmentResult }
   switch (segment.type) {
@@ -880,6 +787,8 @@ function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegme
       )
     case 'choice':
       return <SegmentChoice {...common} />
+    case 'multi_choice':
+      return <SegmentMultiChoice {...common} />
     case 'image_choice':
       return <SegmentImageChoice {...common} />
     case 'fill_blank':
@@ -890,8 +799,6 @@ function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegme
       return <SegmentDragDrop {...common} />
     case 'game':
       return <SegmentGame {...common} />
-    case 'voice':
-      return <SegmentVoice {...common} />
     case 'audio_choice':
       return <SegmentAudioChoice {...common} />
     case 'ai_experiment':
@@ -908,12 +815,16 @@ function LegacyVideoPlayer({ lesson, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl overflow-hidden w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="relative bg-slate-900 aspect-video flex flex-col items-center justify-center shrink-0">
+        <div className="relative bg-slate-900 aspect-video flex flex-col items-center justify-center shrink-0 overflow-hidden">
           {!playing ? (
             <>
-              <div className="text-6xl mb-4">▶️</div>
-              <p className="text-white/70 text-sm">{lesson.title}</p>
-              <button onClick={() => setPlaying(true)} className="mt-4 bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-medium transition">开始播放</button>
+              <div className="absolute inset-0">
+                <img src={DEFAULT_VIDEO_POSTER} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/45" />
+              </div>
+              <div className="relative z-10 text-6xl mb-4">▶️</div>
+              <p className="relative z-10 text-white/90 text-sm text-center px-4">{lesson.title}</p>
+              <button onClick={() => setPlaying(true)} className="relative z-10 mt-4 bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-medium transition">开始播放</button>
             </>
           ) : (
             <div className="text-center">
@@ -953,6 +864,8 @@ function getSegmentShortcut(segment) {
       return { label: '进入实验', key: 'ai_experiment' }
     case 'choice':
       return { label: '作答', key: 'choice' }
+    case 'multi_choice':
+      return { label: '作答', key: 'multi_choice' }
     case 'image_choice':
       return { label: '作答', key: 'image_choice' }
     case 'fill_blank':
@@ -961,8 +874,6 @@ function getSegmentShortcut(segment) {
       return { label: '连线', key: 'match' }
     case 'drag_drop':
       return { label: '拖拽作答', key: 'drag_drop' }
-    case 'voice':
-      return { label: '录音作答', key: 'voice' }
     case 'audio_choice':
       return { label: '听音选答', key: 'audio_choice' }
     default:
@@ -981,13 +892,13 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
   // 本节课掌握知识点：由环节类型归纳
   const knowledgeLabels = {
     video: '视频学习与理解',
-    choice: '选择题知识点巩固',
+    choice: '单选题知识点巩固',
+    multi_choice: '多选题综合判断',
     image_choice: '图片选择题观察与判断',
     fill_blank: '填空题知识点应用',
     match: '连线题逻辑关联',
     drag_drop: '拖拽题顺序与逻辑',
-    game: '翻翻卡记忆与作答',
-    voice: '语音表达与跟读',
+    game: '游戏互动巩固',
     audio_choice: '听音选答与理解',
     ai_experiment: 'AI实验体验与认知',
   }
@@ -1007,7 +918,7 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
   const knowledgeSummary = knowledgePoints.length > 0 ? knowledgePoints.slice(0, 4).join('、') : partList
   let comprehensiveEvaluation = ''
   if (totalAnswers === 0) {
-    comprehensiveEvaluation = `本课「${lessonTitle}」以视频、体验与跟读等环节为主，您已完整参与全部 ${segments?.length || 1} 个环节。建议课后回顾「${knowledgeSummary}」等内容，巩固学习效果。`
+    comprehensiveEvaluation = `本课「${lessonTitle}」以视频、互动与实验等环节为主，您已完整参与全部 ${segments?.length || 1} 个环节。建议课后回顾「${knowledgeSummary}」等内容，巩固学习效果。`
   } else if (correctCount === totalAnswers) {
     comprehensiveEvaluation = `结合本课「${lessonTitle}」的内容（含${partList}），您在 ${totalAnswers} 道互动题中全部答对，表现优秀，已较好掌握本课知识点。建议继续保持，完成后续课时。`
   } else if (correctRate >= 80) {
@@ -1017,6 +928,14 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
   }
 
   return { line1, line2, line3, partList, knowledgePoints, learningStatus, totalAnswers, correctCount, comprehensiveEvaluation }
+}
+
+// 环节目录里显示的简短副标题（不抢主操作区）
+function getSegmentPickerSubtitle(segment) {
+  const p = segment.payload || {}
+  const raw = p.title || p.question || p.prompt || ''
+  if (!raw) return null
+  return raw.length > 24 ? `${raw.slice(0, 24)}…` : raw
 }
 
 // ─── 课时播放器：始终一屏一个环节 + 底部固定 上一步 / 快捷 / 下一步 ─────────────────
@@ -1030,6 +949,8 @@ function LessonPlayer({ lesson, onClose }) {
   const [currentStep, setCurrentStep] = useState(0)
   const [videoPlaying, setVideoPlaying] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
+  const [showSegmentPicker, setShowSegmentPicker] = useState(false)
+  const [segmentPickerDrawerIn, setSegmentPickerDrawerIn] = useState(false)
   const [segmentResults, setSegmentResults] = useState({})
   const onSegmentResult = (segmentId, correct) => setSegmentResults((prev) => ({ ...prev, [segmentId]: correct }))
   const total = segments.length
@@ -1047,9 +968,43 @@ function LessonPlayer({ lesson, onClose }) {
     setShowSummary(true)
   }
 
+  /** 总结页：从头再学一遍（环节归零 + 清空本课答题记录） */
+  const handleStudyAgain = () => {
+    setSegmentResults({})
+    setVideoPlaying(false)
+    setShowSegmentPicker(false)
+    setCurrentStep(0)
+    setShowSummary(false)
+  }
+
   const handleShortcutClick = () => {
     if (currentSegment?.type === 'video') setVideoPlaying(true)
   }
+
+  const jumpToSegment = (idx) => {
+    if (idx < 0 || idx >= total || idx === currentStep) {
+      setShowSegmentPicker(false)
+      return
+    }
+    setVideoPlaying(false)
+    setCurrentStep(idx)
+    setShowSegmentPicker(false)
+  }
+
+  useEffect(() => {
+    if (!showSegmentPicker) {
+      setSegmentPickerDrawerIn(false)
+      return
+    }
+    setSegmentPickerDrawerIn(false)
+    const t = window.setTimeout(() => setSegmentPickerDrawerIn(true), 20)
+    const onKey = (e) => e.key === 'Escape' && setShowSegmentPicker(false)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.clearTimeout(t)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [showSegmentPicker])
 
   // 学完整节课后显示学习评价总结
   if (showSummary) {
@@ -1095,13 +1050,22 @@ function LessonPlayer({ lesson, onClose }) {
                 )}
               </div>
               <p className="text-sm text-slate-500 mt-4">继续加油，完成全部课时可获得学习证书</p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-6 w-full max-w-xs mx-auto py-3 rounded-xl text-base font-medium bg-primary text-white hover:bg-primary/90"
-              >
-                返回学习中心
-              </button>
+              <div className="mt-6 w-full max-w-xs mx-auto flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={handleStudyAgain}
+                  className="w-full py-3 rounded-xl text-base font-medium border-2 border-primary text-primary bg-white hover:bg-primary/5"
+                >
+                  再学一遍
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-3 rounded-xl text-base font-medium bg-primary text-white hover:bg-primary/90"
+                >
+                  返回学习中心
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1121,15 +1085,29 @@ function LessonPlayer({ lesson, onClose }) {
       {/* 深色沉浸：整页深色，Web 满屏 / 手机端居中 */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0 flex flex-col flex-1 min-h-0 bg-[#0f172a] lg:shadow-none shadow-2xl border border-slate-700/50 lg:border-0"
+        className="relative w-full max-w-full mx-0 flex flex-col flex-1 min-h-0 bg-[#0f172a] shadow-none border-0"
         style={{ height: '100%' }}
       >
-        {/* 顶部栏 - 深色 */}
-        <header className="shrink-0 h-14 px-4 border-b border-slate-600/80 flex items-center justify-between gap-2 bg-slate-800/90">
-          <h3 className="font-bold text-white text-sm m-0 overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">
+        {/* 顶部栏 - 深色（环节目录在顶栏，与主作答区分离，避免误触） */}
+        <header className="shrink-0 h-14 px-3 border-b border-slate-600/80 flex items-center justify-between gap-2 bg-slate-800/90">
+          <h3 className="font-bold text-white text-sm m-0 overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0 min-w-[3rem]">
             {lesson.title}
           </h3>
-          <span className="text-xs text-slate-400 shrink-0">环节 {currentStep + 1}/{total}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            {total > 1 && (
+              <button
+                type="button"
+                onClick={() => setShowSegmentPicker(true)}
+                aria-haspopup="dialog"
+                aria-expanded={showSegmentPicker}
+                aria-label="环节目录，选择要去的环节"
+                className="text-xs px-2.5 py-1.5 rounded-lg font-medium bg-slate-700/90 hover:bg-slate-600 text-slate-200 border border-slate-500/60"
+              >
+                目录
+              </button>
+            )}
+            <span className="text-xs text-slate-400 tabular-nums">环节 {currentStep + 1}/{total}</span>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -1140,9 +1118,10 @@ function LessonPlayer({ lesson, onClose }) {
           </button>
         </header>
 
-        {/* 中间：深色背景，当前环节一屏 */}
-        <main className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-4 lg:p-8 bg-[#0f172a]">
-          <div className="w-full max-w-lg lg:max-w-4xl">
+        {/* 中间：环节内容水平 + 垂直居中（内容少时居中一屏，内容多时整块可滚动） */}
+        <main className="flex-1 min-h-0 overflow-y-auto bg-[#0f172a]">
+          <div className="min-h-full flex justify-center items-center p-2 sm:p-3 md:p-4 box-border">
+            <div className="w-full max-w-full sm:max-w-[min(100%,48rem)] md:max-w-[min(100%,56rem)] lg:max-w-[min(100%,72rem)] xl:max-w-[min(100%,80rem)] shrink-0">
             <SegmentBlock
               key={currentSegment.id}
               segment={currentSegment}
@@ -1152,6 +1131,7 @@ function LessonPlayer({ lesson, onClose }) {
               onVideoPlay={currentSegment.type === 'video' ? () => setVideoPlaying(true) : undefined}
               onSegmentResult={onSegmentResult}
             />
+            </div>
           </div>
         </main>
 
@@ -1187,6 +1167,71 @@ function LessonPlayer({ lesson, onClose }) {
             </button>
           )}
         </footer>
+
+        {/* 环节目录：右侧抽拉抽屉，左侧遮罩关闭；不打断当前学习 / 作答 */}
+        {showSegmentPicker && total > 1 && (
+          <div
+            className="absolute inset-0 z-[100] flex justify-end overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="选择环节"
+          >
+            <button
+              type="button"
+              aria-label="关闭目录"
+              className="absolute inset-0 bg-black/55 border-0 cursor-default transition-opacity"
+              onClick={() => setShowSegmentPicker(false)}
+            />
+            <div
+              className={`relative z-10 h-full w-[min(20rem,88vw)] flex flex-col bg-slate-800 border-l border-slate-600 shadow-[-12px_0_32px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out will-change-transform ${
+                segmentPickerDrawerIn ? 'translate-x-0' : 'translate-x-full'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="shrink-0 px-4 py-3 border-b border-slate-600 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">环节目录</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">点左侧空白或「关闭」仍留在此环节</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSegmentPicker(false)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 shrink-0"
+                >
+                  关闭
+                </button>
+              </div>
+              <ul className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+                {segments.map((seg, i) => {
+                  const typeLabel = SEGMENT_LABELS[seg.type] || seg.type
+                  const sub = getSegmentPickerSubtitle(seg)
+                  const isHere = i === currentStep
+                  return (
+                    <li key={seg.id}>
+                      <button
+                        type="button"
+                        onClick={() => jumpToSegment(i)}
+                        className={`w-full text-left rounded-xl px-3 py-2.5 text-sm transition border ${
+                          isHere
+                            ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-200'
+                            : 'bg-slate-700/40 border-slate-600/50 text-slate-200 hover:bg-slate-700/80'
+                        }`}
+                      >
+                        <span className="font-medium tabular-nums">{i + 1}.</span>{' '}
+                        <span className="font-medium">{typeLabel}</span>
+                        {sub && <span className="block text-xs text-slate-400 mt-0.5 truncate">{sub}</span>}
+                        {isHere && <span className="text-[10px] text-cyan-300/90 mt-1 inline-block">当前环节</span>}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+              <p className="shrink-0 px-4 py-2 text-[11px] text-slate-500 text-center border-t border-slate-600 bg-slate-800/95">
+                仅在选择其他序号时才会切换；未提交作答返回后需重新作答
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

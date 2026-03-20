@@ -41,6 +41,7 @@ import type {
   LessonSegmentPayload,
   VideoSegmentPayload,
   ChoiceSegmentPayload,
+  MultiChoiceSegmentPayload,
   FillBlankSegmentPayload,
   MatchSegmentPayload,
   DragDropSegmentPayload,
@@ -57,7 +58,8 @@ const CLASS_TYPES = [
 /** 环节类型选项（一节课由这些环节任意组合） */
 const SEGMENT_TYPE_OPTIONS: { value: LessonSegmentType; label: string }[] = [
   { value: 'video', label: '视频片段' },
-  { value: 'choice', label: '选择题' },
+  { value: 'choice', label: '单选题' },
+  { value: 'multi_choice', label: '多选题' },
   { value: 'fill_blank', label: '填空题' },
   { value: 'match', label: '连线题' },
   { value: 'drag_drop', label: '拖拽题' },
@@ -71,6 +73,8 @@ function getDefaultPayload(type: LessonSegmentType): LessonSegmentPayload {
       return { url: '', title: '', duration: 0, posterUrl: '' }
     case 'choice':
       return { question: '', options: ['A', 'B', 'C'], correctIndex: 0, explanation: '' }
+    case 'multi_choice':
+      return { question: '', options: ['A', 'B', 'C', 'D'], correctIndices: [0, 2], explanation: '' }
     case 'fill_blank':
       return { question: '', blanks: [''], explanation: '' }
     case 'match':
@@ -134,6 +138,35 @@ function SegmentForm({
         </Space>
       )
     }
+    case 'multi_choice': {
+      const mp = p as MultiChoiceSegmentPayload
+      const indices = mp.correctIndices || []
+      return (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Input placeholder="题目" value={mp.question} onChange={(e) => update('question', e.target.value)} />
+          {mp.options.map((opt, i) => (
+            <Input key={i} placeholder={`选项${i + 1}`} value={opt} onChange={(e) => {
+              const arr = [...mp.options]
+              arr[i] = e.target.value
+              update('options', arr)
+            }} addonBefore={String.fromCharCode(65 + i)} />
+          ))}
+          <Input
+            placeholder="正确答案索引，逗号分隔（从 0 开始），如 0,2,3"
+            value={indices.join(', ')}
+            onChange={(e) => {
+              const parsed = e.target.value
+                .split(/[,，\s]+/)
+                .map((s) => parseInt(s.trim(), 10))
+                .filter((n) => !Number.isNaN(n) && n >= 0 && n < mp.options.length)
+              update('correctIndices', [...new Set(parsed)].sort((a, b) => a - b))
+            }}
+          />
+          <div style={{ color: '#888', fontSize: 12 }}>至少填一个正确选项索引；学员需勾选全部正确项后提交。</div>
+          <Input placeholder="解析(可选)" value={mp.explanation} onChange={(e) => update('explanation', e.target.value)} />
+        </Space>
+      )
+    }
     case 'fill_blank': {
       const fp = p as FillBlankSegmentPayload
       return (
@@ -178,57 +211,10 @@ function SegmentForm({
     }
     case 'game': {
       const gp = p as GameSegmentPayload
-      const cfg = (gp.config || {}) as {
-        cards?: Array<{ frontLabel?: string; backText?: string; backImage?: string }>
-        question?: string
-        options?: string[]
-        correctIndex?: number
-        explanation?: string
-      }
-      const cards = cfg.cards || [
-        { frontLabel: '?', backText: '' },
-        { frontLabel: '?', backText: '' },
-        { frontLabel: '?', backText: '' },
-      ]
       return (
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Input placeholder="游戏类型标识（填 flip_card 为翻翻卡）" value={gp.gameType} onChange={(e) => update('gameType', e.target.value)} />
           <Input placeholder="环节标题" value={gp.title} onChange={(e) => update('title', e.target.value)} />
-          {gp.gameType === 'flip_card' && (
-            <>
-              <div style={{ fontWeight: 500, marginTop: 8 }}>翻翻卡 - 三张卡</div>
-              {[0, 1, 2].map((i) => (
-                <div key={i} style={{ padding: 8, background: '#fafafa', borderRadius: 8 }}>
-                  <div>卡片 {i + 1}</div>
-                  <Input placeholder="正面文字（如 ?）" value={cards[i]?.frontLabel} onChange={(e) => {
-                    const next = [...cards]
-                    if (!next[i]) next[i] = {}
-                    next[i] = { ...next[i], frontLabel: e.target.value }
-                    update('config', { ...cfg, cards: next })
-                  }} style={{ marginTop: 4 }} />
-                  <Input placeholder="背面文字" value={cards[i]?.backText} onChange={(e) => {
-                    const next = [...cards]
-                    if (!next[i]) next[i] = {}
-                    next[i] = { ...next[i], backText: e.target.value }
-                    update('config', { ...cfg, cards: next })
-                  }} style={{ marginTop: 4 }} />
-                  <Input placeholder="背面图片URL（可选）" value={cards[i]?.backImage} onChange={(e) => {
-                    const next = [...cards]
-                    if (!next[i]) next[i] = {}
-                    next[i] = { ...next[i], backImage: e.target.value }
-                    update('config', { ...cfg, cards: next })
-                  }} style={{ marginTop: 4 }} />
-                </div>
-              ))}
-              <Input.TextArea placeholder="翻卡后问答题干" value={cfg.question} onChange={(e) => update('config', { ...cfg, question: e.target.value })} rows={2} />
-              <Input.TextArea placeholder="选项（每行一个）" value={(cfg.options || []).join('\n')} onChange={(e) => update('config', { ...cfg, options: e.target.value.split('\n').filter(Boolean) })} rows={4} />
-              <Space>
-                <span>正确答案索引(0起)：</span>
-                <InputNumber value={cfg.correctIndex ?? 0} onChange={(v) => update('config', { ...cfg, correctIndex: v ?? 0 })} min={0} />
-              </Space>
-              <Input placeholder="解析（可选）" value={cfg.explanation} onChange={(e) => update('config', { ...cfg, explanation: e.target.value })} />
-            </>
-          )}
+          <Input placeholder="游戏类型标识（可选，客户端演示仅显示占位）" value={gp.gameType} onChange={(e) => update('gameType', e.target.value)} />
         </Space>
       )
     }

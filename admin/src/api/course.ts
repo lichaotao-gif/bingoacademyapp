@@ -128,7 +128,8 @@ export interface CourseClassTypeItem {
 /** 课时内环节类型 */
 export type LessonSegmentType =
   | 'video'       // 视频片段
-  | 'choice'      // 选择题
+  | 'choice'      // 单选题
+  | 'multi_choice' // 多选题
   | 'fill_blank'  // 填空题
   | 'match'       // 连线题
   | 'drag_drop'   // 拖拽题
@@ -144,11 +145,19 @@ export interface VideoSegmentPayload {
   posterUrl?: string
 }
 
-/** 选择题 */
+/** 单选题 */
 export interface ChoiceSegmentPayload {
   question: string
   options: string[]
   correctIndex: number
+  explanation?: string
+}
+
+/** 多选题（correctIndices 为正确选项下标，从 0 开始） */
+export interface MultiChoiceSegmentPayload {
+  question: string
+  options: string[]
+  correctIndices: number[]
   explanation?: string
 }
 
@@ -194,6 +203,7 @@ export interface AIExperimentSegmentPayload {
 export type LessonSegmentPayload =
   | VideoSegmentPayload
   | ChoiceSegmentPayload
+  | MultiChoiceSegmentPayload
   | FillBlankSegmentPayload
   | MatchSegmentPayload
   | DragDropSegmentPayload
