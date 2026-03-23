@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
+import ShareActionPopover from '../components/ShareActionPopover'
 
 // ─── 课时环节类型（与后台一致：视频+互动+游戏+AI实验 任意组合） ─────────────────
 const SEGMENT_LABELS = {
@@ -1882,6 +1883,7 @@ function buildCourseSummary(course) {
 // ─── 单门课程卡片（可展开） ─────────────────────────────────
 function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, onOpenReviewModal }) {
   const [expanded, setExpanded] = useState(false)
+  const [shareAnchorRect, setShareAnchorRect] = useState(null)
   const [watched, setWatched] = useState(() =>
     Object.fromEntries(course.lessons.map(l => [l.id, l.watched]))
   )
@@ -1900,23 +1902,9 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
     setWatched(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
-  const handleRecommend = async () => {
-    const text = `我在 Bingo Academy 学习「${course.title}」，推荐给你一起学！`
-    try {
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({ title: course.title, text })
-        return
-      }
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
-        window.alert('推荐语已复制到剪贴板，可以粘贴发给好友～')
-        return
-      }
-    } catch {
-      /* 用户取消分享等 */
-    }
-    window.alert(`${text}\n\n（若未自动复制，请手动长按复制）`)
-  }
+  const shareUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/courses/detail/${course.id}` : ''
+  const shareRecommendText = `我在 Bingo Academy 学习「${course.title}」，推荐给你一起学！`
 
   return (
     <div className="card relative overflow-hidden border border-slate-200 hover:border-primary/30 transition">
@@ -1963,9 +1951,10 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
       <div className="pointer-events-none absolute bottom-3 right-3 z-20 flex flex-wrap justify-end gap-2 max-w-[min(100%,16rem)] sm:max-w-none">
         <button
           type="button"
+          data-share-popover-anchor
           onClick={(e) => {
             e.stopPropagation()
-            handleRecommend()
+            setShareAnchorRect(e.currentTarget.getBoundingClientRect())
           }}
           className="pointer-events-auto text-xs px-3 py-1.5 rounded-lg font-medium border border-amber-200/90 bg-amber-50/95 text-amber-900 shadow-sm hover:bg-amber-100 transition backdrop-blur-sm"
         >
@@ -1982,6 +1971,15 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
           我要评价
         </button>
       </div>
+
+      <ShareActionPopover
+        open={shareAnchorRect != null}
+        anchorRect={shareAnchorRect}
+        onClose={() => setShareAnchorRect(null)}
+        shareUrl={shareUrl}
+        shareTitle={course.title}
+        shareText={shareRecommendText}
+      />
 
       {/* 展开的课时列表 */}
       {expanded && (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import PaymentModal from '../components/PaymentModal'
+import ShareActionPopover from '../components/ShareActionPopover'
 import { getPurchasedCourseIds } from '../utils/purchasedCoursesStorage'
 import { getUserReviewsForCourse, prependUserReviewForCourse } from '../utils/courseDetailReviewsStorage'
 
@@ -370,8 +371,7 @@ export default function CourseDetail() {
   const [showQa, setShowQa] = useState(false)
   const [coverError, setCoverError] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [showShareModal, setShowShareModal] = useState(false)
-  const [copySuccess, setCopySuccess] = useState(false)
+  const [shareMenuRect, setShareMenuRect] = useState(null)
   const [purchasedIds, setPurchasedIds] = useState(() => getPurchasedCourseIds())
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [reviewRating, setReviewRating] = useState(5)
@@ -411,15 +411,8 @@ export default function CourseDetail() {
 
   const courseLink =
     typeof window !== 'undefined' ? `${window.location.origin}/courses/detail/${resolvedCourseId}` : ''
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(courseLink)
-      setCopySuccess(true)
-      setTimeout(() => setCopySuccess(false), 2000)
-    } catch {
-      setCopySuccess(false)
-    }
-  }
+  const openShareMenu = (e) => setShareMenuRect(e.currentTarget.getBoundingClientRect())
+  const closeShareMenu = () => setShareMenuRect(null)
 
   // 与课程列表一致的封面图（同 seed 大图），加载失败时回退到 course.poster
   const coverUrl = (id && COURSE_COVER_SEED[id] && !coverError)
@@ -469,7 +462,7 @@ export default function CourseDetail() {
           <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-5 lg:mt-6 pt-4 sm:pt-5 border-t border-slate-100">
             <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary">{priceDisplay}{course.priceNote ? `（${course.priceNote}）` : ''}</span>
             <div className="flex items-center gap-2 shrink-0">
-              <button type="button" onClick={() => setShowShareModal(true)} className="border border-slate-300 text-slate-700 px-4 sm:px-5 py-2.5 sm:py-3 min-h-[44px] sm:min-h-[48px] rounded-xl text-sm font-medium hover:bg-slate-50 flex items-center gap-2">
+              <button type="button" data-share-popover-anchor onClick={openShareMenu} className="border border-slate-300 text-slate-700 px-4 sm:px-5 py-2.5 sm:py-3 min-h-[44px] sm:min-h-[48px] rounded-xl text-sm font-medium hover:bg-slate-50 flex items-center gap-2">
                 分享课程
               </button>
               <button onClick={goCheckout} className="btn-primary px-5 sm:px-6 lg:px-8 py-2.5 sm:py-3 font-bold min-h-[44px] sm:min-h-[48px] rounded-xl text-sm shrink-0">立即购买</button>
@@ -747,7 +740,7 @@ export default function CourseDetail() {
               <p className="text-xs sm:text-sm lg:text-base text-slate-700 mt-1">7天无理由退款 · 发票保障 · 支付安全</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setShowShareModal(true)} className="border border-slate-300 text-slate-600 px-4 lg:px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 min-h-[44px] shrink-0">分享课程</button>
+              <button type="button" data-share-popover-anchor onClick={openShareMenu} className="border border-slate-300 text-slate-600 px-4 lg:px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 min-h-[44px] shrink-0">分享课程</button>
               <button onClick={goCheckout} className="btn-primary px-5 lg:px-6 py-2.5 min-h-[44px] rounded-xl text-sm shrink-0">立即购买</button>
               <button onClick={goCheckout} className="border border-orange-500 text-orange-600 px-4 lg:px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-orange-50 min-h-[44px]">拼团报名</button>
               <button onClick={goCheckout} className="border border-slate-300 text-slate-600 px-4 lg:px-5 py-2.5 rounded-xl text-sm hover:bg-slate-50 min-h-[44px]">组合购买</button>
@@ -770,39 +763,14 @@ export default function CourseDetail() {
         </div>
       )}
 
-      {/* 分享课程弹窗：显示链接 + 复制 */}
-      {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowShareModal(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-bingo-dark text-lg mb-2">分享课程</h3>
-            <p className="text-sm text-slate-600 mb-3">复制下方链接分享给好友</p>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 mb-4">
-              <input
-                type="text"
-                readOnly
-                value={courseLink}
-                className="flex-1 min-w-0 bg-transparent text-sm text-slate-700 outline-none"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={copyLink}
-                className="btn-primary flex-1 py-2.5 rounded-xl text-sm font-medium"
-              >
-                {copySuccess ? '已复制' : '复制链接'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowShareModal(false)}
-                className="border border-slate-300 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50"
-              >
-                关闭
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ShareActionPopover
+        open={shareMenuRect != null}
+        anchorRect={shareMenuRect}
+        onClose={closeShareMenu}
+        shareUrl={courseLink}
+        shareTitle={course.name}
+        shareText={`推荐课程：${course.name}`}
+      />
 
       {/* 底部浮动条：课程名称 + 分享课程 + 立即购买 */}
       <div
@@ -815,7 +783,8 @@ export default function CourseDetail() {
           </p>
           <button
             type="button"
-            onClick={() => setShowShareModal(true)}
+            data-share-popover-anchor
+            onClick={openShareMenu}
             className="shrink-0 py-3 px-4 rounded-xl text-sm font-medium border border-slate-300 text-slate-700 bg-white hover:bg-slate-50"
           >
             分享课程
