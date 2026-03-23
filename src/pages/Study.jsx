@@ -1370,8 +1370,51 @@ function getSegmentPickerSubtitle(segment) {
   return raw.length > 24 ? `${raw.slice(0, 24)}…` : raw
 }
 
-/** 环节目录列表（桌面侧栏与移动抽屉共用） */
-function LessonSegmentPickerList({ segments, currentStep, onPickSegment }) {
+/** 与答题环节一致的深色内容卡片（课时总结 / 课程总结正文区） */
+const DARK_SEGMENT_CARD = 'rounded-xl border border-slate-600 bg-slate-800 p-4 sm:p-5 w-full text-left'
+
+function LessonSummaryDarkCard({ summary, segmentCount }) {
+  const stepDisplay = segmentCount + 1
+  return (
+    <div className={DARK_SEGMENT_CARD}>
+      <p className="mb-3 text-xs leading-relaxed text-slate-500">
+        <span className="text-slate-500">环节 {stepDisplay}</span>
+        <span className="text-slate-600 mx-1.5" aria-hidden>
+          ·
+        </span>
+        <span className="text-slate-400">课时总结</span>
+      </p>
+      <h2 className="text-lg font-bold text-white mb-4">学习评价总结</h2>
+      <div className="space-y-3 text-slate-200 text-sm leading-relaxed">
+        <p>{summary.line1}</p>
+        <p>{summary.line2}</p>
+        <p className="text-slate-400 text-sm">{summary.line3}</p>
+      </div>
+      <div className="mt-4 pt-4 border-t border-slate-600/80">
+        <p className="font-medium text-slate-200 mb-2 text-sm">本节课掌握知识点</p>
+        <ul className="text-slate-400 text-sm list-disc list-inside space-y-1">
+          {(summary.knowledgePoints || []).map((point, i) => (
+            <li key={i}>{point}</li>
+          ))}
+        </ul>
+      </div>
+      <div className="mt-4 pt-4 border-t border-slate-600/80">
+        <p className="font-medium text-slate-200 mb-2 text-sm">答题等学情</p>
+        <p className="text-slate-400 text-sm leading-relaxed">{summary.learningStatus}</p>
+      </div>
+      {summary.comprehensiveEvaluation && (
+        <div className="mt-4 pt-4 border-t border-slate-600/80">
+          <p className="font-medium text-slate-200 mb-2 text-sm">综合评价</p>
+          <p className="text-slate-300 text-sm leading-relaxed">{summary.comprehensiveEvaluation}</p>
+        </div>
+      )}
+      <p className="text-xs text-slate-500 mt-4">继续加油，完成全部课时可获得学习证书</p>
+    </div>
+  )
+}
+
+/** 环节目录列表（桌面侧栏与移动抽屉共用），最后一项为「课时总结」 */
+function LessonSegmentPickerList({ segments, currentStep, summaryStepIndex, onPickSegment }) {
   return (
     <>
       <ul className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
@@ -1398,6 +1441,24 @@ function LessonSegmentPickerList({ segments, currentStep, onPickSegment }) {
             </li>
           )
         })}
+        <li key="__lesson_summary">
+          <button
+            type="button"
+            onClick={() => onPickSegment(summaryStepIndex)}
+            className={`w-full text-left rounded-xl px-3 py-2.5 text-sm transition border ${
+              currentStep === summaryStepIndex
+                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-200'
+                : 'bg-slate-700/40 border-slate-600/50 text-slate-200 hover:bg-slate-700/80'
+            }`}
+          >
+            <span className="font-medium tabular-nums">{summaryStepIndex + 1}.</span>{' '}
+            <span className="font-medium">课时总结</span>
+            <span className="block text-xs text-slate-400 mt-0.5 truncate">学习评价与知识点回顾</span>
+            {currentStep === summaryStepIndex && (
+              <span className="text-[10px] text-cyan-300/90 mt-1 inline-block">当前环节</span>
+            )}
+          </button>
+        </li>
       </ul>
       <p className="shrink-0 px-4 py-2 text-[11px] text-slate-500 text-center border-t border-slate-600 bg-slate-800/95">
         仅在选择其他序号时才会切换；未提交作答返回后需重新作答
@@ -1416,8 +1477,12 @@ function LessonPlayer({ lesson, onClose }) {
 
   const [currentStep, setCurrentStep] = useState(0)
   const [videoPlaying, setVideoPlaying] = useState(false)
-  const [showSummary, setShowSummary] = useState(false)
   const [showSegmentPicker, setShowSegmentPicker] = useState(false)
+  const [segmentSidebarPcOpen, setSegmentSidebarPcOpen] = useState(true)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [isLgViewport, setIsLgViewport] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  )
   const [segmentPickerDrawerIn, setSegmentPickerDrawerIn] = useState(false)
   const [segmentResults, setSegmentResults] = useState({})
   const [quizFooterResetKeyBySegment, setQuizFooterResetKeyBySegment] = useState({})
@@ -1428,10 +1493,12 @@ function LessonPlayer({ lesson, onClose }) {
       delete next[segmentId]
       return next
     })
-  const total = segments.length
+  const summaryStepIndex = segments.length
+  const totalSteps = segments.length + 1
+  const isSummary = currentStep === summaryStepIndex
   const isFirst = currentStep <= 0
-  const isLast = currentStep >= total - 1
-  const currentSegment = segments[currentStep]
+  const isLastSegment = currentStep === segments.length - 1 && !isSummary
+  const currentSegment = isSummary ? null : segments[currentStep]
   const shortcut = currentSegment ? getSegmentShortcut(currentSegment) : null
   const quizAnswerWrong = currentSegment && segmentResults[currentSegment.id] === false
   const showFooterQuizRedo =
@@ -1440,7 +1507,7 @@ function LessonPlayer({ lesson, onClose }) {
   const isAnswerOnlyShortcutSegment =
     Boolean(currentSegment && SEGMENT_TYPES_ANSWER_SHORTCUT.includes(currentSegment.type))
   const showFooterCenterButton =
-    showFooterQuizRedo || Boolean(shortcut && !isAnswerOnlyShortcutSegment)
+    isSummary || showFooterQuizRedo || Boolean(shortcut && !isAnswerOnlyShortcutSegment)
   const handleFooterQuizRedo = () => {
     if (!currentSegment) return
     onSegmentQuizReset(currentSegment.id)
@@ -1452,11 +1519,14 @@ function LessonPlayer({ lesson, onClose }) {
 
   const goStep = (dir) => {
     setVideoPlaying(false)
-    setCurrentStep((s) => (dir === 'prev' ? Math.max(0, s - 1) : Math.min(total - 1, s + 1)))
+    setCurrentStep((s) => {
+      if (dir === 'prev') return Math.max(0, s - 1)
+      return Math.min(segments.length - 1, s + 1)
+    })
   }
 
   const handleFinish = () => {
-    setShowSummary(true)
+    setCurrentStep(summaryStepIndex)
   }
 
   /** 总结页：从头再学一遍（环节归零 + 清空本课答题记录） */
@@ -1466,15 +1536,24 @@ function LessonPlayer({ lesson, onClose }) {
     setVideoPlaying(false)
     setShowSegmentPicker(false)
     setCurrentStep(0)
-    setShowSummary(false)
   }
+
+  const toggleSegmentDirectory = () => {
+    if (isLgViewport) {
+      setSegmentSidebarPcOpen((v) => !v)
+    } else {
+      setShowSegmentPicker((v) => !v)
+    }
+  }
+
+  const directoryOpen = isLgViewport ? segmentSidebarPcOpen : showSegmentPicker
 
   const handleShortcutClick = () => {
     if (currentSegment?.type === 'video') setVideoPlaying(true)
   }
 
   const jumpToSegment = (idx) => {
-    if (idx < 0 || idx >= total || idx === currentStep) {
+    if (idx < 0 || idx > summaryStepIndex || idx === currentStep) {
       setShowSegmentPicker(false)
       return
     }
@@ -1498,82 +1577,26 @@ function LessonPlayer({ lesson, onClose }) {
     }
   }, [showSegmentPicker])
 
-  /** 从小屏切到桌面宽度时收起移动抽屉，避免与右侧常驻目录重叠 */
+  /** 同步 lg 断点：大屏收起移动抽屉；用于目录按钮「目录 / 收起目录」与 PC 侧栏联动 */
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
-    const onChange = () => {
+    const sync = () => {
+      setIsLgViewport(mq.matches)
       if (mq.matches) setShowSegmentPicker(false)
     }
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
   }, [])
 
-  // 学完整节课后显示学习评价总结
-  if (showSummary) {
-    const summary = buildLessonSummary(lesson, segments, segmentResults)
-    return (
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="学习评价总结"
-        className="fixed inset-0 w-screen z-[99999] flex flex-col bg-slate-900"
-        style={{ height: '100dvh', maxHeight: '100dvh' }}
-      >
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0 flex flex-col flex-1 min-h-0 bg-white lg:shadow-none shadow-2xl rounded-t-2xl lg:rounded-none overflow-auto"
-          style={{ height: '100%' }}
-        >
-          <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-10 text-center">
-            <div className="w-full max-w-lg mx-auto">
-              <div className="text-5xl lg:text-6xl mb-4">🎓</div>
-              <h2 className="text-xl lg:text-2xl font-bold text-bingo-dark mb-6">学习评价总结</h2>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 lg:p-6 text-left space-y-3">
-                <p className="text-slate-700 leading-relaxed">{summary.line1}</p>
-                <p className="text-slate-700 leading-relaxed">{summary.line2}</p>
-                <p className="text-slate-600 text-sm leading-relaxed">{summary.line3}</p>
-                <div className="pt-3 border-t border-slate-200/80">
-                  <p className="font-medium text-slate-800 mb-1.5">本节课掌握知识点</p>
-                  <ul className="text-slate-600 text-sm list-disc list-inside space-y-0.5">
-                    {(summary.knowledgePoints || []).map((point, i) => (
-                      <li key={i}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="pt-3 border-t border-slate-200/80">
-                  <p className="font-medium text-slate-800 mb-1.5">答题等学情</p>
-                  <p className="text-slate-600 text-sm leading-relaxed">{summary.learningStatus}</p>
-                </div>
-                {summary.comprehensiveEvaluation && (
-                  <div className="pt-3 border-t border-slate-200/80">
-                    <p className="font-medium text-slate-800 mb-1.5">综合评价</p>
-                    <p className="text-slate-700 text-sm leading-relaxed">{summary.comprehensiveEvaluation}</p>
-                  </div>
-                )}
-              </div>
-              <p className="text-sm text-slate-500 mt-4">继续加油，完成全部课时可获得学习证书</p>
-              <div className="mt-6 w-full max-w-xs mx-auto flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={handleStudyAgain}
-                  className="w-full py-3 rounded-xl text-base font-medium border-2 border-primary text-primary bg-white hover:bg-primary/5"
-                >
-                  再学一遍
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="w-full py-3 rounded-xl text-base font-medium bg-primary text-white hover:bg-primary/90"
-                >
-                  返回学习中心
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (!showExitConfirm) return
+    const onKey = (e) => e.key === 'Escape' && setShowExitConfirm(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showExitConfirm])
+
+  const lessonSummaryData = isSummary ? buildLessonSummary(lesson, segments, segmentResults) : null
 
   return (
     <div
@@ -1596,23 +1619,23 @@ function LessonPlayer({ lesson, onClose }) {
             {lesson.title}
           </h3>
           <div className="flex items-center gap-2 shrink-0">
-            {total > 1 && (
+            {totalSteps > 1 && (
               <button
                 type="button"
-                onClick={() => setShowSegmentPicker(true)}
+                onClick={toggleSegmentDirectory}
                 aria-haspopup="dialog"
-                aria-expanded={showSegmentPicker}
-                aria-label="环节目录，选择要去的环节"
-                className="lg:hidden text-xs px-2.5 py-1.5 rounded-lg font-medium bg-slate-700/90 hover:bg-slate-600 text-slate-200 border border-slate-500/60"
+                aria-expanded={directoryOpen}
+                aria-label={directoryOpen ? '收起环节目录' : '展开环节目录'}
+                className="text-xs px-2.5 py-1.5 rounded-lg font-medium bg-slate-700/90 hover:bg-slate-600 text-slate-200 border border-slate-500/60"
               >
-                目录
+                {directoryOpen ? '收起目录' : '目录'}
               </button>
             )}
-            <span className="text-xs text-slate-400 tabular-nums">环节 {currentStep + 1}/{total}</span>
+            <span className="text-xs text-slate-400 tabular-nums">环节 {currentStep + 1}/{totalSteps}</span>
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => setShowExitConfirm(true)}
             aria-label="关闭"
             className="w-9 h-9 rounded-full bg-slate-600/80 hover:bg-slate-500 text-slate-200 shrink-0 flex items-center justify-center text-base"
           >
@@ -1625,18 +1648,24 @@ function LessonPlayer({ lesson, onClose }) {
           <div className="flex flex-col flex-1 min-w-0 min-h-0">
             {/* 中间：环节内容水平 + 垂直居中 */}
             <main className="flex-1 min-h-0 overflow-y-auto bg-[#0f172a]">
-              <div className="min-h-full flex justify-center items-center p-2 sm:p-3 md:p-4 box-border">
+              <div
+                className={`min-h-full flex justify-center p-2 sm:p-3 md:p-4 box-border ${isSummary ? 'items-start' : 'items-center'}`}
+              >
                 <div className="w-full max-w-full sm:max-w-[min(100%,48rem)] md:max-w-[min(100%,56rem)] lg:max-w-[min(100%,72rem)] xl:max-w-[min(100%,80rem)] shrink-0">
-                  <SegmentBlock
-                    key={currentSegment.id}
-                    segment={currentSegment}
-                    index={currentStep}
-                    dark
-                    videoPlaying={currentSegment.type === 'video' ? videoPlaying : undefined}
-                    onVideoPlay={currentSegment.type === 'video' ? () => setVideoPlaying(true) : undefined}
-                    onSegmentResult={onSegmentResult}
-                    quizResetKey={quizFooterResetKeyBySegment[currentSegment?.id] || 0}
-                  />
+                  {isSummary && lessonSummaryData ? (
+                    <LessonSummaryDarkCard summary={lessonSummaryData} segmentCount={segments.length} />
+                  ) : currentSegment ? (
+                    <SegmentBlock
+                      key={currentSegment.id}
+                      segment={currentSegment}
+                      index={currentStep}
+                      dark
+                      videoPlaying={currentSegment.type === 'video' ? videoPlaying : undefined}
+                      onVideoPlay={currentSegment.type === 'video' ? () => setVideoPlaying(true) : undefined}
+                      onSegmentResult={onSegmentResult}
+                      quizResetKey={quizFooterResetKeyBySegment[currentSegment.id] || 0}
+                    />
+                  ) : null}
                 </div>
               </div>
             </main>
@@ -1653,7 +1682,15 @@ function LessonPlayer({ lesson, onClose }) {
               </button>
               <div className="flex items-center gap-2 shrink-0">
                 {showFooterCenterButton &&
-                  (showFooterQuizRedo ? (
+                  (isSummary ? (
+                    <button
+                      type="button"
+                      onClick={handleStudyAgain}
+                      className="px-3 py-2 rounded-xl text-sm font-medium border border-slate-500 text-slate-200 bg-slate-700/80 hover:bg-slate-600 cursor-pointer"
+                    >
+                      再学一遍
+                    </button>
+                  ) : showFooterQuizRedo ? (
                     <button
                       type="button"
                       onClick={handleFooterQuizRedo}
@@ -1671,10 +1708,18 @@ function LessonPlayer({ lesson, onClose }) {
                     </button>
                   ))}
                 <span className="text-sm text-slate-400 w-12 text-center tabular-nums">
-                  {currentStep + 1} / {total}
+                  {currentStep + 1} / {totalSteps}
                 </span>
               </div>
-              {isLast ? (
+              {isSummary ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer"
+                >
+                  返回学习中心
+                </button>
+              ) : isLastSegment ? (
                 <button type="button" onClick={handleFinish} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
                   完成
                 </button>
@@ -1686,8 +1731,8 @@ function LessonPlayer({ lesson, onClose }) {
             </footer>
           </div>
 
-          {/* PC（lg+）：右侧环节目录常驻 */}
-          {total > 1 && (
+          {/* PC（lg+）：右侧环节目录，可由顶栏「目录 / 收起目录」切换 */}
+          {totalSteps > 1 && segmentSidebarPcOpen && (
             <aside
               className="hidden lg:flex w-[min(20rem,32vw)] shrink-0 flex-col min-h-0 border-l border-slate-600 bg-slate-800/95"
               aria-label="环节目录"
@@ -1697,14 +1742,19 @@ function LessonPlayer({ lesson, onClose }) {
                 <p className="text-[11px] text-slate-400 mt-0.5">点击环节即可跳转</p>
               </div>
               <div className="flex flex-col flex-1 min-h-0">
-                <LessonSegmentPickerList segments={segments} currentStep={currentStep} onPickSegment={jumpToSegment} />
+                <LessonSegmentPickerList
+                  segments={segments}
+                  currentStep={currentStep}
+                  summaryStepIndex={summaryStepIndex}
+                  onPickSegment={jumpToSegment}
+                />
               </div>
             </aside>
           )}
         </div>
 
         {/* 小屏：环节目录抽屉 */}
-        {showSegmentPicker && total > 1 && (
+        {showSegmentPicker && totalSteps > 1 && (
           <div
             className="lg:hidden absolute inset-0 z-[100] flex justify-end overflow-hidden"
             role="dialog"
@@ -1713,7 +1763,7 @@ function LessonPlayer({ lesson, onClose }) {
           >
             <button
               type="button"
-              aria-label="关闭目录"
+              aria-label="收起目录"
               className="absolute inset-0 bg-black/55 border-0 cursor-default transition-opacity"
               onClick={() => setShowSegmentPicker(false)}
             />
@@ -1726,18 +1776,65 @@ function LessonPlayer({ lesson, onClose }) {
               <div className="shrink-0 px-4 py-3 border-b border-slate-600 flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white">环节目录</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">点左侧空白或「关闭」仍留在此环节</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">点左侧空白或「收起目录」仍留在此环节</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowSegmentPicker(false)}
                   className="text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 shrink-0"
                 >
-                  关闭
+                  收起目录
                 </button>
               </div>
               <div className="flex flex-col flex-1 min-h-0">
-                <LessonSegmentPickerList segments={segments} currentStep={currentStep} onPickSegment={jumpToSegment} />
+                <LessonSegmentPickerList
+                  segments={segments}
+                  currentStep={currentStep}
+                  summaryStepIndex={summaryStepIndex}
+                  onPickSegment={jumpToSegment}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showExitConfirm && (
+          <div
+            className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="study-exit-confirm-title"
+            aria-describedby="study-exit-confirm-desc"
+            onClick={() => setShowExitConfirm(false)}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl border border-slate-600 bg-slate-800 p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 id="study-exit-confirm-title" className="text-base font-semibold text-white m-0">
+                确定要退出学习吗？
+              </h4>
+              <p id="study-exit-confirm-desc" className="text-sm text-slate-400 mt-2 mb-5 leading-relaxed">
+                当前课时进度不会自动保存，答题未提交的环节离开后可能需要重新作答。
+              </p>
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowExitConfirm(false)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-500 text-slate-200 bg-slate-700/80 hover:bg-slate-600"
+                >
+                  继续学习
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExitConfirm(false)
+                    onClose()
+                  }}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-medium bg-amber-600 text-white hover:bg-amber-500"
+                >
+                  确定退出
+                </button>
               </div>
             </div>
           </div>
@@ -2160,69 +2257,90 @@ export default function Study() {
             role="dialog"
             aria-modal="true"
             aria-label="课程学习总结"
-            className="fixed inset-0 w-screen z-[99999] flex flex-col bg-slate-900"
+            className="fixed inset-0 w-screen z-[99999] flex flex-col bg-[#0f172a]"
             style={{ height: '100dvh', maxHeight: '100dvh' }}
+            onClick={() => setCourseSummaryCourse(null)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0 flex flex-col flex-1 min-h-0 bg-white lg:shadow-none shadow-2xl rounded-t-2xl lg:rounded-none overflow-auto"
+              className="relative w-full max-w-full mx-0 flex flex-col flex-1 min-h-0 bg-[#0f172a] shadow-none border-0 overflow-hidden"
               style={{ height: '100%' }}
             >
-              <div className="flex-1 flex flex-col items-center p-6 lg:p-10">
-                <div className="w-full max-w-lg mx-auto text-center mb-6">
-                  <div className="text-5xl lg:text-6xl mb-3">🎓</div>
-                  <h2 className="text-xl lg:text-2xl font-bold text-bingo-dark mb-1">课程学习总结</h2>
-                  <p className="text-sm text-slate-500">{s.courseTitle}</p>
+              <header className="shrink-0 h-14 px-3 border-b border-slate-600/80 flex items-center justify-between gap-2 bg-slate-800/90">
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-bold text-white text-sm m-0 truncate">课程学习总结</h2>
+                  <p className="text-[11px] text-slate-400 truncate m-0">{s.courseTitle}</p>
                 </div>
-                <div className="w-full max-w-lg mx-auto rounded-2xl border border-slate-200 bg-slate-50/80 p-5 lg:p-6 text-left space-y-4 overflow-auto max-h-[60vh]">
-                  <section>
-                    <h3 className="text-sm font-semibold text-slate-800 mb-1.5">📊 完成情况</h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">{s.completionLine}</p>
-                  </section>
-                  <section>
-                    <h3 className="text-sm font-semibold text-slate-800 mb-1.5">📚 课程涵盖</h3>
-                    <p className="text-slate-600 text-sm mb-2">{s.scopeIntro}</p>
-                    <ul className="text-slate-600 text-sm space-y-0.5 list-disc list-inside">
-                      {s.lessonTitles.slice(0, 12).map((title, i) => (
-                        <li key={i}>{title}</li>
-                      ))}
-                      {s.lessonTitles.length > 12 && <li className="text-slate-500">…共 {s.lessonTitles.length} 课时</li>}
-                    </ul>
-                  </section>
-                  <section>
-                    <h3 className="text-sm font-semibold text-slate-800 mb-1.5">✨ 学习收获</h3>
-                    <ul className="text-slate-600 text-sm space-y-0.5 list-disc list-inside">
-                      {s.outcomes.map((item, i) => (
-                        <li key={i}>{item}</li>
-                      ))}
-                    </ul>
-                  </section>
-                  <section>
-                    <h3 className="text-sm font-semibold text-slate-800 mb-1.5">⏱ 学习投入</h3>
-                    <p className="text-slate-600 text-sm leading-relaxed">{s.timeInvested}</p>
-                  </section>
-                  <section className="pt-2 border-t border-slate-200/80">
-                    <p className="text-slate-700 text-sm leading-relaxed">{s.encouragement}</p>
-                  </section>
-                  <section className="rounded-lg bg-emerald-50 border border-emerald-200/80 p-3">
-                    <p className="text-emerald-800 text-sm font-medium">🏅 {s.certificateTip}</p>
-                  </section>
-                </div>
-                <div className="w-full max-w-lg mx-auto mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-                  <Link
-                    to="/cert"
-                    onClick={() => setCourseSummaryCourse(null)}
-                    className="inline-flex justify-center py-3 px-5 rounded-xl text-base font-medium bg-emerald-500 text-white hover:bg-emerald-600"
-                  >
-                    领取证书
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setCourseSummaryCourse(null)}
-                    className="inline-flex justify-center py-3 px-5 rounded-xl text-base font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  >
-                    返回学习中心
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => setCourseSummaryCourse(null)}
+                  aria-label="关闭"
+                  className="w-9 h-9 rounded-full bg-slate-600/80 hover:bg-slate-500 text-slate-200 shrink-0 flex items-center justify-center text-base"
+                >
+                  ✕
+                </button>
+              </header>
+              <div className="flex-1 min-h-0 overflow-y-auto bg-[#0f172a] p-3 sm:p-4 md:p-5">
+                <div className="w-full max-w-full sm:max-w-[min(100%,48rem)] md:max-w-[min(100%,56rem)] lg:max-w-[min(100%,72rem)] mx-auto">
+                  <div className={DARK_SEGMENT_CARD}>
+                    <p className="mb-3 text-xs leading-relaxed text-slate-500">
+                      <span className="text-slate-400">整门课程</span>
+                      <span className="text-slate-600 mx-1.5" aria-hidden>
+                        ·
+                      </span>
+                      <span className="text-slate-400">学习总结</span>
+                    </p>
+                    <section className="space-y-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-200 mb-1.5">📊 完成情况</h3>
+                        <p className="text-slate-300 text-sm leading-relaxed">{s.completionLine}</p>
+                      </div>
+                      <div className="pt-3 border-t border-slate-600/80">
+                        <h3 className="text-sm font-semibold text-slate-200 mb-1.5">📚 课程涵盖</h3>
+                        <p className="text-slate-400 text-sm mb-2">{s.scopeIntro}</p>
+                        <ul className="text-slate-400 text-sm space-y-0.5 list-disc list-inside">
+                          {s.lessonTitles.slice(0, 12).map((title, i) => (
+                            <li key={i}>{title}</li>
+                          ))}
+                          {s.lessonTitles.length > 12 && <li className="text-slate-500">…共 {s.lessonTitles.length} 课时</li>}
+                        </ul>
+                      </div>
+                      <div className="pt-3 border-t border-slate-600/80">
+                        <h3 className="text-sm font-semibold text-slate-200 mb-1.5">✨ 学习收获</h3>
+                        <ul className="text-slate-400 text-sm space-y-0.5 list-disc list-inside">
+                          {s.outcomes.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="pt-3 border-t border-slate-600/80">
+                        <h3 className="text-sm font-semibold text-slate-200 mb-1.5">⏱ 学习投入</h3>
+                        <p className="text-slate-400 text-sm leading-relaxed">{s.timeInvested}</p>
+                      </div>
+                      <div className="pt-3 border-t border-slate-600/80">
+                        <p className="text-slate-300 text-sm leading-relaxed">{s.encouragement}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-600 bg-emerald-500/15 p-3">
+                        <p className="text-emerald-200 text-sm font-medium">🏅 {s.certificateTip}</p>
+                      </div>
+                    </section>
+                  </div>
+                  <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-center pb-6">
+                    <Link
+                      to="/cert"
+                      onClick={() => setCourseSummaryCourse(null)}
+                      className="inline-flex justify-center py-3 px-5 rounded-xl text-base font-medium bg-emerald-500 text-white hover:bg-emerald-600"
+                    >
+                      领取证书
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setCourseSummaryCourse(null)}
+                      className="inline-flex justify-center py-3 px-5 rounded-xl text-base font-medium border border-slate-500 text-slate-200 bg-slate-700/80 hover:bg-slate-600"
+                    >
+                      返回学习中心
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
