@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import PaymentModal from '../components/PaymentModal'
+import { getPurchasedCourseIds } from '../utils/purchasedCoursesStorage'
+import { getUserReviewsForCourse, prependUserReviewForCourse } from '../utils/courseDetailReviewsStorage'
 
 // 班型数据（启蒙课/Level1 默认）
 const CLASS_TYPES_LEVEL1 = [
@@ -289,10 +291,77 @@ const COURSES = {
   },
 }
 
+/** 课程详情页：每门课至少 6 条虚拟评价（由课程名生成文案） */
+function buildDetailPageMockReviews(courseId, courseName) {
+  const slug = String(courseId).replace(/[^a-z0-9-]/gi, 'x') || 'c'
+  return [
+    { id: `${slug}-rv1`, nickname: '李家长', avatarSeed: `${slug}a`, rating: 5, content: `「${courseName}」内容扎实、节奏清楚，我们跟下来很顺。`, at: '2025-03-22 18:30' },
+    { id: `${slug}-rv2`, nickname: '张同学', avatarSeed: `${slug}b`, rating: 5, content: '讲师专业，案例贴近实际，作业反馈也很快。', at: '2025-03-21 14:22' },
+    { id: `${slug}-rv3`, nickname: '晨晨妈', avatarSeed: `${slug}c`, rating: 4, content: '整体满意，若直播课互动再多一点会更好。', at: '2025-03-20 09:18' },
+    { id: `${slug}-rv4`, nickname: 'Coder_W', avatarSeed: `${slug}d`, rating: 5, content: '干货足，适合想系统提升的同学，已推荐给朋友。', at: '2025-03-18 21:08' },
+    { id: `${slug}-rv5`, nickname: 'ivy笔记', avatarSeed: `${slug}e`, rating: 5, content: '二刷了重点章节，学习群氛围好，值得报。', at: '2025-03-17 11:45' },
+    { id: `${slug}-rv6`, nickname: '南哥', avatarSeed: `${slug}f`, rating: 4, content: '性价比高，教务衔接顺畅，整体学习体验不错。', at: '2025-03-15 16:33' },
+  ]
+}
+
+const COURSE_DETAIL_REVIEWS = Object.fromEntries(
+  Object.entries(COURSES).map(([cid, c]) => [cid, buildDetailPageMockReviews(cid, c.name)])
+)
+const DETAIL_REVIEWS_FALLBACK = buildDetailPageMockReviews('fallback', '本课程')
+
+function detailReviewAvatarUrl(seed) {
+  const s = encodeURIComponent((seed || 'user').toString())
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${s}&size=128`
+}
+
+function DetailStars({ value }) {
+  const n = Math.min(5, Math.max(0, Math.round(Number(value) || 0)))
+  return (
+    <span className="inline-flex items-center gap-0.5 text-amber-400 text-sm" aria-hidden>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span key={i} className={i <= n ? 'text-amber-400' : 'text-slate-200'}>
+          ★
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function DetailStarInput({ value, onChange, className = '' }) {
+  const v = Math.min(5, Math.max(1, Math.round(Number(value) || 1)))
+  return (
+    <div className={`inline-flex flex-wrap items-center gap-1 ${className}`} role="group" aria-label="星级评分">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onChange(i)}
+          className={`text-2xl leading-none p-0.5 rounded transition ${i <= v ? 'text-amber-400' : 'text-slate-200 hover:text-amber-200'}`}
+          aria-label={`${i} 星`}
+        >
+          ★
+        </button>
+      ))}
+      <span className="text-sm text-slate-500 ml-1 tabular-nums">{v} 星</span>
+    </div>
+  )
+}
+
+function getCourseDetailReviews(courseId) {
+  return COURSE_DETAIL_REVIEWS[courseId] || DETAIL_REVIEWS_FALLBACK
+}
+
+function mergeDetailReviewsForDisplay(courseId) {
+  const user = getUserReviewsForCourse(courseId)
+  const mock = getCourseDetailReviews(courseId)
+  return [...user, ...mock].sort((a, b) => String(b.at).localeCompare(String(a.at)))
+}
+
 export default function CourseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const course = COURSES[id] || COURSES['ai-enlighten']
+  const resolvedCourseId = COURSES[id] ? id : 'ai-enlighten'
   const classTypes = course.classTypes || CLASS_TYPES_LEVEL1
   const defaultClass = classTypes[0]
   const [showTrialEndModal, setShowTrialEndModal] = useState(false)
@@ -303,8 +372,45 @@ export default function CourseDetail() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [purchasedIds, setPurchasedIds] = useState(() => getPurchasedCourseIds())
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewDraft, setReviewDraft] = useState('')
+  const [detailReviewTick, setDetailReviewTick] = useState(0)
+  const [detailReviewsExpanded, setDetailReviewsExpanded] = useState(false)
 
-  const courseLink = typeof window !== 'undefined' ? `${window.location.origin}/courses/detail/${id}` : ''
+  const hasPurchasedCurrent = purchasedIds.includes(resolvedCourseId)
+  const mergedDetailReviews = useMemo(() => mergeDetailReviewsForDisplay(resolvedCourseId), [resolvedCourseId, detailReviewTick])
+
+  useEffect(() => {
+    setPurchasedIds(getPurchasedCourseIds())
+  }, [resolvedCourseId])
+
+  useEffect(() => {
+    const refresh = () => setPurchasedIds(getPurchasedCourseIds())
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [])
+
+  useEffect(() => {
+    if (!showReviewModal) return
+    setReviewRating(5)
+    setReviewDraft('')
+  }, [showReviewModal])
+
+  useEffect(() => {
+    setDetailReviewsExpanded(false)
+  }, [resolvedCourseId])
+
+  const DETAIL_REVIEWS_PREVIEW = 5
+  const visibleDetailReviews =
+    detailReviewsExpanded || mergedDetailReviews.length <= DETAIL_REVIEWS_PREVIEW
+      ? mergedDetailReviews
+      : mergedDetailReviews.slice(0, DETAIL_REVIEWS_PREVIEW)
+  const detailReviewsMoreCount = Math.max(0, mergedDetailReviews.length - DETAIL_REVIEWS_PREVIEW)
+
+  const courseLink =
+    typeof window !== 'undefined' ? `${window.location.origin}/courses/detail/${resolvedCourseId}` : ''
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(courseLink)
@@ -332,7 +438,7 @@ export default function CourseDetail() {
         onClose={() => setShowPaymentModal(false)}
         courseName={course.name}
         price={priceDisplay}
-        paymentState={{ courseId: id, classType: defaultClass }}
+        paymentState={{ courseId: resolvedCourseId, classType: defaultClass }}
       />
       {/* 顶部导航：仅返回 */}
       <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6 lg:mb-8 sticky top-0 bg-white/95 backdrop-blur z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-slate-100 -mt-4 sm:mt-0">
@@ -397,46 +503,160 @@ export default function CourseDetail() {
         </div>
       </section>
 
-      {/* 课程详情：H5 单列 / Web 三列 */}
+      {/* 课程详情：大纲 + 试学视频，H5 单列 / md+ 左右等宽两列 */}
       <section className="mb-6 sm:mb-8 lg:mb-10">
         <h2 className="text-base sm:text-lg lg:text-xl font-bold text-bingo-dark mb-3 sm:mb-4 lg:mb-5">课程详情</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-          <div className="card p-4 lg:p-5 rounded-2xl">
-            <h3 className="font-semibold text-bingo-dark mb-3 lg:text-base">课程大纲</h3>
-            {course.outline.map((t, i) => (
-              <div key={i} className="border-b border-slate-100 last:border-0 py-2">
-                <button onClick={() => setExpandedOutline(expandedOutline === i ? null : i)} className="flex items-center justify-between w-full text-left text-sm min-h-[44px] py-2">
-                  <span>{i + 1}. {t}</span>
-                  <span className="text-slate-400">{expandedOutline === i ? '▲' : '▼'}</span>
-                </button>
-                {expandedOutline === i && (
-                  <p className="text-xs text-slate-500 mt-1 pl-2">约15分钟 · 目标：掌握{t}</p>
-                )}
-                {course.trial && i < 2 && (
-                  <button onClick={() => setShowTrialEndModal(true)} className="text-[10px] text-amber-600 mt-1">免费试学</button>
-                )}
-              </div>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 md:items-stretch">
+          <div className="card p-4 lg:p-5 rounded-2xl h-full flex flex-col min-h-0 md:min-h-[320px]">
+            <h3 className="font-semibold text-bingo-dark mb-3 lg:text-base shrink-0">课程大纲</h3>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {(course.outline || []).map((t, i) => (
+                <div key={i} className="border-b border-slate-100 last:border-0 py-2">
+                  <button onClick={() => setExpandedOutline(expandedOutline === i ? null : i)} className="flex items-center justify-between w-full text-left text-sm min-h-[44px] py-2">
+                    <span>{i + 1}. {t}</span>
+                    <span className="text-slate-400">{expandedOutline === i ? '▲' : '▼'}</span>
+                  </button>
+                  {expandedOutline === i && (
+                    <p className="text-xs text-slate-500 mt-1 pl-2">约15分钟 · 目标：掌握{t}</p>
+                  )}
+                  {course.trial && i < 2 && (
+                    <button onClick={() => setShowTrialEndModal(true)} className="text-[10px] text-amber-600 mt-1">免费试学</button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="card p-4 lg:p-5 flex flex-col rounded-2xl">
-            <h3 className="font-semibold text-bingo-dark mb-3 text-sm sm:text-base">试学视频</h3>
-            <div className="aspect-video bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-xs sm:text-sm flex-1 min-h-[160px] lg:min-h-0">直播/录播片段</div>
-            <p className="text-xs text-slate-500 mt-2">支持倍速 · 暂停</p>
-          </div>
-          <div className="card p-4 lg:p-5 rounded-2xl">
-            <h3 className="font-semibold text-bingo-dark mb-3 text-sm sm:text-base">学员评价</h3>
-            {[
-              { name: '李家长', text: '孩子学了3个月，进步很大', star: 5 },
-              { name: '张同学', text: '老师讲得很清楚', star: 5 },
-            ].map((r, i) => (
-              <div key={i} className="mb-3 text-sm">
-                <p className="text-slate-700">{r.text}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{r.name} · {'★'.repeat(r.star)}</p>
+          <div className="card p-4 lg:p-5 rounded-2xl h-full flex flex-col min-h-0 md:min-h-[320px]">
+            <h3 className="font-semibold text-bingo-dark mb-3 text-sm sm:text-base shrink-0">试学视频</h3>
+            <div className="flex-1 flex flex-col min-h-[200px] md:min-h-0">
+              <div className="aspect-video bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-xs sm:text-sm w-full flex-1 min-h-[160px]">
+                直播/录播片段
               </div>
-            ))}
+              <p className="text-xs text-slate-500 mt-2 shrink-0">支持倍速 · 暂停</p>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* 学员评价（独立板块，位于定制学情上方） */}
+      <section className="mb-6 sm:mb-8 lg:mb-10">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 sm:mb-4">
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-bingo-dark m-0">学员评价</h2>
+          <button
+            type="button"
+            onClick={() => {
+              if (!hasPurchasedCurrent) {
+                window.alert(
+                  '仅已购买本课程的学员可以发表评价。\n\n请先点击页面上方「立即购买」完成购课；支付成功后将自动获得评价权限。',
+                )
+                return
+              }
+              setShowReviewModal(true)
+            }}
+            className="shrink-0 inline-flex items-center justify-center rounded-xl bg-primary text-white text-sm font-medium px-4 py-2.5 hover:bg-primary/90 w-full sm:w-auto"
+          >
+            我要评价
+          </button>
+        </div>
+        <div className="card p-4 sm:p-6 lg:p-8 rounded-2xl">
+          <ul className="space-y-4 max-h-[min(480px,60vh)] overflow-y-auto pr-1">
+            {visibleDetailReviews.map((r) => (
+              <li key={r.id} className="flex gap-3 sm:gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                <img
+                  src={detailReviewAvatarUrl(r.avatarSeed || r.nickname)}
+                  alt=""
+                  width={44}
+                  height={44}
+                  className="w-11 h-11 rounded-full bg-slate-100 shrink-0 object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-sm font-semibold text-bingo-dark">{r.nickname}</span>
+                    <DetailStars value={r.rating} />
+                    <span className="text-xs text-slate-400 tabular-nums ml-auto">{r.at}</span>
+                  </div>
+                  <p className="text-sm text-slate-700 mt-2 leading-relaxed break-words">{r.content}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {detailReviewsMoreCount > 0 && (
+            <div className="mt-4 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setDetailReviewsExpanded((v) => !v)}
+                className="text-sm font-medium text-primary hover:text-primary/80 px-4 py-2 rounded-xl border border-primary/30 hover:bg-primary/5"
+              >
+                {detailReviewsExpanded ? '收起' : `展开其余 ${detailReviewsMoreCount} 条评价`}
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {showReviewModal && hasPurchasedCurrent && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-label="发表课程评价"
+          onClick={() => setShowReviewModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 p-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-bingo-dark text-base mb-1">发表评价</h3>
+            <p className="text-xs text-slate-500 mb-4 line-clamp-2">{course.name}</p>
+            <p className="text-xs font-medium text-slate-600 mb-1">星级好评</p>
+            <DetailStarInput value={reviewRating} onChange={setReviewRating} className="mb-4" />
+            <textarea
+              id="detail-review-text"
+              aria-label="评价正文"
+              value={reviewDraft}
+              onChange={(e) => setReviewDraft(e.target.value)}
+              maxLength={200}
+              rows={4}
+              placeholder="学习感受、收获或建议…"
+              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-bingo-dark placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y min-h-[100px]"
+            />
+            <p className="text-xs text-slate-400 text-right tabular-nums mt-0.5">{reviewDraft.length}/200</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowReviewModal(false)}
+                className="text-sm px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const t = reviewDraft.trim()
+                  if (!t) {
+                    window.alert('请填写评价内容')
+                    return
+                  }
+                  prependUserReviewForCourse(resolvedCourseId, {
+                    id: `me-${Date.now()}`,
+                    nickname: '我',
+                    avatarSeed: 'bingo-me',
+                    rating: reviewRating,
+                    content: t.slice(0, 200),
+                    at: new Date().toLocaleString('zh-CN', { hour12: false }),
+                  })
+                  setDetailReviewTick((x) => x + 1)
+                  setShowReviewModal(false)
+                  window.alert('感谢您的评价！')
+                }}
+                className="text-sm px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"
+              >
+                提交评价
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 定制学习计划 */}
       <section className="mb-6 sm:mb-8 lg:mb-10">

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 
@@ -149,6 +149,242 @@ const MY_COURSES = [
   },
 ]
 
+/** 写评价时展示的当前用户（演示环境） */
+const DEMO_REVIEW_USER = { nickname: '我', avatarSeed: 'bingo-me' }
+
+/** 其他用户 Mock 评价：头像用 DiceBear 种子生成 */
+function courseReviewAvatarUrl(seed) {
+  const s = encodeURIComponent((seed || 'user').toString())
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${s}&size=128`
+}
+
+/** 各已购课程的历史评价（每门至少 6 条虚拟数据） */
+const MOCK_COURSE_REVIEWS = {
+  'ai-enlighten': [
+    { id: 'r-ae-1', nickname: '小雨妈妈', avatarSeed: 'rain-mom', rating: 5, content: '孩子特别喜欢互动题和实验环节，老师答疑也很及时，内容循序渐进不枯燥。', at: '2025-03-18 20:15' },
+    { id: 'r-ae-2', nickname: '乐乐爸', avatarSeed: 'lele-dad', rating: 5, content: '6岁也能跟上，每节课时长合适，推荐给同龄家庭。', at: '2025-03-15 09:40' },
+    { id: 'r-ae-3', nickname: '橙子', avatarSeed: 'orange-kid', rating: 4, content: '视频很清楚，就是希望再多一点动手小作业。', at: '2025-03-10 16:22' },
+    { id: 'r-ae-4', nickname: '海淀家长_周', avatarSeed: 'zhou', rating: 5, content: '体系完整，从概念到应用都有，孩子问的问题课里基本能覆盖。', at: '2025-03-08 11:05' },
+    { id: 'r-ae-5', nickname: 'Momo', avatarSeed: 'momo', rating: 5, content: '五星好评，已续报下一阶段。', at: '2025-03-01 19:30' },
+    { id: 'r-ae-6', nickname: '可可爷爷', avatarSeed: 'keke', rating: 5, content: '陪孙子一起看，讲解方式老少都能听懂，家庭一起看很有话题。', at: '2025-02-26 14:18' },
+  ],
+  'ai-advance-basic': [
+    { id: 'r-ab-1', nickname: '初三_阿哲', avatarSeed: 'azhe', rating: 5, content: '神经网络那几讲讲得很透，例题和赛事方向都有提到，实用。', at: '2025-03-17 21:08' },
+    { id: 'r-ab-2', nickname: '理科妈', avatarSeed: 'likemom', rating: 4, content: '难度比预期高一点，但整体质量高，适合有基础的同学。', at: '2025-03-12 08:55' },
+    { id: 'r-ab-3', nickname: 'Skywalker', avatarSeed: 'sky', rating: 5, content: '工具实操部分收获最大，学校社团做项目直接用上了。', at: '2025-03-05 13:40' },
+    { id: 'r-ab-4', nickname: '小凯', avatarSeed: 'xiaokai', rating: 5, content: '白名单赛事相关章节对我帮助很大，省了很多自己查资料的时间。', at: '2025-02-28 19:55' },
+    { id: 'r-ab-5', nickname: 'Lily_Tech', avatarSeed: 'lilyt', rating: 4, content: '作业量不小，但批改认真，错题有文字点评。', at: '2025-02-22 10:30' },
+    { id: 'r-ab-6', nickname: '鹏爸', avatarSeed: 'pengb', rating: 5, content: '孩子从怕难到主动做拓展题，肉眼可见的进步。', at: '2025-02-18 16:08' },
+  ],
+  'parent-guide': [
+    { id: 'r-pg-1', nickname: '二宝妈妈', avatarSeed: 'erbao', rating: 5, content: '讲风险与引导方式特别实在，看完和家里约定好了使用规则。', at: '2025-03-16 10:12' },
+    { id: 'r-pg-2', nickname: 'David_L', avatarSeed: 'davidl', rating: 5, content: '家长课里算很系统的，字数不多但句句在点上。', at: '2025-03-09 22:18' },
+    { id: 'r-pg-3', nickname: '全职爸爸老吴', avatarSeed: 'laowu', rating: 5, content: '和配偶一起看，减少了很多育儿里对AI的争执，有共同语言了。', at: '2025-03-04 09:20' },
+    { id: 'r-pg-4', nickname: '糖糖妈', avatarSeed: 'tangtang', rating: 4, content: '希望再出一节「手机管控+AI」专题，会更完整。', at: '2025-02-27 21:40' },
+    { id: 'r-pg-5', nickname: 'Jenny', avatarSeed: 'jenny', rating: 5, content: '推荐给同校家委会，反馈都很好，实操建议能直接用。', at: '2025-02-20 12:15' },
+    { id: 'r-pg-6', nickname: '石头爸', avatarSeed: 'shitou', rating: 5, content: '每课结尾的小清单很实用，我打印贴冰箱上了。', at: '2025-02-14 08:50' },
+  ],
+}
+
+function mergeCourseReviews(courseId, extraByCourse) {
+  const mock = MOCK_COURSE_REVIEWS[courseId] || []
+  const extra = extraByCourse[courseId] || []
+  const all = [...extra, ...mock]
+  return all.sort((a, b) => String(b.at).localeCompare(String(a.at)))
+}
+
+/** 只读五星 */
+function StarsDisplay({ value, className = '' }) {
+  const n = Math.min(5, Math.max(0, Math.round(Number(value) || 0)))
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-amber-400 ${className}`} aria-label={`${n} 星`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span key={i} className={i <= n ? 'text-amber-400' : 'text-slate-200'}>
+          ★
+        </span>
+      ))}
+    </span>
+  )
+}
+
+/** 可选五星 */
+function StarsInput({ value, onChange, className = '' }) {
+  const v = Math.min(5, Math.max(1, Math.round(Number(value) || 1)))
+  return (
+    <div className={`inline-flex items-center gap-1 ${className}`} role="group" aria-label="星级评分">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onChange(i)}
+          className={`text-2xl leading-none p-0.5 rounded transition ${i <= v ? 'text-amber-400' : 'text-slate-200 hover:text-amber-200'}`}
+          aria-label={`${i} 星`}
+        >
+          ★
+        </button>
+      ))}
+      <span className="text-sm text-slate-500 ml-1 tabular-nums">{v} 星</span>
+    </div>
+  )
+}
+
+const REVIEWS_PREVIEW_COUNT = 5
+
+/** 课程评价列表 + 立即评价入口（展开课时列表内） */
+function CourseReviewsSection({ reviews, onImmediateReview }) {
+  const [reviewsExpanded, setReviewsExpanded] = useState(false)
+  const moreCount = Math.max(0, reviews.length - REVIEWS_PREVIEW_COUNT)
+  const visible =
+    reviewsExpanded || reviews.length <= REVIEWS_PREVIEW_COUNT ? reviews : reviews.slice(0, REVIEWS_PREVIEW_COUNT)
+
+  return (
+    <div className="px-5 py-4 bg-slate-50/50 border-b border-slate-100">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h4 className="text-sm font-semibold text-bingo-dark m-0">课程评价</h4>
+        <button
+          type="button"
+          onClick={onImmediateReview}
+          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-primary text-white hover:bg-primary/90 shadow-sm shrink-0"
+        >
+          立即评价
+        </button>
+      </div>
+      {reviews.length === 0 ? (
+        <p className="text-xs text-slate-400 py-2">暂无评价，欢迎首评～</p>
+      ) : (
+        <>
+          <ul className="space-y-3 max-h-[min(320px,50vh)] overflow-y-auto pr-1">
+            {visible.map((r) => (
+              <li key={r.id} className="flex gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
+                <img
+                  src={courseReviewAvatarUrl(r.avatarSeed || r.nickname)}
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full bg-slate-100 shrink-0 object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="text-sm font-medium text-bingo-dark">{r.nickname}</span>
+                    <StarsDisplay value={r.rating} className="text-base" />
+                    <span className="text-xs text-slate-400 tabular-nums ml-auto">{r.at}</span>
+                  </div>
+                  <p className="text-sm text-slate-600 mt-1.5 break-words leading-relaxed">{r.content}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {moreCount > 0 && (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setReviewsExpanded((v) => !v)}
+                className="text-xs font-medium text-primary hover:text-primary/80 px-3 py-1.5 rounded-lg border border-primary/30 hover:bg-primary/5"
+              >
+                {reviewsExpanded ? '收起' : `展开其余 ${moreCount} 条评价`}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+/** 五星 + 文字评价弹窗（已购学员） */
+function CourseReviewWriteModal({ open, courses, courseId, allowCourseSwitch, onClose, onSubmit }) {
+  const [pickId, setPickId] = useState(courseId || courses[0]?.id || '')
+  const [rating, setRating] = useState(5)
+  const [text, setText] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setPickId(courseId || courses[0]?.id || '')
+    setRating(5)
+    setText('')
+  }, [open, courseId, courses])
+
+  if (!open) return null
+
+  const effectiveId = allowCourseSwitch ? pickId : courseId
+  const course = courses.find((c) => c.id === effectiveId)
+
+  const handleSubmit = () => {
+    const c = text.trim()
+    if (!effectiveId) return
+    if (rating < 1 || rating > 5) {
+      window.alert('请选择 1～5 星')
+      return
+    }
+    if (!c) {
+      window.alert('请填写评价内容')
+      return
+    }
+    onSubmit(effectiveId, rating, c)
+  }
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="撰写课程评价"
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 p-5 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-bold text-bingo-dark text-base mb-1">课程评价</h3>
+        {allowCourseSwitch && courses.length > 1 ? (
+          <label className="block text-xs text-slate-500 mb-1 mt-2">选择课程</label>
+        ) : null}
+        {allowCourseSwitch && courses.length > 1 ? (
+          <select
+            value={pickId}
+            onChange={(e) => setPickId(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-bingo-dark mb-3 focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="text-xs text-slate-500 mb-3 line-clamp-2">{course?.title || ''}</p>
+        )}
+
+        <p className="text-xs font-medium text-slate-600 mb-1">星级好评</p>
+        <StarsInput value={rating} onChange={setRating} className="mb-4" />
+
+        <textarea
+          id="course-review-text"
+          aria-label="评价正文"
+          value={text}
+          maxLength={200}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="学习感受、收获或建议…"
+          rows={4}
+          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-bingo-dark placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y min-h-[100px]"
+        />
+        <p className="text-xs text-slate-400 text-right tabular-nums mt-0.5">{text.length}/200</p>
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="text-sm px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+            取消
+          </button>
+          <button type="button" onClick={handleSubmit} className="text-sm px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90">
+            提交评价
+          </button>
+        </div>
+        <p className="text-[11px] text-slate-400 mt-3">演示环境：评价仅保存在本页，刷新后除 Mock 数据外会清空。</p>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ─── 进度条组件 ─────────────────────────────────────────────
 function ProgressBar({ value, color = 'bg-primary' }) {
   return (
@@ -249,7 +485,36 @@ function sameMultiChoiceAnswer(selected, correct) {
   return a.every((v, i) => v === b[i])
 }
 
-function SegmentChoice({ segment, index, dark, onSegmentResult }) {
+/** 底部栏「重做」递增 key 时，同步清空本题作答 UI（父组件已先清除 segmentResults） */
+function useQuizFooterResetSync(quizResetKey, reset) {
+  const prevKey = useRef(quizResetKey)
+  useEffect(() => {
+    if (quizResetKey !== prevKey.current) {
+      prevKey.current = quizResetKey
+      if (quizResetKey > 0) reset()
+    }
+  }, [quizResetKey, reset])
+}
+
+/** 底部栏会对「作答」类环节在答错时显示「重做」，与这些类型一致 */
+const SEGMENT_TYPES_ANSWER_SHORTCUT = ['choice', 'multi_choice', 'image_choice', 'fill_blank', 'match', 'drag_drop', 'audio_choice']
+
+/** 环节顶栏：环节序号 + 类型说明，纯文案避免像可点击按钮 */
+function QuizSegmentMeta({ index, typeLabel, dark, centered }) {
+  return (
+    <p
+      className={`mb-3 text-xs leading-relaxed select-none ${centered ? 'text-center' : ''} ${dark ? 'text-slate-500' : 'text-slate-500'}`}
+    >
+      <span className={dark ? 'text-slate-500' : 'text-slate-600'}>环节 {index + 1}</span>
+      <span className={dark ? 'text-slate-600 mx-1.5' : 'text-slate-300 mx-1.5'} aria-hidden>
+        ·
+      </span>
+      <span className={dark ? 'text-slate-400' : 'text-slate-600'}>{typeLabel}</span>
+    </p>
+  )
+}
+
+function SegmentChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
   const p = segment.payload
   const [selected, setSelected] = useState(null)
   const [submitted, setSubmitted] = useState(false)
@@ -258,17 +523,17 @@ function SegmentChoice({ segment, index, dark, onSegmentResult }) {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === p.correctIndex)
   }
+  const resetLocal = useCallback(() => {
+    setSubmitted(false)
+    setSelected(null)
+  }, [])
+  useQuizFooterResetSync(quizResetKey, resetLocal)
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
-  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
-  const tag = dark ? 'bg-cyan-500/80 text-white px-2 py-0.5 rounded' : 'bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded'
   const q = dark ? 'font-medium text-white mb-3' : 'font-medium text-bingo-dark mb-3'
   const optBase = dark ? 'flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition text-slate-200 ' : 'flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition '
   return (
     <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.choice}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.choice} dark={dark} />
       <p className={q}>{p.question}</p>
       <div className="space-y-2">
         {p.options.map((opt, i) => (
@@ -289,13 +554,14 @@ function SegmentChoice({ segment, index, dark, onSegmentResult }) {
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : '正确答案：' + (p.options[p.correctIndex] || '')}
           {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+          {!isCorrect ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
         </div>
       )}
     </div>
   )
 }
 
-function SegmentMultiChoice({ segment, index, dark, onSegmentResult }) {
+function SegmentMultiChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
   const p = segment.payload
   const options = p.options || []
   const correctIndices = Array.isArray(p.correctIndices) ? p.correctIndices : []
@@ -310,9 +576,12 @@ function SegmentMultiChoice({ segment, index, dark, onSegmentResult }) {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, sameMultiChoiceAnswer(selected, correctIndices))
   }
+  const resetLocal = useCallback(() => {
+    setSubmitted(false)
+    setSelected([])
+  }, [])
+  useQuizFooterResetSync(quizResetKey, resetLocal)
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
-  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
-  const tag = dark ? 'bg-cyan-500/80 text-white px-2 py-0.5 rounded' : 'bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded'
   const q = dark ? 'font-medium text-white mb-1' : 'font-medium text-bingo-dark mb-1'
   const optBase = dark ? 'flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition text-slate-200 ' : 'flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition '
   const correctLetters = [...new Set(correctIndices)]
@@ -322,10 +591,7 @@ function SegmentMultiChoice({ segment, index, dark, onSegmentResult }) {
     .join('、')
   return (
     <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.multi_choice}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.multi_choice} dark={dark} />
       <p className={q}>{p.question}</p>
       <p className={`text-xs mb-3 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>可多选，请勾选所有你认为正确的选项</p>
       <div className="space-y-2">
@@ -347,6 +613,7 @@ function SegmentMultiChoice({ segment, index, dark, onSegmentResult }) {
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : `正确答案：${correctLetters || '（见解析）'}`}
           {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+          {!isCorrect ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
         </div>
       )}
     </div>
@@ -354,7 +621,7 @@ function SegmentMultiChoice({ segment, index, dark, onSegmentResult }) {
 }
 
 // 图片选择题：选项可带图片（optionImages 与 options 一一对应）
-function SegmentImageChoice({ segment, index, dark, onSegmentResult }) {
+function SegmentImageChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
   const p = segment.payload
   const options = p.options || []
   const optionImages = p.optionImages || []
@@ -365,17 +632,17 @@ function SegmentImageChoice({ segment, index, dark, onSegmentResult }) {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === p.correctIndex)
   }
+  const resetLocal = useCallback(() => {
+    setSubmitted(false)
+    setSelected(null)
+  }, [])
+  useQuizFooterResetSync(quizResetKey, resetLocal)
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
-  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
-  const tag = dark ? 'bg-cyan-500/80 text-white px-2 py-0.5 rounded' : 'bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded'
   const q = dark ? 'font-medium text-white mb-3' : 'font-medium text-bingo-dark mb-3'
   const optBase = dark ? 'flex flex-col gap-1 p-3 rounded-lg border cursor-pointer transition text-slate-200 ' : 'flex flex-col gap-1 p-3 rounded-lg border cursor-pointer transition '
   return (
     <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.image_choice}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.image_choice} dark={dark} />
       <p className={q}>{p.question}</p>
       <div className="grid grid-cols-2 gap-3">
         {options.map((opt, i) => (
@@ -399,13 +666,14 @@ function SegmentImageChoice({ segment, index, dark, onSegmentResult }) {
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : '正确答案：' + (options[p.correctIndex] || '')}
           {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+          {!isCorrect ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
         </div>
       )}
     </div>
   )
 }
 
-function SegmentFillBlank({ segment, index, dark, onSegmentResult }) {
+function SegmentFillBlank({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
   const p = segment.payload
   const [values, setValues] = useState(p.blanks.map(() => ''))
   const [submitted, setSubmitted] = useState(false)
@@ -414,17 +682,18 @@ function SegmentFillBlank({ segment, index, dark, onSegmentResult }) {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, correct)
   }
+  const blankCount = (p.blanks || []).length
+  const resetLocal = useCallback(() => {
+    setSubmitted(false)
+    setValues(Array.from({ length: blankCount }, () => ''))
+  }, [blankCount])
+  useQuizFooterResetSync(quizResetKey, resetLocal)
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
-  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
-  const tag = dark ? 'bg-amber-500/80 text-white px-2 py-0.5 rounded' : 'bg-amber-100 text-amber-700 px-2 py-0.5 rounded'
   const q = dark ? 'font-medium text-white mb-3' : 'font-medium text-bingo-dark mb-3'
   const inputCls = dark ? 'border-b-2 border-cyan-500/60 bg-slate-700/50 text-white px-2 py-1 w-24 text-center focus:outline-none focus:border-cyan-400 rounded' : 'border-b-2 border-primary/50 px-2 py-1 w-24 text-center focus:outline-none focus:border-primary'
   return (
     <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.fill_blank}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.fill_blank} dark={dark} />
       <p className={q}>{p.question}</p>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         {p.blanks.map((_, i) => (
@@ -434,16 +703,17 @@ function SegmentFillBlank({ segment, index, dark, onSegmentResult }) {
       {!submitted ? (
         <button onClick={handleSubmit} className={`mt-2 px-4 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>提交</button>
       ) : (
-        <div className={`mt-2 p-3 rounded-lg text-sm ${correct ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
+        <div className={`mt-3 p-3 rounded-lg text-sm ${correct ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {correct ? '✓ 正确！' : '参考答案：' + p.blanks.join('、')}
           {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+          {!correct ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
         </div>
       )}
     </div>
   )
 }
 
-function SegmentMatch({ segment, index, dark, onSegmentResult }) {
+function SegmentMatch({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
   const p = segment.payload
   const left = p.leftItems || []
   const right = p.rightItems || []
@@ -522,9 +792,17 @@ function SegmentMatch({ segment, index, dark, onSegmentResult }) {
     setState((prev) => ({ ...prev, submitted: true }))
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, isCorrect)
   }
+  const leftLen = left.length
+  const resetLocal = useCallback(() => {
+    setState({
+      selectedLeftIndex: null,
+      selectedRightByLeft: Array.from({ length: leftLen }, () => null),
+      submitted: false,
+    })
+    setLinePositions([])
+  }, [leftLen])
+  useQuizFooterResetSync(quizResetKey, resetLocal)
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
-  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
-  const tag = dark ? 'bg-violet-500/80 text-white px-2 py-0.5 rounded' : 'bg-violet-100 text-violet-700 px-2 py-0.5 rounded'
   const instructionCls = dark ? 'text-sm text-violet-200/90 bg-violet-500/20 rounded-lg px-3 py-2 mb-3 border border-violet-400/30' : 'text-sm text-violet-800 bg-violet-50 rounded-lg px-3 py-2 mb-3 border border-violet-200'
   const itemBase = 'px-3 py-2 rounded-lg text-sm transition select-none '
   const leftBox = (i) => itemBase + (dark ? 'bg-slate-700 text-slate-200 ' : 'bg-slate-100 ') + (!submitted ? 'cursor-pointer ' : '') + (selectedLeftIndex === i ? (dark ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-slate-800' : 'ring-2 ring-violet-500 ring-offset-2 ring-offset-white') : dark ? 'hover:bg-slate-600' : 'hover:bg-slate-200')
@@ -535,10 +813,7 @@ function SegmentMatch({ segment, index, dark, onSegmentResult }) {
   }
   return (
     <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.match}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.match} dark={dark} />
       <div className={instructionCls}>
         <strong>操作说明：</strong>请先<strong>点击左侧一项</strong>（会高亮），再<strong>点击右侧一项</strong>，两条之间会画出连线；可再次点击已连线的项取消或修改。
       </div>
@@ -581,13 +856,14 @@ function SegmentMatch({ segment, index, dark, onSegmentResult }) {
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-700'}`}>
           {isCorrect ? '✓ 连线正确！' : '已提交'}
           {p.explanation && <p className="mt-1">{p.explanation}</p>}
+          {!isCorrect ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
         </div>
       )}
     </div>
   )
 }
 
-function SegmentDragDrop({ segment, index, dark, onSegmentResult }) {
+function SegmentDragDrop({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
   const p = segment.payload
   const items = p.items || []
   const [order, setOrder] = useState(() => items.map((_, i) => i))
@@ -630,17 +906,18 @@ function SegmentDragDrop({ segment, index, dark, onSegmentResult }) {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, isCorrect)
   }
+  const itemCount = items.length
+  const resetLocal = useCallback(() => {
+    setSubmitted(false)
+    setOrder(Array.from({ length: itemCount }, (_, i) => i))
+  }, [itemCount])
+  useQuizFooterResetSync(quizResetKey, resetLocal)
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
-  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
-  const tag = dark ? 'bg-rose-500/80 text-white px-2 py-0.5 rounded' : 'bg-rose-100 text-rose-700 px-2 py-0.5 rounded'
   const promptCls = dark ? 'font-medium text-white mb-3' : 'font-medium text-bingo-dark mb-3'
   const itemBase = dark ? 'px-3 py-2 bg-slate-700 rounded-lg text-sm text-slate-200 cursor-grab active:cursor-grabbing border border-slate-600' : 'px-3 py-2 bg-slate-100 rounded-lg text-sm cursor-grab active:cursor-grabbing border border-slate-200'
   return (
     <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.drag_drop}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.drag_drop} dark={dark} />
       <p className={promptCls}>{p.prompt || '请将下列选项拖拽到正确顺序'}</p>
       <div className={dark ? 'text-sm text-rose-200/90 bg-rose-500/20 rounded-lg px-3 py-2 mb-3 border border-rose-400/30' : 'text-sm text-rose-800 bg-rose-50 rounded-lg px-3 py-2 mb-3 border border-rose-200'}>
         <strong>操作说明：</strong>用鼠标<strong>按住方块并拖动</strong>到目标位置后松开，可多次拖动调整顺序；排好后点击下方「提交顺序」。
@@ -666,6 +943,7 @@ function SegmentDragDrop({ segment, index, dark, onSegmentResult }) {
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50'}`}>
           {isCorrect ? '✓ 顺序正确！' : '已提交'}
           {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+          {!isCorrect ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
         </div>
       )}
     </div>
@@ -794,19 +1072,13 @@ function SpotDifferenceGame({ config, title, dark, onComplete }) {
 
 function SegmentGame({ segment, index, dark, onSegmentResult }) {
   const p = segment.payload
-  const meta = dark ? 'flex items-center gap-2 justify-center mb-4 text-xs text-slate-400' : 'flex items-center gap-2 justify-center mb-4 text-xs text-slate-500'
-  const tag = dark ? 'bg-lime-500/80 text-white px-2 py-0.5 rounded' : 'bg-lime-100 text-lime-700 px-2 py-0.5 rounded'
   const outer = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4 sm:p-5' : 'rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-5'
 
   if (p.gameType === 'spot_difference') {
     const finish = (ok) => typeof onSegmentResult === 'function' && onSegmentResult(segment.id, ok)
     return (
       <div className={outer}>
-        <div className={meta}>
-          <span className={tag}>环节 {index + 1}</span>
-          <span>{SEGMENT_LABELS.game}</span>
-          <span>· 找茬</span>
-        </div>
+        <QuizSegmentMeta index={index} typeLabel={`${SEGMENT_LABELS.game} · 找茬`} dark={dark} centered />
         <SpotDifferenceGame
           config={p.config || {}}
           title={p.title}
@@ -818,14 +1090,10 @@ function SegmentGame({ segment, index, dark, onSegmentResult }) {
   }
 
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-6 text-center' : 'rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-6 text-center'
-  const meta2 = dark ? 'flex items-center gap-2 justify-center mb-2 text-xs text-slate-400' : 'flex items-center gap-2 justify-center mb-2 text-xs text-slate-500'
   const titleCls = dark ? 'font-medium text-white' : 'font-medium text-bingo-dark'
   return (
     <div className={card}>
-      <div className={meta2}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.game}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.game} dark={dark} centered />
       <p className="text-2xl mb-2">🎮</p>
       <p className={titleCls}>{p.title || p.gameType || '游戏环节'}</p>
       <p className={`text-xs mt-2 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>当前游戏类型尚未在客户端实现，可配置为「找茬（spot_difference）」</p>
@@ -842,16 +1110,11 @@ function SegmentGame({ segment, index, dark, onSegmentResult }) {
 function SegmentAIExperiment({ segment, index, dark }) {
   const p = segment.payload
   const card = dark ? 'rounded-xl border border-cyan-500/50 bg-slate-800 p-5' : 'rounded-xl border border-primary/30 bg-cyan-50/50 p-5'
-  const meta = dark ? 'flex items-center gap-2 mb-2 text-xs text-slate-400' : 'flex items-center gap-2 mb-2 text-xs text-slate-500'
-  const tag = dark ? 'bg-cyan-500/80 text-white px-2 py-0.5 rounded' : 'bg-primary/20 text-primary px-2 py-0.5 rounded'
   const titleCls = dark ? 'font-semibold text-white text-lg' : 'font-semibold text-bingo-dark text-lg'
   const descCls = dark ? 'text-sm text-slate-300 mt-1' : 'text-sm text-slate-600 mt-1'
   return (
     <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.ai_experiment}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.ai_experiment} dark={dark} />
       <p className={titleCls}>{p.title}</p>
       {p.description && <p className={descCls}>{p.description}</p>}
       <button className={`mt-4 px-5 py-2.5 rounded-xl text-sm font-medium transition ${dark ? 'bg-cyan-500 hover:bg-cyan-400 text-white' : 'bg-primary hover:bg-primary/90 text-white'}`}>
@@ -862,7 +1125,7 @@ function SegmentAIExperiment({ segment, index, dark }) {
 }
 
 // 语音题（听音选答）：题干是语音，选项是文字或图片
-function SegmentAudioChoice({ segment, index, dark, onSegmentResult }) {
+function SegmentAudioChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
   const p = segment.payload
   const options = p.options || []
   const optionImages = p.optionImages || []
@@ -876,18 +1139,18 @@ function SegmentAudioChoice({ segment, index, dark, onSegmentResult }) {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === p.correctIndex)
   }
+  const resetLocal = useCallback(() => {
+    setSubmitted(false)
+    setSelected(null)
+  }, [])
+  useQuizFooterResetSync(quizResetKey, resetLocal)
   const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
-  const meta = dark ? 'flex items-center gap-2 mb-3 text-xs text-slate-400' : 'flex items-center gap-2 mb-3 text-xs text-slate-500'
-  const tag = dark ? 'bg-orange-500/80 text-white px-2 py-0.5 rounded' : 'bg-orange-100 text-orange-700 px-2 py-0.5 rounded'
   const hintCls = dark ? 'text-slate-400 text-sm mb-3' : 'text-slate-600 text-sm mb-3'
   const optBase = 'flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition '
   const hasImages = optionImages.some(Boolean)
   return (
     <div className={card}>
-      <div className={meta}>
-        <span className={tag}>环节 {index + 1}</span>
-        <span>{SEGMENT_LABELS.audio_choice}</span>
-      </div>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.audio_choice} dark={dark} />
       <p className={hintCls}>听语音题干，选择正确答案</p>
       <div className={`mb-4 p-4 rounded-xl ${dark ? 'bg-slate-700/80' : 'bg-slate-100'}`}>
         {audioUrl ? (
@@ -936,14 +1199,15 @@ function SegmentAudioChoice({ segment, index, dark, onSegmentResult }) {
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : '正确答案：' + (options[p.correctIndex] || '')}
           {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+          {!isCorrect ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
         </div>
       )}
     </div>
   )
 }
 
-function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegmentResult }) {
-  const common = { segment, index, dark, onSegmentResult }
+function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegmentResult, quizResetKey }) {
+  const common = { segment, index, dark, onSegmentResult, quizResetKey }
   switch (segment.type) {
     case 'video':
       return (
@@ -1106,6 +1370,42 @@ function getSegmentPickerSubtitle(segment) {
   return raw.length > 24 ? `${raw.slice(0, 24)}…` : raw
 }
 
+/** 环节目录列表（桌面侧栏与移动抽屉共用） */
+function LessonSegmentPickerList({ segments, currentStep, onPickSegment }) {
+  return (
+    <>
+      <ul className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+        {segments.map((seg, i) => {
+          const typeLabel = SEGMENT_LABELS[seg.type] || seg.type
+          const sub = getSegmentPickerSubtitle(seg)
+          const isHere = i === currentStep
+          return (
+            <li key={seg.id}>
+              <button
+                type="button"
+                onClick={() => onPickSegment(i)}
+                className={`w-full text-left rounded-xl px-3 py-2.5 text-sm transition border ${
+                  isHere
+                    ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-200'
+                    : 'bg-slate-700/40 border-slate-600/50 text-slate-200 hover:bg-slate-700/80'
+                }`}
+              >
+                <span className="font-medium tabular-nums">{i + 1}.</span>{' '}
+                <span className="font-medium">{typeLabel}</span>
+                {sub && <span className="block text-xs text-slate-400 mt-0.5 truncate">{sub}</span>}
+                {isHere && <span className="text-[10px] text-cyan-300/90 mt-1 inline-block">当前环节</span>}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <p className="shrink-0 px-4 py-2 text-[11px] text-slate-500 text-center border-t border-slate-600 bg-slate-800/95">
+        仅在选择其他序号时才会切换；未提交作答返回后需重新作答
+      </p>
+    </>
+  )
+}
+
 // ─── 课时播放器：始终一屏一个环节 + 底部固定 上一步 / 快捷 / 下一步 ─────────────────
 function LessonPlayer({ lesson, onClose }) {
   // 无环节时也做成「单环节」统一用同一套一屏 UI，保证始终有上一步/下一步
@@ -1120,12 +1420,35 @@ function LessonPlayer({ lesson, onClose }) {
   const [showSegmentPicker, setShowSegmentPicker] = useState(false)
   const [segmentPickerDrawerIn, setSegmentPickerDrawerIn] = useState(false)
   const [segmentResults, setSegmentResults] = useState({})
+  const [quizFooterResetKeyBySegment, setQuizFooterResetKeyBySegment] = useState({})
   const onSegmentResult = (segmentId, correct) => setSegmentResults((prev) => ({ ...prev, [segmentId]: correct }))
+  const onSegmentQuizReset = (segmentId) =>
+    setSegmentResults((prev) => {
+      const next = { ...prev }
+      delete next[segmentId]
+      return next
+    })
   const total = segments.length
   const isFirst = currentStep <= 0
   const isLast = currentStep >= total - 1
   const currentSegment = segments[currentStep]
   const shortcut = currentSegment ? getSegmentShortcut(currentSegment) : null
+  const quizAnswerWrong = currentSegment && segmentResults[currentSegment.id] === false
+  const showFooterQuizRedo =
+    Boolean(quizAnswerWrong && currentSegment && SEGMENT_TYPES_ANSWER_SHORTCUT.includes(currentSegment.type))
+  /** 作答类环节不显示底部「作答」等按钮，仅答错时出现「重做」；视频/游戏/实验等仍保留快捷按钮 */
+  const isAnswerOnlyShortcutSegment =
+    Boolean(currentSegment && SEGMENT_TYPES_ANSWER_SHORTCUT.includes(currentSegment.type))
+  const showFooterCenterButton =
+    showFooterQuizRedo || Boolean(shortcut && !isAnswerOnlyShortcutSegment)
+  const handleFooterQuizRedo = () => {
+    if (!currentSegment) return
+    onSegmentQuizReset(currentSegment.id)
+    setQuizFooterResetKeyBySegment((prev) => ({
+      ...prev,
+      [currentSegment.id]: (prev[currentSegment.id] || 0) + 1,
+    }))
+  }
 
   const goStep = (dir) => {
     setVideoPlaying(false)
@@ -1139,6 +1462,7 @@ function LessonPlayer({ lesson, onClose }) {
   /** 总结页：从头再学一遍（环节归零 + 清空本课答题记录） */
   const handleStudyAgain = () => {
     setSegmentResults({})
+    setQuizFooterResetKeyBySegment({})
     setVideoPlaying(false)
     setShowSegmentPicker(false)
     setCurrentStep(0)
@@ -1173,6 +1497,16 @@ function LessonPlayer({ lesson, onClose }) {
       window.removeEventListener('keydown', onKey)
     }
   }, [showSegmentPicker])
+
+  /** 从小屏切到桌面宽度时收起移动抽屉，避免与右侧常驻目录重叠 */
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const onChange = () => {
+      if (mq.matches) setShowSegmentPicker(false)
+    }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   // 学完整节课后显示学习评价总结
   if (showSummary) {
@@ -1269,7 +1603,7 @@ function LessonPlayer({ lesson, onClose }) {
                 aria-haspopup="dialog"
                 aria-expanded={showSegmentPicker}
                 aria-label="环节目录，选择要去的环节"
-                className="text-xs px-2.5 py-1.5 rounded-lg font-medium bg-slate-700/90 hover:bg-slate-600 text-slate-200 border border-slate-500/60"
+                className="lg:hidden text-xs px-2.5 py-1.5 rounded-lg font-medium bg-slate-700/90 hover:bg-slate-600 text-slate-200 border border-slate-500/60"
               >
                 目录
               </button>
@@ -1286,60 +1620,93 @@ function LessonPlayer({ lesson, onClose }) {
           </button>
         </header>
 
-        {/* 中间：环节内容水平 + 垂直居中（内容少时居中一屏，内容多时整块可滚动） */}
-        <main className="flex-1 min-h-0 overflow-y-auto bg-[#0f172a]">
-          <div className="min-h-full flex justify-center items-center p-2 sm:p-3 md:p-4 box-border">
-            <div className="w-full max-w-full sm:max-w-[min(100%,48rem)] md:max-w-[min(100%,56rem)] lg:max-w-[min(100%,72rem)] xl:max-w-[min(100%,80rem)] shrink-0">
-            <SegmentBlock
-              key={currentSegment.id}
-              segment={currentSegment}
-              index={currentStep}
-              dark
-              videoPlaying={currentSegment.type === 'video' ? videoPlaying : undefined}
-              onVideoPlay={currentSegment.type === 'video' ? () => setVideoPlaying(true) : undefined}
-              onSegmentResult={onSegmentResult}
-            />
-            </div>
-          </div>
-        </main>
+        {/* 主区 + 底部栏（左） / 桌面端右侧常驻环节目录（右） */}
+        <div className="flex flex-1 flex-col lg:flex-row min-h-0 min-w-0">
+          <div className="flex flex-col flex-1 min-w-0 min-h-0">
+            {/* 中间：环节内容水平 + 垂直居中 */}
+            <main className="flex-1 min-h-0 overflow-y-auto bg-[#0f172a]">
+              <div className="min-h-full flex justify-center items-center p-2 sm:p-3 md:p-4 box-border">
+                <div className="w-full max-w-full sm:max-w-[min(100%,48rem)] md:max-w-[min(100%,56rem)] lg:max-w-[min(100%,72rem)] xl:max-w-[min(100%,80rem)] shrink-0">
+                  <SegmentBlock
+                    key={currentSegment.id}
+                    segment={currentSegment}
+                    index={currentStep}
+                    dark
+                    videoPlaying={currentSegment.type === 'video' ? videoPlaying : undefined}
+                    onVideoPlay={currentSegment.type === 'video' ? () => setVideoPlaying(true) : undefined}
+                    onSegmentResult={onSegmentResult}
+                    quizResetKey={quizFooterResetKeyBySegment[currentSegment?.id] || 0}
+                  />
+                </div>
+              </div>
+            </main>
 
-        {/* 底部栏 - 深色 */}
-        <footer className="shrink-0 min-h-16 py-3 px-4 border-t border-slate-600/80 bg-slate-800/90 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => goStep('prev')}
-            disabled={isFirst}
-            className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium ${isFirst ? 'text-slate-500 bg-slate-700/50 cursor-not-allowed' : 'text-slate-200 bg-slate-600/80 hover:bg-slate-500 border border-slate-500'}`}
-          >
-            上一步
-          </button>
-          <div className="flex items-center gap-2 shrink-0">
-            {shortcut && (
+            {/* 底部栏 - 深色 */}
+            <footer className="shrink-0 min-h-16 py-3 px-4 border-t border-slate-600/80 bg-slate-800/90 flex items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={handleShortcutClick}
-                className="px-3 py-2 rounded-xl text-sm font-medium bg-cyan-500 hover:bg-cyan-400 text-white border-0 cursor-pointer"
+                onClick={() => goStep('prev')}
+                disabled={isFirst}
+                className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium ${isFirst ? 'text-slate-500 bg-slate-700/50 cursor-not-allowed' : 'text-slate-200 bg-slate-600/80 hover:bg-slate-500 border border-slate-500'}`}
               >
-                {shortcut.label}
+                上一步
               </button>
-            )}
-            <span className="text-sm text-slate-400 w-12 text-center tabular-nums">{currentStep + 1} / {total}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                {showFooterCenterButton &&
+                  (showFooterQuizRedo ? (
+                    <button
+                      type="button"
+                      onClick={handleFooterQuizRedo}
+                      className="px-3 py-2 rounded-xl text-sm font-medium bg-cyan-500 hover:bg-cyan-400 text-white border-0 cursor-pointer"
+                    >
+                      重做
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleShortcutClick}
+                      className="px-3 py-2 rounded-xl text-sm font-medium bg-cyan-500 hover:bg-cyan-400 text-white border-0 cursor-pointer"
+                    >
+                      {shortcut.label}
+                    </button>
+                  ))}
+                <span className="text-sm text-slate-400 w-12 text-center tabular-nums">
+                  {currentStep + 1} / {total}
+                </span>
+              </div>
+              {isLast ? (
+                <button type="button" onClick={handleFinish} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
+                  完成
+                </button>
+              ) : (
+                <button type="button" onClick={() => goStep('next')} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
+                  下一步
+                </button>
+              )}
+            </footer>
           </div>
-          {isLast ? (
-            <button type="button" onClick={handleFinish} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
-              完成
-            </button>
-          ) : (
-            <button type="button" onClick={() => goStep('next')} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
-              下一步
-            </button>
-          )}
-        </footer>
 
-        {/* 环节目录：右侧抽拉抽屉，左侧遮罩关闭；不打断当前学习 / 作答 */}
+          {/* PC（lg+）：右侧环节目录常驻 */}
+          {total > 1 && (
+            <aside
+              className="hidden lg:flex w-[min(20rem,32vw)] shrink-0 flex-col min-h-0 border-l border-slate-600 bg-slate-800/95"
+              aria-label="环节目录"
+            >
+              <div className="shrink-0 px-3 py-2.5 border-b border-slate-600">
+                <p className="text-sm font-semibold text-white">环节目录</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">点击环节即可跳转</p>
+              </div>
+              <div className="flex flex-col flex-1 min-h-0">
+                <LessonSegmentPickerList segments={segments} currentStep={currentStep} onPickSegment={jumpToSegment} />
+              </div>
+            </aside>
+          )}
+        </div>
+
+        {/* 小屏：环节目录抽屉 */}
         {showSegmentPicker && total > 1 && (
           <div
-            className="absolute inset-0 z-[100] flex justify-end overflow-hidden"
+            className="lg:hidden absolute inset-0 z-[100] flex justify-end overflow-hidden"
             role="dialog"
             aria-modal="true"
             aria-label="选择环节"
@@ -1369,34 +1736,9 @@ function LessonPlayer({ lesson, onClose }) {
                   关闭
                 </button>
               </div>
-              <ul className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
-                {segments.map((seg, i) => {
-                  const typeLabel = SEGMENT_LABELS[seg.type] || seg.type
-                  const sub = getSegmentPickerSubtitle(seg)
-                  const isHere = i === currentStep
-                  return (
-                    <li key={seg.id}>
-                      <button
-                        type="button"
-                        onClick={() => jumpToSegment(i)}
-                        className={`w-full text-left rounded-xl px-3 py-2.5 text-sm transition border ${
-                          isHere
-                            ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-200'
-                            : 'bg-slate-700/40 border-slate-600/50 text-slate-200 hover:bg-slate-700/80'
-                        }`}
-                      >
-                        <span className="font-medium tabular-nums">{i + 1}.</span>{' '}
-                        <span className="font-medium">{typeLabel}</span>
-                        {sub && <span className="block text-xs text-slate-400 mt-0.5 truncate">{sub}</span>}
-                        {isHere && <span className="text-[10px] text-cyan-300/90 mt-1 inline-block">当前环节</span>}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-              <p className="shrink-0 px-4 py-2 text-[11px] text-slate-500 text-center border-t border-slate-600 bg-slate-800/95">
-                仅在选择其他序号时才会切换；未提交作答返回后需重新作答
-              </p>
+              <div className="flex flex-col flex-1 min-h-0">
+                <LessonSegmentPickerList segments={segments} currentStep={currentStep} onPickSegment={jumpToSegment} />
+              </div>
             </div>
           </div>
         )}
@@ -1441,10 +1783,8 @@ function buildCourseSummary(course) {
 }
 
 // ─── 单门课程卡片（可展开） ─────────────────────────────────
-function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
+function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, onOpenReviewModal }) {
   const [expanded, setExpanded] = useState(false)
-  const [reviewOpen, setReviewOpen] = useState(false)
-  const [reviewText, setReviewText] = useState('')
   const [watched, setWatched] = useState(() =>
     Object.fromEntries(course.lessons.map(l => [l.id, l.watched]))
   )
@@ -1479,17 +1819,6 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
       /* 用户取消分享等 */
     }
     window.alert(`${text}\n\n（若未自动复制，请手动长按复制）`)
-  }
-
-  const submitReview = () => {
-    const trimmed = reviewText.trim()
-    if (!trimmed) {
-      window.alert('请先填写评价内容')
-      return
-    }
-    setReviewOpen(false)
-    setReviewText('')
-    window.alert(`感谢您对「${course.title}」的评价！\n（演示环境，未实际上传服务器）`)
   }
 
   return (
@@ -1549,7 +1878,7 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            setReviewOpen(true)
+            onOpenReviewModal(course.id)
           }}
           className="pointer-events-auto text-xs px-3 py-1.5 rounded-lg font-medium border border-primary/35 bg-white/95 text-primary shadow-sm hover:bg-primary/10 transition backdrop-blur-sm"
         >
@@ -1557,56 +1886,13 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary }) {
         </button>
       </div>
 
-      {reviewOpen &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="课程评价"
-            className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setReviewOpen(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 p-5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="font-bold text-bingo-dark text-base mb-1">评价课程</h3>
-              <p className="text-xs text-slate-500 mb-3 line-clamp-2">{course.title}</p>
-              <label htmlFor={`review-${course.id}`} className="sr-only">
-                评价内容
-              </label>
-              <textarea
-                id={`review-${course.id}`}
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                placeholder="学习感受、建议或想对老师说的话…"
-                rows={4}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-bingo-dark placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y min-h-[100px]"
-              />
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReviewOpen(false)}
-                  className="text-sm px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100"
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  onClick={submitReview}
-                  className="text-sm px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90"
-                >
-                  提交评价
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-
       {/* 展开的课时列表 */}
       {expanded && (
         <div className="border-t border-slate-100 divide-y divide-slate-50">
+          <CourseReviewsSection
+            reviews={courseReviews}
+            onImmediateReview={() => onOpenReviewModal(course.id)}
+          />
           {course.lessons.map((lesson, idx) => {
             const isDone = watched[lesson.id]
             return (
@@ -1723,14 +2009,53 @@ const FIRST_LESSON_WITH_SEGMENTS = MY_COURSES[0]?.lessons?.find((l) => l.segment
 export default function Study() {
   const [playingLesson, setPlayingLesson] = useState(null)
   const [courseSummaryCourse, setCourseSummaryCourse] = useState(null)
+  const [extraReviewsByCourse, setExtraReviewsByCourse] = useState({})
+  const [reviewModal, setReviewModal] = useState(null)
+
+  const openReviewFromHeader = () => {
+    setReviewModal({ courseId: MY_COURSES[0]?.id || '', allowSwitch: true })
+  }
+  const openReviewForCourse = (courseId) => {
+    setReviewModal({ courseId, allowSwitch: false })
+  }
+  const closeReviewModal = () => setReviewModal(null)
+  const handleReviewSubmit = (courseId, rating, content) => {
+    const id = `u-${Date.now()}`
+    const at = new Date().toLocaleString('zh-CN', { hour12: false })
+    const row = {
+      id,
+      nickname: DEMO_REVIEW_USER.nickname,
+      avatarSeed: DEMO_REVIEW_USER.avatarSeed,
+      rating,
+      content: content.trim().slice(0, 200),
+      at,
+    }
+    setExtraReviewsByCourse((prev) => ({
+      ...prev,
+      [courseId]: [row, ...(prev[courseId] || [])],
+    }))
+    closeReviewModal()
+    window.alert(`感谢您对「${MY_COURSES.find((c) => c.id === courseId)?.title || '课程'}」的评价！`)
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="mb-6">
         <Link to="/profile" className="text-slate-500 hover:text-primary text-sm">← 个人中心</Link>
       </div>
-      <h1 className="text-2xl font-bold text-bingo-dark mb-1">学习中心</h1>
-      <p className="text-slate-500 text-sm mb-4">已购课程列表，点击课程可展开课时，随时继续学习</p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-bingo-dark mb-1">学习中心</h1>
+          <p className="text-slate-500 text-sm">已购课程列表，点击课程可展开课时，随时继续学习</p>
+        </div>
+        <button
+          type="button"
+          onClick={openReviewFromHeader}
+          className="shrink-0 inline-flex items-center justify-center rounded-xl bg-primary text-white text-sm font-medium px-4 py-2.5 hover:bg-primary/90 shadow-sm w-full sm:w-auto"
+        >
+          我要评价
+        </button>
+      </div>
 
       {/* 快速体验：一屏一环节 + 上一步/下一步/快捷按钮 */}
       {FIRST_LESSON_WITH_SEGMENTS && (
@@ -1766,8 +2091,15 @@ export default function Study() {
           <Link to="/courses" className="text-xs text-primary hover:underline">+ 继续选课</Link>
         </div>
         <div className="space-y-3">
-          {MY_COURSES.map(course => (
-            <CourseCard key={course.id} course={course} onPlayLesson={setPlayingLesson} onShowCourseSummary={setCourseSummaryCourse} />
+          {MY_COURSES.map((course) => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              onPlayLesson={setPlayingLesson}
+              onShowCourseSummary={setCourseSummaryCourse}
+              courseReviews={mergeCourseReviews(course.id, extraReviewsByCourse)}
+              onOpenReviewModal={openReviewForCourse}
+            />
           ))}
         </div>
       </section>
@@ -1803,6 +2135,15 @@ export default function Study() {
         <Link to="/courses" className="btn-primary">去选课</Link>
         <Link to="/profile" className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">返回个人中心</Link>
       </div>
+
+      <CourseReviewWriteModal
+        open={Boolean(reviewModal)}
+        courses={MY_COURSES}
+        courseId={reviewModal?.courseId}
+        allowCourseSwitch={Boolean(reviewModal?.allowSwitch)}
+        onClose={closeReviewModal}
+        onSubmit={handleReviewSubmit}
+      />
 
       {/* 课时播放器：挂载到 body，一屏一环节 + 上一步/下一步/快捷按钮 */}
       {playingLesson && createPortal(

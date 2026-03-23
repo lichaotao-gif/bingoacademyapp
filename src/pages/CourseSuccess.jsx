@@ -1,8 +1,15 @@
+import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { addPurchasedCourseId } from '../utils/purchasedCoursesStorage'
 
 export default function CourseSuccess() {
   const { state } = useLocation()
   const course = state?.courseName || 'AI启蒙通识课'
+
+  useEffect(() => {
+    const courseId = state?.courseId
+    if (courseId) addPurchasedCourseId(courseId)
+  }, [state?.courseId])
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-12 text-center">
