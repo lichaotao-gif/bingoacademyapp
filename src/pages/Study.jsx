@@ -230,7 +230,7 @@ function StarsInput({ value, onChange, className = '' }) {
 
 const REVIEWS_PREVIEW_COUNT = 5
 
-/** 课程评价列表 + 立即评价入口（展开课时列表内） */
+/** 课程评价列表 + 立即评价入口（展开区域底部，课时列表之后） */
 function CourseReviewsSection({ reviews, onImmediateReview }) {
   const [reviewsExpanded, setReviewsExpanded] = useState(false)
   const moreCount = Math.max(0, reviews.length - REVIEWS_PREVIEW_COUNT)
@@ -238,7 +238,7 @@ function CourseReviewsSection({ reviews, onImmediateReview }) {
     reviewsExpanded || reviews.length <= REVIEWS_PREVIEW_COUNT ? reviews : reviews.slice(0, REVIEWS_PREVIEW_COUNT)
 
   return (
-    <div className="px-5 py-4 bg-slate-50/50 border-b border-slate-100">
+    <div className="px-5 py-4 bg-slate-50/50 border-t border-slate-100">
       <div className="flex items-center justify-between gap-3 mb-3">
         <h4 className="text-sm font-semibold text-bingo-dark m-0">课程评价</h4>
         <button
@@ -1889,10 +1889,6 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
       {/* 展开的课时列表 */}
       {expanded && (
         <div className="border-t border-slate-100 divide-y divide-slate-50">
-          <CourseReviewsSection
-            reviews={courseReviews}
-            onImmediateReview={() => onOpenReviewModal(course.id)}
-          />
           {course.lessons.map((lesson, idx) => {
             const isDone = watched[lesson.id]
             return (
@@ -1995,6 +1991,11 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
               </>
             )}
           </div>
+
+          <CourseReviewsSection
+            reviews={courseReviews}
+            onImmediateReview={() => onOpenReviewModal(course.id)}
+          />
         </div>
       )}
 
