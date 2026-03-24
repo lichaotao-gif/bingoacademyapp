@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import PaymentModal from '../components/PaymentModal'
 import ShareActionPopover from '../components/ShareActionPopover'
 import { getPurchasedCourseIds } from '../utils/purchasedCoursesStorage'
@@ -360,7 +360,6 @@ function mergeDetailReviewsForDisplay(courseId) {
 
 export default function CourseDetail() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const course = COURSES[id] || COURSES['ai-enlighten']
   const resolvedCourseId = COURSES[id] ? id : 'ai-enlighten'
   const classTypes = course.classTypes || CLASS_TYPES_LEVEL1
@@ -370,7 +369,16 @@ export default function CourseDetail() {
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [showQa, setShowQa] = useState(false)
   const [coverError, setCoverError] = useState(false)
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [searchParams] = useSearchParams()
+  const incomingGroupId = searchParams.get('group')?.trim() || ''
+
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [paymentModalPayload, setPaymentModalPayload] = useState({
+    price: '',
+    paymentState: {},
+  })
+  const [showGroupBuyModal, setShowGroupBuyModal] = useState(false)
+  const [groupSession, setGroupSession] = useState(null)
   const [shareMenuRect, setShareMenuRect] = useState(null)
   const [purchasedIds, setPurchasedIds] = useState(() => getPurchasedCourseIds())
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -419,24 +427,110 @@ export default function CourseDetail() {
     ? `https://picsum.photos/seed/${COURSE_COVER_SEED[id]}/1200/675`
     : course.poster
 
-  const goCheckout = () => setShowPaymentModal(true)
+  const GROUP_TARGET = 3
+  const GROUP_DISCOUNT = 0.6
 
   // 免费/赠送显示 0元，其余显示具体金额
   const priceDisplay = (course.price === '免费' || course.price === '赠送') ? '0元' : course.price
+  const isCourseFree = course.price === '免费' || course.price === '赠送'
+  const groupPriceNum = isCourseFree ? 0 : Math.round((defaultClass.price || 0) * GROUP_DISCOUNT)
+  const groupPriceLabel = isCourseFree ? '0元' : `¥${groupPriceNum}`
+
+  const openNormalCheckout = () => {
+    setPaymentModalPayload({
+      price: priceDisplay,
+      paymentState: { courseId: resolvedCourseId, classType: defaultClass },
+    })
+    setPaymentModalOpen(true)
+  }
+
+  /** 发起新团或携带已有团号（好友邀请链接） */
+  const openGroupBuyModal = (reuseGroupId = null) => {
+    const id =
+      (typeof reuseGroupId === 'string' && reuseGroupId.trim()) ||
+      `grp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`
+    const invite =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/courses/detail/${resolvedCourseId}?group=${encodeURIComponent(id)}`
+        : ''
+    setGroupSession({ id, inviteLink: invite })
+    setShowGroupBuyModal(true)
+  }
+
+  const copyGroupInviteLink = async () => {
+    if (!groupSession?.inviteLink) return
+    try {
+      await navigator.clipboard.writeText(groupSession.inviteLink)
+      window.alert('邀请链接已复制，快去微信发给好友吧～')
+    } catch {
+      window.prompt('请手动复制邀请链接：', groupSession.inviteLink)
+    }
+  }
+
+  const inviteWeChatFriends = async () => {
+    if (!groupSession?.inviteLink) return
+    const text = `一起拼团学「${course.name}」！点链接参团享${Math.round(GROUP_DISCOUNT * 10)}折优惠～`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: course.name, text: `${text}\n${groupSession.inviteLink}`, url: groupSession.inviteLink })
+        return
+      }
+    } catch {
+      /* 取消 */
+    }
+    await copyGroupInviteLink()
+  }
+
+  const payGroupOrder = () => {
+    if (!groupSession) return
+    setShowGroupBuyModal(false)
+    setPaymentModalPayload({
+      price: groupPriceLabel,
+      paymentState: {
+        courseId: resolvedCourseId,
+        classType: {
+          ...defaultClass,
+          price: groupPriceNum,
+          name: `${defaultClass.name}（${GROUP_TARGET}人拼团）`,
+        },
+        groupBuy: true,
+        groupId: groupSession.id,
+        groupInviteLink: groupSession.inviteLink,
+        groupTargetSize: GROUP_TARGET,
+      },
+    })
+    setPaymentModalOpen(true)
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-10 min-h-screen pb-24 lg:pb-28">
       <PaymentModal
-        open={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
         courseName={course.name}
-        price={priceDisplay}
-        paymentState={{ courseId: resolvedCourseId, classType: defaultClass }}
+        price={paymentModalPayload.price}
+        paymentState={paymentModalPayload.paymentState}
       />
       {/* 顶部导航：仅返回 */}
       <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6 lg:mb-8 sticky top-0 bg-white/95 backdrop-blur z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-slate-100 -mt-4 sm:mt-0">
         <Link to="/courses" className="text-primary text-sm lg:text-base hover:underline min-h-[44px] flex items-center">← 返回 AI精品课</Link>
       </div>
+
+      {incomingGroupId && (
+        <div className="mb-4 rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-3 sm:py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm text-orange-900">
+            <span className="font-semibold">好友邀您拼团</span>
+            <span className="text-orange-800/90"> · 成团享 {Math.round(GROUP_DISCOUNT * 10)} 折，还差成员即可锁定优惠</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => openGroupBuyModal(incomingGroupId)}
+            className="shrink-0 rounded-xl bg-orange-500 text-white text-sm font-semibold px-4 py-2.5 hover:bg-orange-600 min-h-[44px]"
+          >
+            立即参团
+          </button>
+        </div>
+      )}
 
       <div className="card overflow-hidden p-0 mb-4 sm:mb-6 lg:mb-8 rounded-2xl">
         <div className="aspect-[16/9] bg-slate-100 relative">
@@ -465,7 +559,9 @@ export default function CourseDetail() {
               <button type="button" data-share-popover-anchor onClick={openShareMenu} className="border border-slate-300 text-slate-700 px-4 sm:px-5 py-2.5 sm:py-3 min-h-[44px] sm:min-h-[48px] rounded-xl text-sm font-medium hover:bg-slate-50 flex items-center gap-2">
                 分享课程
               </button>
-              <button onClick={goCheckout} className="btn-primary px-5 sm:px-6 lg:px-8 py-2.5 sm:py-3 font-bold min-h-[44px] sm:min-h-[48px] rounded-xl text-sm shrink-0">立即购买</button>
+              <button type="button" onClick={openNormalCheckout} className="btn-primary px-5 sm:px-6 lg:px-8 py-2.5 sm:py-3 font-bold min-h-[44px] sm:min-h-[48px] rounded-xl text-sm shrink-0">
+                立即购买
+              </button>
             </div>
           </div>
         </div>
@@ -540,7 +636,7 @@ export default function CourseDetail() {
             onClick={() => {
               if (!hasPurchasedCurrent) {
                 window.alert(
-                  '仅已购买本课程的学员可以发表评价。\n\n请先点击页面上方「立即购买」完成购课；支付成功后将自动获得评价权限。',
+                  '仅已购买本课程的学员可以发表评价。\n\n请先点击「立即购买」或「拼团报名」完成购课；支付成功后将自动获得评价权限。',
                 )
                 return
               }
@@ -731,7 +827,7 @@ export default function CourseDetail() {
         </div>
       </section>
 
-      {/* 限时优惠 + 拼团/组合：Web 端横向排布 */}
+      {/* 限时优惠 + 分享 / 拼团：Web 端横向排布 */}
       <section className="mb-6 sm:mb-8 lg:mb-10">
         <div className="card p-4 sm:p-6 lg:p-8 bg-amber-50 border-amber-200/60 rounded-2xl">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
@@ -741,9 +837,13 @@ export default function CourseDetail() {
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" data-share-popover-anchor onClick={openShareMenu} className="border border-slate-300 text-slate-600 px-4 lg:px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 min-h-[44px] shrink-0">分享课程</button>
-              <button onClick={goCheckout} className="btn-primary px-5 lg:px-6 py-2.5 min-h-[44px] rounded-xl text-sm shrink-0">立即购买</button>
-              <button onClick={goCheckout} className="border border-orange-500 text-orange-600 px-4 lg:px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-orange-50 min-h-[44px]">拼团报名</button>
-              <button onClick={goCheckout} className="border border-slate-300 text-slate-600 px-4 lg:px-5 py-2.5 rounded-xl text-sm hover:bg-slate-50 min-h-[44px]">组合购买</button>
+              <button
+                type="button"
+                onClick={() => openGroupBuyModal(incomingGroupId || null)}
+                className="border border-orange-500 text-orange-600 px-4 lg:px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-orange-50 min-h-[44px]"
+              >
+                {incomingGroupId ? '拼团参团' : '拼团报名'}
+              </button>
             </div>
           </div>
           <p className="text-xs lg:text-sm text-slate-500">拼团3人6折、5人5折 · 组合购买素养课+竞赛课立减20%</p>
@@ -757,7 +857,7 @@ export default function CourseDetail() {
             <div className="text-4xl mb-3">🎓</div>
             <h3 className="font-bold text-bingo-dark text-lg mb-2">试学结束</h3>
             <p className="text-sm text-slate-600 mb-4">解锁全部课程，获得完整学习体验</p>
-            <button onClick={() => { setShowTrialEndModal(false); goCheckout() }} className="btn-primary w-full py-3 font-bold mb-2">解锁全部课程</button>
+            <button onClick={() => { setShowTrialEndModal(false); openNormalCheckout() }} className="btn-primary w-full py-3 font-bold mb-2">解锁全部课程</button>
             <button onClick={() => setShowTrialEndModal(false)} className="text-sm text-slate-500">稍后再说</button>
           </div>
         </div>
@@ -772,9 +872,104 @@ export default function CourseDetail() {
         shareText={`推荐课程：${course.name}`}
       />
 
+      {showGroupBuyModal && groupSession && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/45"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="group-buy-title"
+          onClick={() => setShowGroupBuyModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-slate-100 flex items-start justify-between gap-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-2xl">
+              <div className="min-w-0">
+                <h3 id="group-buy-title" className="font-bold text-bingo-dark text-lg m-0">
+                  {incomingGroupId && groupSession.id === incomingGroupId ? '加入好友拼团' : '发起拼团 · 邀请好友'}
+                </h3>
+                <p className="text-xs text-orange-800/90 mt-1 leading-relaxed">
+                  {GROUP_TARGET} 人成团享 {Math.round(GROUP_DISCOUNT * 10)} 折；先支付锁定拼团价，再分享链接邀好友一起付
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGroupBuyModal(false)}
+                className="shrink-0 p-2 text-slate-400 hover:text-slate-600 rounded-lg"
+                aria-label="关闭"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                <p className="text-sm font-medium text-bingo-dark line-clamp-2">{course.name}</p>
+                <p className="text-xs text-slate-500 mt-1">{defaultClass.name}</p>
+                <div className="flex items-baseline gap-2 mt-2">
+                  <span className="text-slate-400 line-through text-sm">{isCourseFree ? '0元' : `¥${defaultClass.price}`}</span>
+                  <span className="text-xl font-bold text-orange-600">{groupPriceLabel}</span>
+                  <span className="text-xs text-orange-700">拼团价</span>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-2">成团进度（演示）</p>
+                <div className="flex gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className={`flex-1 h-2 rounded-full ${i === 0 ? 'bg-orange-500' : 'bg-slate-200'}`}
+                      title={i === 0 ? '您（团长/已付）' : '待邀请'}
+                    />
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5">当前 1 / {GROUP_TARGET} 人，邀请好友打开链接即可参团</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5">邀请链接</p>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    value={groupSession.inviteLink}
+                    className="flex-1 min-w-0 text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={copyGroupInviteLink}
+                    className="shrink-0 px-3 py-2 rounded-xl border border-orange-200 text-orange-700 text-xs font-medium hover:bg-orange-50"
+                  >
+                    复制
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={inviteWeChatFriends}
+                  className="flex-1 py-2.5 rounded-xl border border-[#07C160] text-[#07C160] text-sm font-medium hover:bg-green-50"
+                >
+                  微信邀请好友
+                </button>
+                <button
+                  type="button"
+                  onClick={payGroupOrder}
+                  className="flex-1 btn-primary py-3 rounded-xl text-sm font-bold"
+                >
+                  {incomingGroupId && groupSession.id === incomingGroupId ? '支付参团' : '支付开团'}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 text-center">演示环境：无真实支付与成团回调，成功页可复制链接继续邀请</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 底部浮动条：课程名称 + 分享课程 + 立即购买 */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-3 px-4 py-3 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px 20px rgba(0,0,0,0.08)] safe-area-pb"
+        className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-3 px-4 py-3 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] safe-area-pb"
         style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
       >
         <div className="w-full max-w-4xl flex items-center gap-3">
@@ -790,7 +985,8 @@ export default function CourseDetail() {
             分享课程
           </button>
           <button
-            onClick={goCheckout}
+            type="button"
+            onClick={openNormalCheckout}
             className="shrink-0 py-3 px-5 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90"
           >
             立即购买

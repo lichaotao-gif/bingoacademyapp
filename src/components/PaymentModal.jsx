@@ -30,6 +30,7 @@ export default function PaymentModal({ open, onClose, courseName, price, payment
 
   if (!open) return null
 
+  const isGroup = Boolean(paymentState?.groupBuy)
   const isFree = price === '0元' || price === '免费' || price === '赠送'
 
   const validate = () => {
@@ -58,13 +59,26 @@ export default function PaymentModal({ open, onClose, courseName, price, payment
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white">
-          <h3 className="font-bold text-bingo-dark text-lg">付款</h3>
+          <h3 className="font-bold text-bingo-dark text-lg">{isGroup ? '拼团支付' : '付款'}</h3>
           <button type="button" onClick={onClose} className="p-2 -m-2 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="关闭">✕</button>
         </div>
         <div className="p-5 space-y-5">
+          {isGroup && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-sm text-orange-900">
+              <p className="font-semibold">邀请好友一起拼团</p>
+              <p className="text-xs mt-1 leading-relaxed opacity-95">
+                支付成功后请把邀请链接发给好友；满 {paymentState.groupTargetSize ?? 3} 人即成团。未满成团规则以活动页为准（演示）。
+              </p>
+            </div>
+          )}
           <div className="rounded-xl border border-slate-100 p-4">
             <p className="text-slate-600 text-sm truncate">{courseName}</p>
             <p className="font-bold text-primary text-xl mt-1">{price}</p>
+            {isGroup && paymentState?.groupId && (
+              <p className="text-[11px] text-slate-400 mt-2 font-mono truncate" title={paymentState.groupId}>
+                拼团单号 · {paymentState.groupId}
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -138,7 +152,7 @@ export default function PaymentModal({ open, onClose, courseName, price, payment
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm">取消</button>
             <button type="button" onClick={handleConfirmPay} className="flex-1 btn-primary py-3 font-bold text-sm rounded-xl">
-              {isFree ? '确认领取' : `确认支付 ${price}`}
+              {isFree ? '确认领取' : isGroup ? `支付开团价 ${price}` : `确认支付 ${price}`}
             </button>
           </div>
           {!isFree && <p className="text-xs text-slate-500 text-center">支付超时订单保留30分钟</p>}

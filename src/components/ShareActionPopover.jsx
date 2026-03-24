@@ -49,23 +49,41 @@ function computePosition(rect) {
   return { left, top: rect.bottom + gap, transform: 'none' }
 }
 
+function wechatQrImageSrc(url) {
+  const data = encodeURIComponent(url)
+  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=1&data=${data}`
+}
+
 /**
- * 分享微信 / 复制链接 浮层（锚定在触发按钮附近）
+ * 分享微信 / 复制链接 浮层（锚定在触发按钮附近）；分享微信展开二维码扫码
  */
 export default function ShareActionPopover({ open, onClose, anchorRect, shareUrl, shareTitle, shareText }) {
   const panelRef = useRef(null)
   const [pos, setPos] = useState({ left: 0, top: 0, transform: 'none' })
+  /** menu | qr — 二维码层与菜单同生命周期，避免父级 onClose 卸载导致弹层消失 */
+  const [view, setView] = useState('menu')
 
   useEffect(() => {
-    if (!open || !anchorRect) return
+    if (!open) setView('menu')
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !anchorRect || view !== 'menu') return
     setPos(computePosition(anchorRect))
-  }, [open, anchorRect])
+  }, [open, anchorRect, view])
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && onClose()
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      if (view === 'qr') setView('menu')
+      else onClose()
+    }
     window.addEventListener('keydown', onKey)
-    const onScrollResize = () => onClose()
+    const onScrollResize = () => {
+      if (view === 'qr') return
+      onClose()
+    }
     window.addEventListener('scroll', onScrollResize, true)
     window.addEventListener('resize', onScrollResize)
     return () => {
@@ -73,10 +91,10 @@ export default function ShareActionPopover({ open, onClose, anchorRect, shareUrl
       window.removeEventListener('scroll', onScrollResize, true)
       window.removeEventListener('resize', onScrollResize)
     }
-  }, [open, onClose])
+  }, [open, onClose, view])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || view !== 'menu') return
     const onDown = (e) => {
       if (panelRef.current?.contains(e.target)) return
       if (e.target.closest?.('[data-share-popover-anchor]')) return
@@ -84,7 +102,7 @@ export default function ShareActionPopover({ open, onClose, anchorRect, shareUrl
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
-  }, [open, onClose])
+  }, [open, onClose, view])
 
   const handleCopy = async () => {
     const url = shareUrl || ''
@@ -102,69 +120,123 @@ export default function ShareActionPopover({ open, onClose, anchorRect, shareUrl
     onClose()
   }
 
-  const handleWeChat = async () => {
-    const text = shareText || (shareTitle ? `推荐课程：${shareTitle}` : '推荐给你')
-    const url = shareUrl || ''
-    try {
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({
-          title: shareTitle || '缤果 AI 学院',
-          text: url ? `${text}\n${url}` : text,
-          url: url || undefined,
-        })
-        onClose()
-        return
-      }
-    } catch {
-      /* 用户取消 */
+  const handleWeChat = () => {
+    const url = (shareUrl || '').trim()
+    if (!url) {
+      window.alert('暂无可生成二维码的链接')
+      return
     }
-    if (url) {
-      try {
-        await navigator.clipboard.writeText(`${text}\n${url}`)
-        window.alert('已复制分享文案与链接，请打开微信粘贴发送给好友或朋友圈。')
-      } catch {
-        window.alert('请复制链接后打开微信分享：\n' + url)
-      }
-    } else {
-      window.alert('请使用微信扫一扫或复制链接分享给好友。')
-    }
-    onClose()
+    setView('qr')
   }
 
   if (!open || !anchorRect || typeof document === 'undefined') return null
 
+  const urlForQr = (shareUrl || '').trim()
+  const qrSrc = urlForQr ? wechatQrImageSrc(urlForQr) : ''
+
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[140]" aria-hidden onClick={onClose} />
-      <div
-        ref={panelRef}
-        role="menu"
-        className="fixed z-[150] w-[min(92vw,232px)] rounded-2xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.14)] border border-slate-100 overflow-hidden"
-        style={{ left: pos.left, top: pos.top, transform: pos.transform }}
-      >
-        <button
-          type="button"
-          role="menuitem"
-          onClick={handleWeChat}
-          className="flex w-full items-center gap-3 px-4 py-3.5 text-left bg-slate-50/90 hover:bg-slate-100/90 transition"
+      {view === 'menu' && (
+        <>
+          <div className="fixed inset-0 z-[140]" aria-hidden onClick={onClose} />
+          <div
+            ref={panelRef}
+            role="menu"
+            className="fixed z-[150] w-[min(92vw,232px)] rounded-2xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.14)] border border-slate-100 overflow-hidden"
+            style={{ left: pos.left, top: pos.top, transform: pos.transform }}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleWeChat}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left bg-slate-50/90 hover:bg-slate-100/90 transition"
+            >
+              <WeChatMenuIcon className="shrink-0 w-10 h-10 rounded-lg" />
+              <span className="flex-1 text-sm font-medium text-[#333]">分享微信</span>
+              <ChevronRight className="shrink-0 text-slate-300" />
+            </button>
+            <div className="h-px bg-slate-100 mx-3" />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleCopy}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 transition"
+            >
+              <span className="shrink-0 w-10 h-10 flex items-center justify-center text-[#4a4a4a]">
+                <CopyMenuIcon />
+              </span>
+              <span className="flex-1 text-sm font-medium text-[#333]">复制链接</span>
+            </button>
+          </div>
+        </>
+      )}
+
+      {view === 'qr' && urlForQr && (
+        <div
+          className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/55"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="share-wechat-qr-title"
+          onClick={onClose}
         >
-          <WeChatMenuIcon className="shrink-0 w-10 h-10 rounded-lg" />
-          <span className="flex-1 text-sm font-medium text-[#333]">分享微信</span>
-          <ChevronRight className="shrink-0 text-slate-300" />
-        </button>
-        <div className="h-px bg-slate-100 mx-3" />
-        <button
-          type="button"
-          role="menuitem"
-          onClick={handleCopy}
-          className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 transition"
-        >
-          <span className="shrink-0 w-10 h-10 flex items-center justify-center text-[#4a4a4a]">
-            <CopyMenuIcon />
-          </span>
-          <span className="flex-1 text-sm font-medium text-[#333]">复制链接</span>
-        </button>
-      </div>
+          <div
+            className="w-full max-w-[320px] rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#07C160] text-white">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="shrink-0 rounded-lg ring-2 ring-white/50 overflow-hidden">
+                  <WeChatMenuIcon className="w-8 h-8 rounded-lg" />
+                </span>
+                <h3 id="share-wechat-qr-title" className="text-sm font-semibold truncate m-0">
+                  微信扫码分享
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setView('menu')}
+                className="shrink-0 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white text-lg leading-none flex items-center justify-center"
+                aria-label="返回"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-5 pt-5 pb-4 text-center">
+              <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                使用微信扫一扫识别二维码，打开页面后即可转发给好友或分享到朋友圈
+              </p>
+              <div className="inline-block rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <img
+                  src={qrSrc}
+                  width={220}
+                  height={220}
+                  className="w-[220px] h-[220px] object-contain mx-auto block"
+                  alt="分享链接二维码"
+                />
+              </div>
+              {shareTitle && <p className="text-sm font-medium text-[#333] mt-3 line-clamp-2">{shareTitle}</p>}
+              {shareText && <p className="text-xs text-slate-500 mt-2 line-clamp-3 text-left">{shareText}</p>}
+              <p className="text-[11px] text-slate-400 mt-2 break-all text-left max-h-14 overflow-y-auto">{urlForQr}</p>
+            </div>
+            <div className="flex gap-2 px-4 pb-4">
+              <button
+                type="button"
+                onClick={() => setView('menu')}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50"
+              >
+                返回
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-[#07C160] text-white hover:bg-[#06ad56]"
+              >
+                完成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>,
     document.body
   )
