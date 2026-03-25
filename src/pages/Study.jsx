@@ -1329,26 +1329,75 @@ function lessonSummarySeed(lesson, segments, resultKeys) {
   return h >>> 0
 }
 
-/** 按互动题顺序列出：题型 + 对错；无提交记录时用题目 id 做稳定模拟（样例） */
-function buildQuizPerQuestionRows(quizSegments, segmentResults, baseSeed) {
-  return quizSegments.map((seg, i) => {
+/** 作答类 + 游戏：有 boolean 结果；其余环节无遥测时用种子生成稳定展示态 */
+const SEGMENT_TYPES_SCORED = [...SEGMENT_TYPES_ANSWER_SHORTCUT, 'game']
+
+/**
+ * 按课时环节顺序：类型 + 完成情况（视频 / 答题 / 游戏 / AI 实验等）
+ * 有 segmentResults 的以真实为准；无记录时用种子生成稳定推断展示
+ */
+function buildSegmentCompletionRows(segments, segmentResults, baseSeed) {
+  return (segments || []).map((seg, i) => {
     const typeLabel = SEGMENT_LABELS[seg.type] || seg.type
-    const hasResult = Object.prototype.hasOwnProperty.call(segmentResults, seg.id)
-    let correct = false
-    let simulated = false
-    if (hasResult) {
-      correct = Boolean(segmentResults[seg.id])
-    } else {
-      simulated = true
-      let h = baseSeed >>> 0
-      const idStr = String(seg.id)
-      for (let c = 0; c < idStr.length; c++) {
-        h = (Math.imul(h, 31) + idStr.charCodeAt(c)) >>> 0
+    const subtitle = getSegmentPickerSubtitle(seg)
+    const has = Object.prototype.hasOwnProperty.call(segmentResults, seg.id)
+    const scored = SEGMENT_TYPES_SCORED.includes(seg.type)
+
+    let statusText = ''
+    /** @type {'ok'|'warn'|'neutral'} */
+    let statusKind = 'neutral'
+
+    const hashSeg = () => {
+      let h = (baseSeed ^ (i * 1315423911)) >>> 0
+      for (let c = 0; c < String(seg.id).length; c++) {
+        h = (Math.imul(h, 31) + String(seg.id).charCodeAt(c)) >>> 0
       }
-      h = (h ^ (i * 2654435761)) >>> 0
-      correct = (h & 1) === 0
+      return h
     }
-    return { index: i + 1, typeLabel, correct, simulated }
+
+    if (scored) {
+      if (has) {
+        const ok = Boolean(segmentResults[seg.id])
+        if (seg.type === 'game') {
+          statusText = ok ? '已完成' : '未完成'
+        } else {
+          statusText = ok ? '正确' : '有误'
+        }
+        statusKind = ok ? 'ok' : 'warn'
+      } else {
+        const ok = (hashSeg() & 1) === 0
+        if (seg.type === 'game') {
+          statusText = ok ? '已完成' : '未完成'
+        } else {
+          statusText = ok ? '正确' : '有误'
+        }
+        statusKind = ok ? 'ok' : 'warn'
+      }
+    } else if (seg.type === 'video') {
+      if (has) {
+        const ok = Boolean(segmentResults[seg.id])
+        statusText = ok ? '已学习' : '未通过'
+        statusKind = ok ? 'ok' : 'warn'
+      } else {
+        const r = hashSeg() % 3
+        statusText = r === 0 ? '已完播' : r === 1 ? '已观看' : '已打开学习'
+        statusKind = 'ok'
+      }
+    } else if (seg.type === 'ai_experiment') {
+      if (has) {
+        const ok = Boolean(segmentResults[seg.id])
+        statusText = ok ? '实验已完成' : '未完成'
+        statusKind = ok ? 'ok' : 'warn'
+      } else {
+        statusText = (hashSeg() & 1) === 0 ? '实验已参与' : '已进入实验'
+        statusKind = 'ok'
+      }
+    } else {
+      statusText = '已学习'
+      statusKind = 'neutral'
+    }
+
+    return { index: i + 1, typeLabel, subtitle, statusText, statusKind }
   })
 }
 
@@ -1359,8 +1408,7 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
   const line2 = `本课包含：${partList}。`
   const line3 = '建议回顾重点内容、完成课后练习，巩固学习效果。'
 
-  const quizSegmentsOrdered = (segments || []).filter((s) => SEGMENT_TYPES_ANSWER_SHORTCUT.includes(s.type))
-  const quizSegmentCount = quizSegmentsOrdered.length
+  const quizSegmentCount = (segments || []).filter((s) => SEGMENT_TYPES_ANSWER_SHORTCUT.includes(s.type)).length
 
   // 本节课掌握知识点：由环节类型归纳
   const knowledgeLabels = {
@@ -1386,13 +1434,12 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
     totalAnswers > 0
       ? `互动答题共 ${totalAnswers} 题，答对 ${correctCount} 题${totalAnswers === correctCount ? '，全部正确。' : `，正确率 ${correctRate}%。`}`
       : quizSegmentCount > 0
-        ? `本课含 ${quizSegmentCount} 道互动题。尚无已统计的作答提交时，可先参考下方答对/答错样例。`
+        ? `本课含 ${quizSegmentCount} 道互动题。尚无已统计的作答提交时，可先参考下方各环节完成情况。`
         : '本课已完成所有环节学习。'
 
   const resultKeys = Object.keys(segmentResults)
   const seed = lessonSummarySeed(lesson, segments, resultKeys)
-  const quizPerQuestionRows =
-    quizSegmentCount > 0 ? buildQuizPerQuestionRows(quizSegmentsOrdered, segmentResults, seed) : []
+  const segmentCompletionRows = buildSegmentCompletionRows(segments, segmentResults, seed)
 
   // 综合评价：结合课程内容与学情生成
   const lessonTitle = lesson.title || '本课'
@@ -1415,7 +1462,7 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
     partList,
     knowledgePoints,
     learningStatus,
-    quizPerQuestionRows,
+    segmentCompletionRows,
     totalAnswers,
     correctCount,
     comprehensiveEvaluation,
@@ -1498,30 +1545,36 @@ function LessonSummaryDarkCard({ summary }) {
                 答题等学情
               </p>
               <p className="text-slate-300 text-sm leading-relaxed">{summary.learningStatus}</p>
-              {summary.quizPerQuestionRows && summary.quizPerQuestionRows.length > 0 && (
+              {summary.segmentCompletionRows && summary.segmentCompletionRows.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-teal-500/15">
-                  <p className="text-[11px] text-teal-500/85 mb-2 font-medium">各题明细（题型 · 对错）</p>
+                  <p className="text-[11px] text-teal-500/85 mb-2 font-medium">各环节完成情况</p>
                   <ul className="space-y-2" role="list">
-                    {summary.quizPerQuestionRows.map((row) => (
-                      <li
-                        key={row.index}
-                        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-slate-900/50 border border-teal-500/10 px-3 py-2 text-sm"
-                      >
-                        <span className="text-slate-500 tabular-nums shrink-0">第 {row.index} 题</span>
-                        <span className="text-slate-300 font-medium">{row.typeLabel}</span>
-                        <span className="text-slate-600" aria-hidden>
-                          ·
-                        </span>
-                        <span
-                          className={`font-semibold shrink-0 ${row.correct ? 'text-teal-300' : 'text-rose-300'}`}
+                    {summary.segmentCompletionRows.map((row) => {
+                      const statusCls =
+                        row.statusKind === 'ok'
+                          ? 'text-teal-300'
+                          : row.statusKind === 'warn'
+                            ? 'text-rose-300'
+                            : 'text-slate-400'
+                      return (
+                        <li
+                          key={`seg-${row.index}`}
+                          className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-x-3 gap-y-1 rounded-lg bg-slate-900/50 border border-teal-500/10 px-3 py-2 text-sm"
                         >
-                          {row.correct ? '对' : '错'}
-                        </span>
-                        {row.simulated && (
-                          <span className="text-[11px] text-slate-500 shrink-0">样例</span>
-                        )}
-                      </li>
-                    ))}
+                          <span className="text-slate-500 tabular-nums shrink-0">环节 {row.index}</span>
+                          <span className="text-slate-200 font-medium shrink-0">{row.typeLabel}</span>
+                          {row.subtitle && (
+                            <span className="text-slate-500 text-xs sm:text-sm truncate max-w-full sm:max-w-[min(100%,14rem)]">
+                              {row.subtitle}
+                            </span>
+                          )}
+                          <span className="text-slate-600 sm:ml-auto shrink-0" aria-hidden>
+                            ·
+                          </span>
+                          <span className={`font-semibold shrink-0 ${statusCls}`}>{row.statusText}</span>
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
               )}
