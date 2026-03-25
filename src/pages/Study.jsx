@@ -1318,12 +1318,49 @@ function getSegmentShortcut(segment) {
 }
 
 // ─── 根据课时、环节与答题结果生成学习评价总结（含知识点与学情） ─────────────────
+/** 稳定哈希，用于同一课时总结里虚拟学情数据保持一致 */
+function lessonSummarySeed(lesson, segments, resultKeys) {
+  const key = [lesson?.id, lesson?.title, String(segments?.length), resultKeys.sort().join(',')].join('|')
+  let h = 2166136261
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+/** 按互动题顺序列出：题型 + 对错；无提交记录时用题目 id 做稳定模拟（样例） */
+function buildQuizPerQuestionRows(quizSegments, segmentResults, baseSeed) {
+  return quizSegments.map((seg, i) => {
+    const typeLabel = SEGMENT_LABELS[seg.type] || seg.type
+    const hasResult = Object.prototype.hasOwnProperty.call(segmentResults, seg.id)
+    let correct = false
+    let simulated = false
+    if (hasResult) {
+      correct = Boolean(segmentResults[seg.id])
+    } else {
+      simulated = true
+      let h = baseSeed >>> 0
+      const idStr = String(seg.id)
+      for (let c = 0; c < idStr.length; c++) {
+        h = (Math.imul(h, 31) + idStr.charCodeAt(c)) >>> 0
+      }
+      h = (h ^ (i * 2654435761)) >>> 0
+      correct = (h & 1) === 0
+    }
+    return { index: i + 1, typeLabel, correct, simulated }
+  })
+}
+
 function buildLessonSummary(lesson, segments, segmentResults = {}) {
   const names = (segments || []).map((s) => SEGMENT_LABELS[s.type] || s.type).filter(Boolean)
   const partList = names.length > 0 ? names.join('、') : '视频学习'
   const line1 = `您已完成「${lesson.title}」，共 ${segments?.length || 1} 个环节。`
   const line2 = `本课包含：${partList}。`
   const line3 = '建议回顾重点内容、完成课后练习，巩固学习效果。'
+
+  const quizSegmentsOrdered = (segments || []).filter((s) => SEGMENT_TYPES_ANSWER_SHORTCUT.includes(s.type))
+  const quizSegmentCount = quizSegmentsOrdered.length
 
   // 本节课掌握知识点：由环节类型归纳
   const knowledgeLabels = {
@@ -1345,9 +1382,17 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
   const totalAnswers = resultEntries.length
   const correctCount = resultEntries.filter(([, correct]) => correct).length
   const correctRate = totalAnswers > 0 ? Math.round((correctCount / totalAnswers) * 100) : 100
-  const learningStatus = totalAnswers > 0
-    ? `互动答题共 ${totalAnswers} 题，答对 ${correctCount} 题${totalAnswers === correctCount ? '，全部正确。' : `，正确率 ${correctRate}%。`}`
-    : '本课已完成所有环节学习。'
+  const learningStatus =
+    totalAnswers > 0
+      ? `互动答题共 ${totalAnswers} 题，答对 ${correctCount} 题${totalAnswers === correctCount ? '，全部正确。' : `，正确率 ${correctRate}%。`}`
+      : quizSegmentCount > 0
+        ? `本课含 ${quizSegmentCount} 道互动题。尚无已统计的作答提交时，可先参考下方答对/答错样例。`
+        : '本课已完成所有环节学习。'
+
+  const resultKeys = Object.keys(segmentResults)
+  const seed = lessonSummarySeed(lesson, segments, resultKeys)
+  const quizPerQuestionRows =
+    quizSegmentCount > 0 ? buildQuizPerQuestionRows(quizSegmentsOrdered, segmentResults, seed) : []
 
   // 综合评价：结合课程内容与学情生成
   const lessonTitle = lesson.title || '本课'
@@ -1363,7 +1408,18 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
     comprehensiveEvaluation = `本课「${lessonTitle}」涉及${knowledgeSummary}等内容，您已完成学习，当前互动正确率 ${correctRate}%。建议重点回顾错题与「${knowledgeSummary}」相关部分，巩固后再继续下一课，效果会更好。`
   }
 
-  return { line1, line2, line3, partList, knowledgePoints, learningStatus, totalAnswers, correctCount, comprehensiveEvaluation }
+  return {
+    line1,
+    line2,
+    line3,
+    partList,
+    knowledgePoints,
+    learningStatus,
+    quizPerQuestionRows,
+    totalAnswers,
+    correctCount,
+    comprehensiveEvaluation,
+  }
 }
 
 // 环节目录里显示的简短副标题（不抢主操作区）
@@ -1374,45 +1430,263 @@ function getSegmentPickerSubtitle(segment) {
   return raw.length > 24 ? `${raw.slice(0, 24)}…` : raw
 }
 
-/** 与答题环节一致的深色内容卡片（课时总结 / 课程总结正文区） */
-const DARK_SEGMENT_CARD = 'rounded-xl border border-slate-600 bg-slate-800 p-4 sm:p-5 w-full text-left'
-
-function LessonSummaryDarkCard({ summary, segmentCount }) {
-  const stepDisplay = segmentCount + 1
+function LessonSummaryDarkCard({ summary }) {
+  const panel =
+    'rounded-xl border border-white/[0.07] bg-slate-800/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_24px_-6px_rgba(0,0,0,0.45)] backdrop-blur-sm'
   return (
-    <div className={DARK_SEGMENT_CARD}>
-      <p className="mb-3 text-xs leading-relaxed text-slate-500">
-        <span className="text-slate-500">环节 {stepDisplay}</span>
-        <span className="text-slate-600 mx-1.5" aria-hidden>
-          ·
-        </span>
-        <span className="text-slate-400">课时总结</span>
-      </p>
-      <h2 className="text-lg font-bold text-white mb-4">学习评价总结</h2>
-      <div className="space-y-3 text-slate-200 text-sm leading-relaxed">
-        <p>{summary.line1}</p>
-        <p>{summary.line2}</p>
-        <p className="text-slate-400 text-sm">{summary.line3}</p>
-      </div>
-      <div className="mt-4 pt-4 border-t border-slate-600/80">
-        <p className="font-medium text-slate-200 mb-2 text-sm">本节课掌握知识点</p>
-        <ul className="text-slate-400 text-sm list-disc list-inside space-y-1">
-          {(summary.knowledgePoints || []).map((point, i) => (
-            <li key={i}>{point}</li>
-          ))}
-        </ul>
-      </div>
-      <div className="mt-4 pt-4 border-t border-slate-600/80">
-        <p className="font-medium text-slate-200 mb-2 text-sm">答题等学情</p>
-        <p className="text-slate-400 text-sm leading-relaxed">{summary.learningStatus}</p>
-      </div>
-      {summary.comprehensiveEvaluation && (
-        <div className="mt-4 pt-4 border-t border-slate-600/80">
-          <p className="font-medium text-slate-200 mb-2 text-sm">综合评价</p>
-          <p className="text-slate-300 text-sm leading-relaxed">{summary.comprehensiveEvaluation}</p>
+    <div className="relative w-full max-w-full mx-auto isolate">
+      {/* 背后柔光，增强立体感 */}
+      <div
+        className="absolute -inset-4 sm:-inset-6 rounded-[2rem] bg-gradient-to-tr from-cyan-500/25 via-teal-500/10 to-violet-600/20 blur-3xl opacity-90 pointer-events-none -z-10"
+        aria-hidden
+      />
+      <div
+        className="absolute -inset-px rounded-2xl bg-gradient-to-br from-cyan-400/55 via-teal-500/35 to-indigo-500/45 opacity-90 pointer-events-none -z-10 blur-sm"
+        aria-hidden
+      />
+      <div className="relative rounded-2xl p-px bg-gradient-to-br from-cyan-300/70 via-slate-500/40 to-violet-500/60 shadow-[0_24px_64px_-12px_rgba(0,0,0,0.55),0_0_48px_-12px_rgba(34,211,238,0.12)]">
+        <div className="relative rounded-2xl bg-gradient-to-b from-slate-800/95 via-slate-900/98 to-slate-950 border border-white/[0.05] overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent pointer-events-none z-10" aria-hidden />
+
+          <div className="p-5 sm:p-6 md:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-5">
+              <div
+                className="shrink-0 mx-auto sm:mx-0 w-[4.5rem] h-[4.5rem] sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-cyan-400 via-teal-500 to-cyan-700 flex items-center justify-center text-3xl sm:text-4xl shadow-[0_12px_28px_-4px_rgba(34,211,238,0.35),inset_0_2px_0_rgba(255,255,255,0.25)] border border-white/20 -rotate-3 sm:-rotate-6 hover:rotate-0 transition-transform duration-300"
+                aria-hidden
+              >
+                🎓
+              </div>
+              <div className="flex-1 min-w-0 text-center sm:text-left">
+                <p className="text-[11px] sm:text-xs font-medium tracking-wider text-cyan-300/90 uppercase mb-1.5">
+                  课时总结
+                </p>
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-cyan-100 to-teal-200 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(34,211,238,0.15)]">
+                  学习评价总结
+                </h2>
+                <p className="text-xs text-slate-500 mt-1.5">多维回顾 · 知识点 · 学情 · 综合建议</p>
+              </div>
+            </div>
+
+            <div className={`${panel} p-4 mb-3`}>
+              <div className="space-y-2.5 text-slate-200 text-sm leading-relaxed">
+                <p className="font-medium text-slate-100">{summary.line1}</p>
+                <p>{summary.line2}</p>
+                <p className="text-slate-400 text-sm border-l-2 border-cyan-500/50 pl-3">{summary.line3}</p>
+              </div>
+            </div>
+
+            <div className={`${panel} p-4 mb-3`}>
+              <p className="text-xs font-semibold text-cyan-200/90 mb-2.5 flex items-center gap-2">
+                <span className="inline-flex w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" aria-hidden />
+                本节课掌握知识点
+              </p>
+              <ul className="flex flex-wrap gap-2">
+                {(summary.knowledgePoints || []).map((point, i) => (
+                  <li
+                    key={i}
+                    className="text-xs sm:text-sm text-slate-200 px-3 py-1.5 rounded-lg bg-slate-900/60 border border-cyan-500/20 shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:border-cyan-400/40 hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className={`${panel} p-4 mb-3`}>
+              <p className="text-xs font-semibold text-teal-200/90 mb-2 flex items-center gap-2">
+                <span className="inline-flex w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.7)]" aria-hidden />
+                答题等学情
+              </p>
+              <p className="text-slate-300 text-sm leading-relaxed">{summary.learningStatus}</p>
+              {summary.quizPerQuestionRows && summary.quizPerQuestionRows.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-teal-500/15">
+                  <p className="text-[11px] text-teal-500/85 mb-2 font-medium">各题明细（题型 · 对错）</p>
+                  <ul className="space-y-2" role="list">
+                    {summary.quizPerQuestionRows.map((row) => (
+                      <li
+                        key={row.index}
+                        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-slate-900/50 border border-teal-500/10 px-3 py-2 text-sm"
+                      >
+                        <span className="text-slate-500 tabular-nums shrink-0">第 {row.index} 题</span>
+                        <span className="text-slate-300 font-medium">{row.typeLabel}</span>
+                        <span className="text-slate-600" aria-hidden>
+                          ·
+                        </span>
+                        <span
+                          className={`font-semibold shrink-0 ${row.correct ? 'text-teal-300' : 'text-rose-300'}`}
+                        >
+                          {row.correct ? '对' : '错'}
+                        </span>
+                        {row.simulated && (
+                          <span className="text-[11px] text-slate-500 shrink-0">样例</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {summary.comprehensiveEvaluation && (
+              <div
+                className={`${panel} p-4 mb-3 bg-gradient-to-br from-violet-950/40 to-slate-900/30 border-violet-500/20`}
+              >
+                <p className="text-xs font-semibold text-violet-200/95 mb-2 flex items-center gap-2">
+                  <span className="inline-flex w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.7)]" aria-hidden />
+                  综合评价
+                </p>
+                <p className="text-slate-200 text-sm leading-relaxed">{summary.comprehensiveEvaluation}</p>
+              </div>
+            )}
+
+            <p className="text-center text-xs text-slate-500 mt-4 pt-4 border-t border-slate-700/60">
+              继续加油，完成全部课时可获得学习证书
+            </p>
+          </div>
         </div>
-      )}
-      <p className="text-xs text-slate-500 mt-4">继续加油，完成全部课时可获得学习证书</p>
+      </div>
+    </div>
+  )
+}
+
+/** 整门课程学习总结：与课时总结同系的立体渐变卡片，偏结业/成就色调 */
+function CourseSummaryDarkCard({ data }) {
+  const panel =
+    'rounded-xl border border-white/[0.07] bg-slate-800/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_24px_-6px_rgba(0,0,0,0.45)] backdrop-blur-sm'
+  const secTitle = (colorDot, label) => (
+    <p className={`text-xs font-semibold ${colorDot.text} mb-2 flex items-center gap-2`}>
+      <span
+        className={`inline-flex w-1.5 h-1.5 rounded-full ${colorDot.bg} ${colorDot.glow}`}
+        aria-hidden
+      />
+      {label}
+    </p>
+  )
+  return (
+    <div className="relative w-full max-w-full mx-auto isolate">
+      <div
+        className="absolute -inset-4 sm:-inset-6 rounded-[2rem] bg-gradient-to-tr from-emerald-500/22 via-amber-400/12 to-violet-600/22 blur-3xl opacity-90 pointer-events-none -z-10"
+        aria-hidden
+      />
+      <div
+        className="absolute -inset-px rounded-2xl bg-gradient-to-br from-emerald-400/50 via-teal-500/35 to-violet-500/45 opacity-90 pointer-events-none -z-10 blur-sm"
+        aria-hidden
+      />
+      <div className="relative rounded-2xl p-px bg-gradient-to-br from-emerald-300/65 via-slate-500/40 to-violet-500/55 shadow-[0_24px_64px_-12px_rgba(0,0,0,0.55),0_0_48px_-12px_rgba(52,211,153,0.14)]">
+        <div className="relative rounded-2xl bg-gradient-to-b from-slate-800/95 via-slate-900/98 to-slate-950 border border-white/[0.05] overflow-hidden">
+          <div
+            className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/45 to-transparent pointer-events-none z-10"
+            aria-hidden
+          />
+
+          <div className="p-5 sm:p-6 md:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-5">
+              <div
+                className="shrink-0 mx-auto sm:mx-0 w-[4.5rem] h-[4.5rem] sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-400 via-amber-500 to-emerald-700 flex items-center justify-center text-3xl sm:text-4xl shadow-[0_12px_28px_-4px_rgba(52,211,153,0.35),inset_0_2px_0_rgba(255,255,255,0.25)] border border-white/20 -rotate-3 sm:-rotate-6 hover:rotate-0 transition-transform duration-300"
+                aria-hidden
+              >
+                🏆
+              </div>
+              <div className="flex-1 min-w-0 text-center sm:text-left">
+                <p className="text-[11px] sm:text-xs font-medium tracking-wider text-emerald-300/90 uppercase mb-1.5">
+                  整门课程 · 学习总结
+                </p>
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-emerald-100 to-amber-100 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(52,211,153,0.15)]">
+                  课程学习评价总结
+                </h2>
+                <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{data.courseTitle}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center sm:justify-start gap-2 mb-5">
+              <span className="text-xs font-medium tabular-nums px-3 py-1.5 rounded-lg bg-slate-900/70 border border-emerald-500/25 text-emerald-200/95 shadow-[0_4px_14px_rgba(0,0,0,0.25)]">
+                {data.totalLessons} 课时
+              </span>
+              <span className="text-xs font-medium tabular-nums px-3 py-1.5 rounded-lg bg-slate-900/70 border border-teal-500/25 text-teal-200/95 shadow-[0_4px_14px_rgba(0,0,0,0.25)]">
+                {data.totalSegments} 个学习环节
+              </span>
+              <span className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-900/70 border border-amber-500/20 text-amber-100/90 shadow-[0_4px_14px_rgba(0,0,0,0.25)]">
+                {data.totalTime}
+              </span>
+            </div>
+
+            <div className={`${panel} p-4 mb-3`}>
+              {secTitle(
+                { text: 'text-emerald-200/90', bg: 'bg-emerald-400', glow: 'shadow-[0_0_8px_rgba(52,211,153,0.75)]' },
+                '完成情况'
+              )}
+              <p className="text-slate-200 text-sm leading-relaxed">{data.completionLine}</p>
+            </div>
+
+            <div className={`${panel} p-4 mb-3`}>
+              {secTitle(
+                { text: 'text-cyan-200/90', bg: 'bg-cyan-400', glow: 'shadow-[0_0_8px_rgba(34,211,238,0.7)]' },
+                '课程涵盖'
+              )}
+              <p className="text-slate-400 text-sm mb-2.5">{data.scopeIntro}</p>
+              <ul className="flex flex-wrap gap-2">
+                {data.lessonTitles.slice(0, 12).map((title, i) => (
+                  <li
+                    key={i}
+                    className="text-xs sm:text-sm text-slate-200 px-3 py-1.5 rounded-lg bg-slate-900/60 border border-cyan-500/18 shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+                  >
+                    {title}
+                  </li>
+                ))}
+                {data.lessonTitles.length > 12 && (
+                  <li className="text-xs text-slate-500 px-3 py-1.5 self-center">…共 {data.lessonTitles.length} 课时</li>
+                )}
+              </ul>
+            </div>
+
+            <div className={`${panel} p-4 mb-3`}>
+              {secTitle(
+                { text: 'text-amber-200/90', bg: 'bg-amber-400', glow: 'shadow-[0_0_8px_rgba(251,191,36,0.65)]' },
+                '学习收获'
+              )}
+              <ul className="text-slate-300 text-sm space-y-2 leading-relaxed">
+                {data.outcomes.map((item, i) => (
+                  <li key={i} className="flex gap-2 items-start">
+                    <span className="text-emerald-400/90 shrink-0 mt-0.5" aria-hidden>
+                      ✓
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className={`${panel} p-4 mb-3`}>
+              {secTitle(
+                { text: 'text-teal-200/90', bg: 'bg-teal-400', glow: 'shadow-[0_0_8px_rgba(45,212,191,0.7)]' },
+                '学习投入'
+              )}
+              <p className="text-slate-300 text-sm leading-relaxed">{data.timeInvested}</p>
+            </div>
+
+            <div className={`${panel} p-4 mb-3`}>
+              <p className="text-slate-200 text-sm leading-relaxed">{data.encouragement}</p>
+            </div>
+
+            <div
+              className={`${panel} p-4 mb-1 bg-gradient-to-br from-emerald-950/50 via-slate-900/40 to-violet-950/35 border-emerald-500/25`}
+            >
+              <p className="text-xs font-semibold text-emerald-200/95 mb-1 flex items-center gap-2">
+                <span
+                  className="inline-flex w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]"
+                  aria-hidden
+                />
+                学习证书
+              </p>
+              <p className="text-emerald-100/95 text-sm font-medium leading-relaxed">{data.certificateTip}</p>
+            </div>
+
+            <p className="text-center text-xs text-slate-500 mt-4 pt-4 border-t border-slate-700/60">
+              感谢完成本课程学习，欢迎继续探索更多内容
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1459,7 +1733,7 @@ function LessonSegmentPickerList({ segments, currentStep, summaryStepIndex, onPi
             <span className="font-medium">课时总结</span>
             <span className="block text-xs text-slate-400 mt-0.5 truncate">学习评价与知识点回顾</span>
             {currentStep === summaryStepIndex && (
-              <span className="text-[10px] text-cyan-300/90 mt-1 inline-block">当前环节</span>
+              <span className="text-[10px] text-cyan-300/90 mt-1 inline-block">当前总结页</span>
             )}
           </button>
         </li>
@@ -1635,7 +1909,9 @@ function LessonPlayer({ lesson, onClose }) {
                 {directoryOpen ? '收起目录' : '目录'}
               </button>
             )}
-            <span className="text-xs text-slate-400 tabular-nums">环节 {currentStep + 1}/{totalSteps}</span>
+            <span className="text-xs text-slate-400 tabular-nums">
+              {isSummary ? '课时总结' : `环节 ${currentStep + 1}/${segments.length}`}
+            </span>
           </div>
           <button
             type="button"
@@ -1657,7 +1933,7 @@ function LessonPlayer({ lesson, onClose }) {
               >
                 <div className="w-full max-w-full sm:max-w-[min(100%,48rem)] md:max-w-[min(100%,56rem)] lg:max-w-[min(100%,72rem)] xl:max-w-[min(100%,80rem)] shrink-0">
                   {isSummary && lessonSummaryData ? (
-                    <LessonSummaryDarkCard summary={lessonSummaryData} segmentCount={segments.length} />
+                    <LessonSummaryDarkCard summary={lessonSummaryData} />
                   ) : currentSegment ? (
                     <SegmentBlock
                       key={currentSegment.id}
@@ -1711,8 +1987,8 @@ function LessonPlayer({ lesson, onClose }) {
                       {shortcut.label}
                     </button>
                   ))}
-                <span className="text-sm text-slate-400 w-12 text-center tabular-nums">
-                  {currentStep + 1} / {totalSteps}
+                <span className="text-sm text-slate-400 min-w-[3.25rem] text-center tabular-nums">
+                  {isSummary ? '总结' : `${currentStep + 1}/${segments.length}`}
                 </span>
               </div>
               {isSummary ? (
@@ -2283,49 +2559,7 @@ export default function Study() {
               </header>
               <div className="flex-1 min-h-0 overflow-y-auto bg-[#0f172a] p-3 sm:p-4 md:p-5">
                 <div className="w-full max-w-full sm:max-w-[min(100%,48rem)] md:max-w-[min(100%,56rem)] lg:max-w-[min(100%,72rem)] mx-auto">
-                  <div className={DARK_SEGMENT_CARD}>
-                    <p className="mb-3 text-xs leading-relaxed text-slate-500">
-                      <span className="text-slate-400">整门课程</span>
-                      <span className="text-slate-600 mx-1.5" aria-hidden>
-                        ·
-                      </span>
-                      <span className="text-slate-400">学习总结</span>
-                    </p>
-                    <section className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-semibold text-slate-200 mb-1.5">📊 完成情况</h3>
-                        <p className="text-slate-300 text-sm leading-relaxed">{s.completionLine}</p>
-                      </div>
-                      <div className="pt-3 border-t border-slate-600/80">
-                        <h3 className="text-sm font-semibold text-slate-200 mb-1.5">📚 课程涵盖</h3>
-                        <p className="text-slate-400 text-sm mb-2">{s.scopeIntro}</p>
-                        <ul className="text-slate-400 text-sm space-y-0.5 list-disc list-inside">
-                          {s.lessonTitles.slice(0, 12).map((title, i) => (
-                            <li key={i}>{title}</li>
-                          ))}
-                          {s.lessonTitles.length > 12 && <li className="text-slate-500">…共 {s.lessonTitles.length} 课时</li>}
-                        </ul>
-                      </div>
-                      <div className="pt-3 border-t border-slate-600/80">
-                        <h3 className="text-sm font-semibold text-slate-200 mb-1.5">✨ 学习收获</h3>
-                        <ul className="text-slate-400 text-sm space-y-0.5 list-disc list-inside">
-                          {s.outcomes.map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="pt-3 border-t border-slate-600/80">
-                        <h3 className="text-sm font-semibold text-slate-200 mb-1.5">⏱ 学习投入</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed">{s.timeInvested}</p>
-                      </div>
-                      <div className="pt-3 border-t border-slate-600/80">
-                        <p className="text-slate-300 text-sm leading-relaxed">{s.encouragement}</p>
-                      </div>
-                      <div className="rounded-lg border border-slate-600 bg-emerald-500/15 p-3">
-                        <p className="text-emerald-200 text-sm font-medium">🏅 {s.certificateTip}</p>
-                      </div>
-                    </section>
-                  </div>
+                  <CourseSummaryDarkCard data={s} />
                   <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-center pb-6">
                     <Link
                       to="/cert"
