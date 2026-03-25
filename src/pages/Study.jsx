@@ -442,16 +442,19 @@ function SegmentVideo({ segment, index, controlledPlaying, onPlay, dark }) {
       </div>
       <div ref={wrapRef} className="aspect-video relative flex flex-col items-center justify-center text-white bg-slate-900">
         {!playing ? (
-          <>
-            <div className="absolute inset-0">
-              <img src={effectivePoster} alt="" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center" />
-            </div>
-            <div className="relative z-10 text-5xl mb-2">▶️</div>
-            <button onClick={() => setPlaying(true)} className={`relative z-10 px-6 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 hover:bg-cyan-400 text-white' : 'bg-primary hover:bg-primary/90 text-white'}`}>
-              播放
+          <div className="absolute inset-0">
+            <img src={effectivePoster} alt="" className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={() => setPlaying(true)}
+              aria-label="播放视频"
+              className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/35 transition-colors"
+            >
+              <span className="text-5xl sm:text-6xl drop-shadow-md select-none" aria-hidden>
+                ▶️
+              </span>
             </button>
-          </>
+          </div>
         ) : hasStreamableUrl ? (
           <video
             ref={videoRef}
@@ -1292,9 +1295,9 @@ function getSegmentShortcut(segment) {
     case 'video':
       return { label: '开始播放', key: 'video' }
     case 'game':
-      return { label: '开始游戏', key: 'game' }
     case 'ai_experiment':
-      return { label: '进入实验', key: 'ai_experiment' }
+      /** 游戏 / AI 实验仅在环节内容区保留按钮，底部栏不重复「开始游戏」「进入实验」 */
+      return null
     case 'choice':
       return { label: '作答', key: 'choice' }
     case 'multi_choice':
@@ -1504,7 +1507,7 @@ function LessonPlayer({ lesson, onClose }) {
   const quizAnswerWrong = currentSegment && segmentResults[currentSegment.id] === false
   const showFooterQuizRedo =
     Boolean(quizAnswerWrong && currentSegment && SEGMENT_TYPES_ANSWER_SHORTCUT.includes(currentSegment.type))
-  /** 作答类环节不显示底部「作答」等按钮，仅答错时出现「重做」；视频/游戏/实验等仍保留快捷按钮 */
+  /** 作答类不显示底部「作答」，答错显示「重做」；视频显示「开始播放」；游戏/AI 实验仅用内容区按钮 */
   const isAnswerOnlyShortcutSegment =
     Boolean(currentSegment && SEGMENT_TYPES_ANSWER_SHORTCUT.includes(currentSegment.type))
   const showFooterCenterButton =
