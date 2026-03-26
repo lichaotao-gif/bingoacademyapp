@@ -129,6 +129,7 @@ export interface CourseClassTypeItem {
 export type LessonSegmentType =
   | 'video'       // 视频片段
   | 'choice'      // 单选题
+  | 'judge'       // 判断题（正确 / 错误）
   | 'multi_choice' // 多选题
   | 'fill_blank'  // 填空题
   | 'match'       // 连线题
@@ -150,6 +151,14 @@ export interface ChoiceSegmentPayload {
   question: string
   options: string[]
   correctIndex: number
+  explanation?: string
+}
+
+/** 判断题：学员选择「正确」或「错误」 */
+export interface JudgeSegmentPayload {
+  question: string
+  /** 陈述为真时选「正确」得分；为假时选「错误」得分 */
+  correctIsTrue: boolean
   explanation?: string
 }
 
@@ -219,6 +228,7 @@ export interface AIExperimentSegmentPayload {
 export type LessonSegmentPayload =
   | VideoSegmentPayload
   | ChoiceSegmentPayload
+  | JudgeSegmentPayload
   | MultiChoiceSegmentPayload
   | FillBlankSegmentPayload
   | MatchSegmentPayload

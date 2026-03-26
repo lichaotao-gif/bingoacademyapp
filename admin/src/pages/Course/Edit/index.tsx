@@ -7,6 +7,7 @@ import {
   Select,
   Switch,
   InputNumber,
+  Radio,
   Collapse,
   Button,
   Space,
@@ -41,6 +42,7 @@ import type {
   LessonSegmentPayload,
   VideoSegmentPayload,
   ChoiceSegmentPayload,
+  JudgeSegmentPayload,
   MultiChoiceSegmentPayload,
   FillBlankSegmentPayload,
   MatchSegmentPayload,
@@ -60,6 +62,7 @@ const CLASS_TYPES = [
 const SEGMENT_TYPE_OPTIONS: { value: LessonSegmentType; label: string }[] = [
   { value: 'video', label: '视频片段' },
   { value: 'choice', label: '单选题' },
+  { value: 'judge', label: '判断题' },
   { value: 'multi_choice', label: '多选题' },
   { value: 'fill_blank', label: '填空题' },
   { value: 'match', label: '连线题' },
@@ -74,6 +77,8 @@ function getDefaultPayload(type: LessonSegmentType): LessonSegmentPayload {
       return { url: '', title: '', duration: 0, posterUrl: '' }
     case 'choice':
       return { question: '', options: ['A', 'B', 'C'], correctIndex: 0, explanation: '' }
+    case 'judge':
+      return { question: '', correctIsTrue: true, explanation: '' }
     case 'multi_choice':
       return { question: '', options: ['A', 'B', 'C', 'D'], correctIndices: [0, 2], explanation: '' }
     case 'fill_blank':
@@ -148,6 +153,25 @@ function SegmentForm({
             <InputNumber value={cp.correctIndex} onChange={(v) => update('correctIndex', v)} min={0} max={cp.options.length - 1} />
           </Space>
           <Input placeholder="解析(可选)" value={cp.explanation} onChange={(e) => update('explanation', e.target.value)} />
+        </Space>
+      )
+    }
+    case 'judge': {
+      const jp = p as JudgeSegmentPayload
+      return (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Input.TextArea placeholder="判断陈述（学员选择正确或错误）" value={jp.question} onChange={(e) => update('question', e.target.value)} rows={2} />
+          <div>
+            <span style={{ marginRight: 8 }}>正确答案：</span>
+            <Radio.Group
+              value={jp.correctIsTrue ? 'yes' : 'no'}
+              onChange={(e) => update('correctIsTrue', e.target.value === 'yes')}
+            >
+              <Radio value="yes">正确</Radio>
+              <Radio value="no">错误</Radio>
+            </Radio.Group>
+          </div>
+          <Input placeholder="解析(可选)" value={jp.explanation} onChange={(e) => update('explanation', e.target.value)} />
         </Space>
       )
     }

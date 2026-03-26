@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import ShareActionPopover from '../components/ShareActionPopover'
 
-// ─── 课时环节类型（与后台一致：视频+互动+游戏+AI实验 任意组合） ─────────────────
+// ─── 课时环节类型（与后台一致：视频+互动含判断题+游戏+AI实验 任意组合） ─────────────────
 const SEGMENT_LABELS = {
   video: '视频片段',
   choice: '单选题',
+  judge: '判断题',
   multi_choice: '多选题',
   image_choice: '图片选择题',
   fill_blank: '填空题',
@@ -43,6 +44,16 @@ const MY_COURSES = [
         segments: [
           { id: 's1-v1', type: 'video', sort: 0, payload: { url: 'https://example.com/v1.mp4', title: '什么是AI', duration: 300 } },
           { id: 's1-c1', type: 'choice', sort: 1, payload: { question: 'AI的全称是？', options: ['人工智慧', '人工智能', '自动推理'], correctIndex: 1, explanation: 'Artificial Intelligence（人工智能）' } },
+          {
+            id: 's1-judge',
+            type: 'judge',
+            sort: 1.5,
+            payload: {
+              question: '机器学习是人工智能的一个子领域。',
+              correctIsTrue: true,
+              explanation: '机器学习研究如何从数据中学习，是人工智能的重要分支之一。',
+            },
+          },
           { id: 's1-mc', type: 'multi_choice', sort: 2, payload: { question: '下列哪些属于人工智能相关方向？（多选）', options: ['机器学习', '深度学习', '普通计算器', '自然语言处理'], correctIndices: [0, 1, 3], explanation: '机器学习、深度学习与自然语言处理均为 AI 领域；普通计算器是固定程序，一般不视为 AI。' } },
           { id: 's1-v2', type: 'video', sort: 3, payload: { url: '', title: '认识AI应用', duration: 120 } },
           { id: 's1-m', type: 'match', sort: 4, payload: { leftItems: ['AI', '机器学习', '深度学习'], rightItems: ['人工智能', '让电脑从数据中学习', '多层神经网络'], correctPairs: [[0, 0], [1, 1], [2, 2]], explanation: '正确连线帮助理解概念关系。' } },
@@ -501,7 +512,7 @@ function useQuizFooterResetSync(quizResetKey, reset) {
 }
 
 /** 底部栏会对「作答」类环节在答错时显示「重做」，与这些类型一致 */
-const SEGMENT_TYPES_ANSWER_SHORTCUT = ['choice', 'multi_choice', 'image_choice', 'fill_blank', 'match', 'drag_drop', 'audio_choice']
+const SEGMENT_TYPES_ANSWER_SHORTCUT = ['choice', 'judge', 'multi_choice', 'image_choice', 'fill_blank', 'match', 'drag_drop', 'audio_choice']
 
 /** 环节顶栏：环节序号 + 类型说明，纯文案避免像可点击按钮 */
 function QuizSegmentMeta({ index, typeLabel, dark, centered }) {
@@ -557,6 +568,72 @@ function SegmentChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : '正确答案：' + (p.options[p.correctIndex] || '')}
+          {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
+          {!isCorrect ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const JUDGE_OPTIONS = [
+  { value: true, label: '正确' },
+  { value: false, label: '错误' },
+]
+
+function SegmentJudge({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+  const p = segment.payload
+  const correctIsTrue = p.correctIsTrue !== false
+  const [selected, setSelected] = useState(null)
+  const [submitted, setSubmitted] = useState(false)
+  const isCorrect = submitted && selected === correctIsTrue
+  const handleSubmit = () => {
+    setSubmitted(true)
+    if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === correctIsTrue)
+  }
+  const resetLocal = useCallback(() => {
+    setSubmitted(false)
+    setSelected(null)
+  }, [])
+  useQuizFooterResetSync(quizResetKey, resetLocal)
+  const card = dark ? 'rounded-xl border border-slate-600 bg-slate-800 p-4' : 'rounded-xl border border-slate-200 bg-white p-4'
+  const q = dark ? 'font-medium text-white mb-3' : 'font-medium text-bingo-dark mb-3'
+  const optBase = dark ? 'flex flex-1 items-center justify-center gap-2 py-3 px-4 rounded-xl border cursor-pointer transition text-slate-200 font-medium ' : 'flex flex-1 items-center justify-center gap-2 py-3 px-4 rounded-xl border cursor-pointer transition font-medium '
+  return (
+    <div className={card}>
+      <QuizSegmentMeta index={index} typeLabel={SEGMENT_LABELS.judge} dark={dark} />
+      <p className={q}>{p.question}</p>
+      <p className={`text-xs mb-3 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>请判断上述说法是否正确</p>
+      <div className="flex flex-col sm:flex-row gap-3">
+        {JUDGE_OPTIONS.map(({ value, label }) => (
+          <label
+            key={String(value)}
+            className={`${optBase} ${selected === value ? (dark ? 'border-cyan-500 bg-cyan-500/20' : 'border-primary bg-primary/5') : dark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'} ${submitted && value === correctIsTrue ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''} ${submitted && selected === value && value !== correctIsTrue ? (dark ? 'border-red-400 bg-red-500/20' : 'border-red-300 bg-red-50') : ''}`}
+          >
+            <input
+              type="radio"
+              name={`judge-${segment.id}`}
+              checked={selected === value}
+              onChange={() => setSelected(value)}
+              disabled={submitted}
+              className="sr-only"
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+      {!submitted ? (
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={selected === null}
+          className={`mt-4 w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}
+        >
+          提交
+        </button>
+      ) : (
+        <div className={`mt-4 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
+          {isCorrect ? '✓ 回答正确！' : `正确答案：${correctIsTrue ? '正确' : '错误'}`}
           {p.explanation && <p className={dark ? 'mt-1 text-slate-400' : 'mt-1 text-slate-600'}>{p.explanation}</p>}
           {!isCorrect ? <p className={dark ? 'mt-2 text-xs text-slate-500' : 'mt-2 text-xs text-slate-500'}>可点击底部「重做」清空本题重新作答</p> : null}
         </div>
@@ -1223,6 +1300,8 @@ function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegme
       )
     case 'choice':
       return <SegmentChoice {...common} />
+    case 'judge':
+      return <SegmentJudge {...common} />
     case 'multi_choice':
       return <SegmentMultiChoice {...common} />
     case 'image_choice':
@@ -1300,6 +1379,8 @@ function getSegmentShortcut(segment) {
       return null
     case 'choice':
       return { label: '作答', key: 'choice' }
+    case 'judge':
+      return { label: '作答', key: 'judge' }
     case 'multi_choice':
       return { label: '作答', key: 'multi_choice' }
     case 'image_choice':
@@ -1414,6 +1495,7 @@ function buildLessonSummary(lesson, segments, segmentResults = {}) {
   const knowledgeLabels = {
     video: '视频学习与理解',
     choice: '单选题知识点巩固',
+    judge: '判断题辨析',
     multi_choice: '多选题综合判断',
     image_choice: '图片选择题观察与判断',
     fill_blank: '填空题知识点应用',
@@ -2430,9 +2512,6 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
   )
 }
 
-// 第一个带「环节」的课时，用于快速体验入口
-const FIRST_LESSON_WITH_SEGMENTS = MY_COURSES[0]?.lessons?.find((l) => l.segments?.length > 0) ?? MY_COURSES[0]?.lessons?.[0]
-
 // ─── 主页面 ─────────────────────────────────────────────────
 export default function Study() {
   const [playingLesson, setPlayingLesson] = useState(null)
@@ -2440,9 +2519,6 @@ export default function Study() {
   const [extraReviewsByCourse, setExtraReviewsByCourse] = useState({})
   const [reviewModal, setReviewModal] = useState(null)
 
-  const openReviewFromHeader = () => {
-    setReviewModal({ courseId: MY_COURSES[0]?.id || '', allowSwitch: true })
-  }
   const openReviewForCourse = (courseId) => {
     setReviewModal({ courseId, allowSwitch: false })
   }
@@ -2471,32 +2547,10 @@ export default function Study() {
       <div className="mb-6">
         <Link to="/profile" className="text-slate-500 hover:text-primary text-sm">← 个人中心</Link>
       </div>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-bingo-dark mb-1">学习中心</h1>
-          <p className="text-slate-500 text-sm">已购课程列表，点击课程可展开课时，随时继续学习</p>
-        </div>
-        <button
-          type="button"
-          onClick={openReviewFromHeader}
-          className="shrink-0 inline-flex items-center justify-center rounded-xl bg-primary text-white text-sm font-medium px-4 py-2.5 hover:bg-primary/90 shadow-sm w-full sm:w-auto"
-        >
-          我要评价
-        </button>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-bingo-dark mb-1">学习中心</h1>
+        <p className="text-slate-500 text-sm">已购课程列表，点击课程可展开课时，随时继续学习</p>
       </div>
-
-      {/* 快速体验：一屏一环节 + 上一步/下一步/快捷按钮 */}
-      {FIRST_LESSON_WITH_SEGMENTS && (
-        <button
-          type="button"
-          onClick={() => setPlayingLesson(FIRST_LESSON_WITH_SEGMENTS)}
-          className="w-full mb-6 p-4 rounded-xl border-2 border-primary bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-center transition flex items-center justify-center gap-2"
-        >
-          <span>👉</span>
-          <span>点击这里体验「一屏一环节」上课</span>
-          <span className="text-sm font-normal opacity-90">（{FIRST_LESSON_WITH_SEGMENTS.title}）</span>
-        </button>
-      )}
 
       {/* 总览统计 */}
       <div className="grid grid-cols-3 gap-4 mb-8">
