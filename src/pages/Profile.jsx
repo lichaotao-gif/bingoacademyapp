@@ -1109,7 +1109,7 @@ function MyAbility({ onBack }) {
           <h3 className="font-semibold text-bingo-dark mb-4">AI综合能力评估</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
             {[
-              { label: 'AI基础认知', score: 88, color: 'text-sky-600' },
+              { label: '三星AI建模师', score: 88, color: 'text-sky-600' },
               { label: '编程实践', score: 75, color: 'text-violet-600' },
               { label: '创新思维', score: 92, color: 'text-amber-600' },
               { label: '问题解决', score: 80, color: 'text-emerald-600' },

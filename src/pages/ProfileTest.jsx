@@ -1,11 +1,29 @@
 import { Link } from 'react-router-dom'
+import { getAiTestRecords } from '../utils/aiTestRecordsStorage'
 
-const MOCK_REPORTS = [
-  { id: 1, date: '2025-02-15', score: 82, level: 'AI进阶学员', type: 'AI基础认知测评' },
-  { id: 2, date: '2025-02-01', score: 75, level: 'AI入门学员', type: 'AI基础认知测评' },
-]
+function fmtRecordTime(iso) {
+  try {
+    return new Date(iso).toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso || '—'
+  }
+}
+
+function recordLevelLabel(accPct) {
+  if (accPct >= 80) return 'AI进阶学员'
+  if (accPct >= 60) return 'AI入门学员'
+  return '待提升'
+}
 
 export default function ProfileTest() {
+  const reports = getAiTestRecords()
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="flex items-center gap-3 mb-6">
@@ -16,25 +34,36 @@ export default function ProfileTest() {
 
       <div className="card p-6 bg-cyan-50 border-primary/20 mb-6">
         <h3 className="font-semibold text-bingo-dark mb-2">测评中心</h3>
-        <p className="text-sm text-slate-600 mb-4">查看历史测评报告，系统会根据测评结果动态更新课程推荐</p>
-        <Link to="/events/ai-test" className="btn-primary text-sm px-5 py-2">立即测评</Link>
+        <p className="text-sm text-slate-600 mb-4">
+          历史报告与「赛事测评中心」评测记录互通（保存在本机浏览器）。完整报告请在测评页查看。
+        </p>
+        <Link to="/events/ai-test" className="btn-primary text-sm px-5 py-2">前往测评中心</Link>
       </div>
 
       <h3 className="font-semibold text-bingo-dark mb-4">历史测评报告</h3>
       <div className="space-y-4">
-        {MOCK_REPORTS.map(r => (
-          <div key={r.id} className="card p-5 flex items-center justify-between">
-            <div>
-              <p className="font-medium text-bingo-dark">{r.type}</p>
-              <p className="text-sm text-slate-500 mt-1">{r.date} · {r.level}</p>
+        {reports.map((r) => (
+          <div key={r.id} className="card p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-medium text-bingo-dark">{r.testName}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {fmtRecordTime(r.createdAt)}
+                {r.testStage ? ` · ${r.testStage}` : ''} · {recordLevelLabel(r.accPct)}
+              </p>
+              <p className="text-xs text-slate-400 mt-1 tabular-nums">
+                正确率 {r.accPct}%（{r.correct}/{r.n}
+                {r.skip ? `，跳过 ${r.skip} 题` : ''}）
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl font-bold text-primary">{r.score}分</span>
-              <Link to="/events/ai-test" state={{ viewReport: r.id }} className="text-sm text-primary hover:underline">查看详情</Link>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-2xl font-bold text-primary tabular-nums">{r.accPct}%</span>
+              <Link to={`/events/ai-test?record=${encodeURIComponent(r.id)}`} className="text-sm text-primary hover:underline whitespace-nowrap">
+                查看详情
+              </Link>
             </div>
           </div>
         ))}
-        {MOCK_REPORTS.length === 0 && (
+        {reports.length === 0 && (
           <div className="card p-12 text-center text-slate-500">
             <p className="mb-4">暂无测评报告</p>
             <Link to="/events/ai-test" className="text-primary hover:underline">去测评</Link>

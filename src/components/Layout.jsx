@@ -21,8 +21,14 @@ export default function Layout({ children }) {
       <header className="sticky top-0 z-50 bg-bingo-dark text-white shadow-lg border-b border-cyan-500/20 bg-gradient-to-r from-[#0f172a] to-[#1e293b]">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-4 lg:gap-6 min-h-14 flex-nowrap">
-            <Link to="/" className="shrink-0 flex items-center gap-2">
-              <img src="/logo.png" alt="缤果AI学院" className="h-8 sm:h-9 w-auto brightness-0 invert" />
+            <Link to="/" className="shrink-0 flex items-center gap-2" aria-label="缤果AI学院首页">
+              <img
+                src="/logo.svg"
+                alt="缤果AI学院"
+                className="h-9 sm:h-10 w-auto max-h-10 max-w-[min(100%,220px)] object-contain object-left"
+                width={307}
+                height={85}
+              />
             </Link>
             <nav className="hidden lg:flex flex-1 items-center justify-evenly gap-2 min-w-0 flex-nowrap">
               {allNavGroups.map((group, gi) => (

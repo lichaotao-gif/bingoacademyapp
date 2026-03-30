@@ -1,126 +1,344 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-
-const TEST_CATEGORIES = [
-  { id: 'age', label: '按年龄段', options: [{ id: 'primary', name: '小学' }, { id: 'junior', name: '初中' }, { id: 'senior', name: '高中' }] },
-  { id: 'goal', label: '按学习目标', options: [{ id: 'literacy', name: '素养提升' }, { id: 'contest', name: '竞赛参赛' }, { id: 'exam', name: '科技特长生' }] },
-]
+import { useState, useRef, useMemo, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import ReactECharts from 'echarts-for-react'
+import {
+  buildL3TestSession,
+  buildGeneralTestSession,
+  L3_EVALUATION_DIMENSIONS,
+  dimensionMeta,
+  isL3AnswerCorrect,
+} from '../data/l3QuestionBank'
+import { appendAiTestRecord, getAiTestRecords, getAiTestRecordById, removeAiTestRecord } from '../utils/aiTestRecordsStorage'
 
 const TEST_TYPES = [
-  { id: 'basic', name: 'AI基础认知测评', event: '通用/各类赛事', duration: 20, price: '免费体验', desc: '测评AI基础概念、工具认知、伦理意识' },
-  { id: 'creative', name: 'AI创新能力专项测评', event: '科创类赛事', duration: 40, price: '¥39/次', desc: '测评创新思维、项目设计能力' },
-  { id: 'code', name: 'AI编程与算法测评', event: '编程/机器人赛事', duration: 60, price: '¥59/次', desc: '测评Python编程、机器学习基础' },
-  { id: 'literacy', name: '青少年AI素养综合测评', event: '素养类/升学赛事', duration: 45, price: '¥49/次', desc: '多维度评估AI素养，生成能力图谱' },
+  {
+    id: 'general',
+    name: '普通测评',
+    stage: '',
+    event: '综合摸底',
+    duration: 12,
+    originalPrice: '',
+    currentPrice: '免费',
+    desc: '适合还不确定具体学习方向的同学：综合摸底，仅含选择题与判断题。完成后结合薄弱维度为你推荐适合入门或强化的课程。',
+  },
+  { id: 'modeling_3star', name: '三星AI建模师评测', stage: 'AI探索者', event: '建模素养/L3', duration: 20, originalPrice: '¥199', currentPrice: '免费', desc: '临时 6 题（选择 + 填空 + 判断），覆盖 L3 建模基础要点；正式版将恢复完整题库' },
+  { id: 'creative', name: 'AI创新能力专项测评', stage: '', event: '科创类赛事', duration: 40, originalPrice: '¥79', currentPrice: '¥39/次', desc: '测评创新思维、项目设计能力' },
+  { id: 'code', name: 'AI编程与算法测评', stage: '', event: '编程/机器人赛事', duration: 60, originalPrice: '¥99', currentPrice: '¥59/次', desc: '测评Python编程、机器学习基础' },
+  { id: 'literacy', name: '青少年AI素养综合测评', stage: '', event: '素养类/升学赛事', duration: 45, originalPrice: '¥89', currentPrice: '¥49/次', desc: '多维度评估AI素养，生成能力图谱' },
 ]
 
-const DIMENSIONS = [
-  { name: 'AI感知力', value: 88, color: 'bg-cyan-500' },
-  { name: 'AI理解力', value: 72, color: 'bg-blue-500' },
-  { name: 'AI应用力', value: 65, color: 'bg-indigo-500' },
-  { name: 'AI创造力', value: 79, color: 'bg-violet-500' },
-  { name: '伦理意识', value: 91, color: 'bg-emerald-500' },
-]
+function isFreeTest(t) {
+  if (!t?.currentPrice) return false
+  return t.currentPrice === '免费' || t.currentPrice.includes('免费')
+}
 
-const MOCK_QUESTIONS = [
-  { id: 1, q: '以下哪项是机器学习的核心概念？', opts: ['A. 预设规则执行', 'B. 数据驱动自动学习', 'C. 手动编写所有逻辑', 'D. 仅适用于图像处理'], ans: 'B' },
-  { id: 2, q: '人工智能中的"深度学习"主要依赖以下哪种结构？', opts: ['A. 决策树', 'B. 线性回归', 'C. 神经网络', 'D. 支持向量机'], ans: 'C' },
-  { id: 3, q: '请说出1个适合小学生的AI绘图工具', opts: ['A. 即梦', 'B. Midjourney', 'C. Stable Diffusion', 'D. 豆包'], ans: 'A', practical: true },
-  { id: 4, q: '以下哪种行为违反了AI伦理原则？', opts: ['A. 用AI辅助医疗诊断', 'B. 用AI生成虚假新闻', 'C. 用AI优化学习路径', 'D. 用AI分析交通流量'], ans: 'B' },
-  { id: 5, q: 'AI模型"训练"的含义是？', opts: ['A. 安装软件', 'B. 用数据让模型学习规律', 'C. 调试代码', 'D. 下载模型'], ans: 'B' },
-]
+const PASS_PCT = 60
 
 const REPORT_COURSES = [
   { name: 'AI启蒙通识课', to: '/courses/detail/ai-enlighten', price: 299, priceStr: '¥299起', tag: '推荐', courseId: 'ai-enlighten' },
   { name: 'AI精英进阶课', to: '/courses/detail/ai-advance-basic', price: 698, priceStr: '¥698起', tag: '补强', courseId: 'ai-advance-basic' },
   { name: '机器学习入门与实战', to: '/courses/detail/ai-advance-ml', price: 698, priceStr: '¥698起', tag: '进阶', courseId: 'ai-advance-ml' },
-  { name: '白名单赛事通关营', to: '/events', price: 998, priceStr: '¥998起', tag: '竞赛', courseId: null },
+  { name: '白名单赛事通关营', to: '/events', price: 998, priceStr: '¥998', tag: '竞赛', courseId: null },
   { name: '科技特长生路径课', to: '/courses?type=exam', price: 1680, priceStr: '¥1680起', tag: '升学', courseId: null },
 ]
 
-const TIP_AFTER_5 = '青少年常用AI工具TOP3：即梦（绘图）、豆包（对话）、通义（多模态）'
+function fmtMmSs(sec) {
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function fmtRecordTime(iso) {
+  try {
+    const d = new Date(iso)
+    return d.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso || '—'
+  }
+}
+
+function recordLevelLabel(accPct) {
+  if (accPct >= 80) return '优秀'
+  if (accPct >= 60) return '良好'
+  return '须加强'
+}
+
+function buildDimensionStats(questions, answers) {
+  const map = Object.fromEntries(L3_EVALUATION_DIMENSIONS.map((d) => [d.key, { correct: 0, total: 0, skip: 0 }]))
+  questions.forEach((q, i) => {
+    const k = q.dim && map[q.dim] ? q.dim : 'ml_theory'
+    map[k].total += 1
+    const a = answers[i]
+    if (a === 'skip' || a == null) map[k].skip += 1
+    else if (isL3AnswerCorrect(q, a)) map[k].correct += 1
+  })
+  return L3_EVALUATION_DIMENSIONS.map((d) => {
+    const s = map[d.key]
+    const pct = s.total ? Math.round((s.correct / s.total) * 100) : 0
+    const passed = pct >= PASS_PCT
+    return { ...d, ...s, pct, passed }
+  })
+}
+
+function buildAiSummary(dimStats, isGeneral) {
+  const mastered = dimStats.filter((x) => x.pct >= 80)
+  const weak = dimStats.filter((x) => x.pct < 60)
+  const mid = dimStats.filter((x) => x.pct >= 60 && x.pct < 80)
+  let text = isGeneral ? '根据本次普通综合测评，' : '根据本次测评，'
+  if (mastered.length) text += `你在「${mastered.map((m) => m.name).join('、')}」等维度表现较好`
+  else text += '各维度仍有较大提升空间'
+  text += '。'
+  if (weak.length) {
+    text += isGeneral
+      ? `其中「${weak.map((w) => w.name).join('、')}」相对薄弱，报告下方的课程推荐可结合这些方向优先试学。`
+      : `建议优先补齐「${weak.map((w) => w.name).join('、')}」相关练习与单元复习，对照 L3_单元表逐项落实评价要点。`
+  } else if (mid.length) {
+    text += `可适当巩固「${mid.map((m) => m.name).join('、')}」，向满分能力进阶。`
+  } else {
+    text += isGeneral ? '整体均衡，可按兴趣在推荐课程中拓展学习。' : '整体均衡，可挑战更高阶建模任务与项目实战。'
+  }
+  return text
+}
+
+/** 单题作答状态：用于进度节点展示 */
+function getQuizItemStatus(q, a) {
+  if (a === 'skip') return 'skip'
+  if (a == null) return 'empty'
+  if (q.type === 'fill_blank' && String(a).trim() === '') return 'empty'
+  if (q.type === 'judge' && a !== true && a !== false) return 'empty'
+  return 'done'
+}
 
 export default function EventAITest() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [phase, setPhase] = useState('entry')
   const [selectedTest, setSelectedTest] = useState(null)
-  const [quizCategory, setQuizCategory] = useState({ age: 'primary', goal: 'literacy' })
-  const [bookTime, setBookTime] = useState('')
+  const [quizQuestions, setQuizQuestions] = useState([])
   const [answers, setAnswers] = useState({})
   const [currentQ, setCurrentQ] = useState(0)
-  const [showTip, setShowTip] = useState(false)
-  const [reportReady, setReportReady] = useState(false)
+  const [reportSnapshot, setReportSnapshot] = useState(null)
+  const [testRecords, setTestRecords] = useState(() => getAiTestRecords())
+  const [recordsModalOpen, setRecordsModalOpen] = useState(false)
+  const testStartRef = useRef(null)
 
-  function startTest(t) { setSelectedTest(t); setPhase('booking') }
-  function startFree() {
-    setSelectedTest(TEST_TYPES[0])
+  useEffect(() => {
+    if (phase === 'entry') setTestRecords(getAiTestRecords())
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'entry') setRecordsModalOpen(false)
+  }, [phase])
+
+  useEffect(() => {
+    if (!recordsModalOpen) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setRecordsModalOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [recordsModalOpen])
+
+  useEffect(() => {
+    const rid = searchParams.get('record')
+    if (!rid) return
+    const r = getAiTestRecordById(rid)
+    if (r?.snapshot?.questions) {
+      setReportSnapshot(r.snapshot)
+      const t = r.testId ? TEST_TYPES.find((x) => x.id === r.testId) : null
+      if (t) setSelectedTest(t)
+      setPhase('report')
+    }
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  function startAssessment(t) {
+    setSelectedTest(t)
+    setQuizQuestions(t.id === 'general' ? buildGeneralTestSession() : buildL3TestSession())
     setPhase('testing')
     setCurrentQ(0)
     setAnswers({})
+    testStartRef.current = Date.now()
   }
-  function submitBooking(e) { e.preventDefault(); setPhase('report'); setReportReady(false); setTimeout(() => setReportReady(true), 3000) }
+
   function submitTest() {
-    if (currentQ >= 4 && !showTip) { setShowTip(true); return }
+    const elapsed = testStartRef.current ? Math.max(1, Math.round((Date.now() - testStartRef.current) / 1000)) : 0
+    const qs = [...quizQuestions]
+    const ans = { ...answers }
+    qs.forEach((_, i) => {
+      if (ans[i] == null) ans[i] = 'skip'
+    })
+    const payload = { questions: qs, answers: ans, elapsedSec: elapsed }
+    const n = qs.length
+    let correct = 0
+    let skip = 0
+    qs.forEach((q, i) => {
+      const a = ans[i]
+      if (a === 'skip') skip += 1
+      else if (isL3AnswerCorrect(q, a)) correct += 1
+    })
+    const accPct = n ? Math.round((correct / n) * 100) : 0
+    appendAiTestRecord({
+      testName: selectedTest?.name || '测评',
+      testStage: selectedTest?.stage || '',
+      testId: selectedTest?.id || null,
+      n,
+      correct,
+      skip,
+      accPct,
+      elapsedSec: elapsed,
+      snapshot: payload,
+    })
+    setReportSnapshot(payload)
     setPhase('report')
-    setReportReady(false)
-    setTimeout(() => setReportReady(true), 3000)
   }
+
+  function openSavedRecord(row) {
+    if (!row?.snapshot?.questions) return
+    setRecordsModalOpen(false)
+    const t = row.testId ? TEST_TYPES.find((x) => x.id === row.testId) : null
+    setSelectedTest(t || null)
+    setReportSnapshot(row.snapshot)
+    setPhase('report')
+  }
+
+  function deleteSavedRecord(e, id) {
+    e.stopPropagation()
+    removeAiTestRecord(id)
+    setTestRecords(getAiTestRecords())
+  }
+
   function nextOrSubmit() {
-    if (currentQ === 4 && !showTip) { setShowTip(true); return }
-    if (currentQ < MOCK_QUESTIONS.length - 1) setCurrentQ(q => q + 1)
+    const len = quizQuestions.length
+    if (len === 0) return
+    if (currentQ < len - 1) setCurrentQ((q) => q + 1)
     else submitTest()
   }
+
+  const qNow = quizQuestions[currentQ]
+  const aNow = answers[currentQ]
+  const canNext =
+    aNow === 'skip' ||
+    (aNow != null &&
+      (qNow?.type === 'fill_blank'
+        ? String(aNow).trim().length > 0
+        : qNow?.type === 'judge'
+          ? aNow === true || aNow === false
+          : true))
+
+  const dimStats = useMemo(() => {
+    if (!reportSnapshot) return null
+    return buildDimensionStats(reportSnapshot.questions, reportSnapshot.answers)
+  }, [reportSnapshot])
+
+  const radarOption = useMemo(() => {
+    if (!dimStats) return null
+    const values = L3_EVALUATION_DIMENSIONS.map((d) => {
+      const s = dimStats.find((x) => x.key === d.key)
+      return s ? s.pct : 0
+    })
+    return {
+      color: ['#0891b2'],
+      radar: {
+        indicator: L3_EVALUATION_DIMENSIONS.map((d) => ({ name: d.name, max: 100 })),
+        splitNumber: 5,
+        axisName: { color: '#64748b', fontSize: 11, lineHeight: 14 },
+        splitLine: { lineStyle: { color: ['#e2e8f0'] } },
+        splitArea: { show: false },
+      },
+      series: [
+        {
+          type: 'radar',
+          data: [{ value: values, name: '掌握度', areaStyle: { opacity: 0.22 }, lineStyle: { width: 2 } }],
+        },
+      ],
+    }
+  }, [dimStats])
+
+  const reportStats = useMemo(() => {
+    if (!reportSnapshot || !dimStats) return null
+    const { questions, answers, elapsedSec } = reportSnapshot
+    const n = questions.length
+    let correct = 0
+    let skip = 0
+    questions.forEach((q, i) => {
+      const a = answers[i]
+      if (a === 'skip') skip += 1
+      else if (isL3AnswerCorrect(q, a)) correct += 1
+    })
+    const accPct = n ? Math.round((correct / n) * 100) : 0
+    const masteredTags = dimStats.filter((d) => d.pct >= 80)
+    const weakTags = dimStats.filter((d) => d.pct < 80)
+    const aiText = buildAiSummary(dimStats, selectedTest?.id === 'general')
+    return { correct, skip, n, accPct, elapsedSec, masteredTags, weakTags, aiText }
+  }, [reportSnapshot, dimStats, selectedTest])
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="flex items-center gap-3 mb-2">
-        <Link to="/events" className="text-sm text-slate-500 hover:text-primary">赛事中心</Link>
+        <Link to="/events" className="text-sm text-slate-500 hover:text-primary">
+          赛事中心
+        </Link>
         <span className="text-slate-300">/</span>
-        <span className="text-sm text-slate-700">免费测评中心</span>
+        <span className="text-sm text-slate-700">测评中心</span>
       </div>
 
-      {/* ── 入口：分层选择 ── */}
       {phase === 'entry' && (
         <>
           <div className="card p-8 bg-gradient-to-br from-bingo-dark to-cyan-900 text-white mb-8 rounded-2xl">
-            <h1 className="text-2xl font-bold mb-2">免费测评中心</h1>
-            <p className="text-slate-300 text-sm mb-6">按年龄段、学习目标选择测评，获得定制化课程推荐与学习路径规划</p>
-            <div className="flex flex-wrap gap-3 mb-6">
-              {TEST_CATEGORIES.map(cat => (
-                <div key={cat.id} className="bg-white/10 rounded-xl p-4">
-                  <p className="text-xs text-cyan-300 mb-2">{cat.label}</p>
-                  <div className="flex gap-2">
-                    {cat.options.map(opt => (
-                      <button key={opt.id} onClick={() => setQuizCategory({ ...quizCategory, [cat.id]: opt.id })}
-                        className={'px-3 py-1.5 rounded-lg text-sm transition ' + (quizCategory[cat.id] === opt.id ? 'bg-primary text-white' : 'bg-white/10 hover:bg-white/20')}>{opt.name}</button>
-                    ))}
+            <h1 className="text-2xl font-bold mb-2">测评中心</h1>
+            <p className="text-slate-300 text-sm">选择下方测评类型，完成后可查看能力分析与课程推荐。</p>
+          </div>
+
+          <div className="mb-10">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+              <h2 className="section-title mb-0">选择测评类型</h2>
+              <button
+                type="button"
+                onClick={() => setRecordsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-cyan-700 hover:underline shrink-0"
+              >
+                <svg className="h-4 w-4 shrink-0 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                评测记录
+              </button>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-5">
+              {TEST_TYPES.map((t) => (
+                <div key={t.id} className="card p-6 hover:shadow-md hover:border-primary/30 transition">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-bingo-dark">{t.name}</h3>
+                      {t.stage ? <p className="text-[11px] text-primary font-medium mt-0.5">阶段：{t.stage}</p> : null}
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      {t.originalPrice ? (
+                        <span className="text-xs text-slate-400 line-through tabular-nums">{t.originalPrice}</span>
+                      ) : null}
+                      <span className={`font-bold text-sm tabular-nums ${isFreeTest(t) ? 'text-emerald-600' : 'text-primary'}`}>{t.currentPrice}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-4">{t.desc}</p>
+                  <div className="flex gap-3 flex-wrap">
+                    <button type="button" onClick={() => startAssessment(t)} className="btn-primary text-xs px-4 py-2">
+                      开始测评
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button onClick={startFree} className="bg-primary hover:bg-cyan-500 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition">免费体验测评</button>
-              <button onClick={() => setPhase('booking')} className="bg-white/10 hover:bg-white/20 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition">预约专项测评</button>
-            </div>
-          </div>
-
-          <h2 className="section-title mb-4">选择测评类型</h2>
-          <div className="grid md:grid-cols-2 gap-5 mb-10">
-            {TEST_TYPES.map(t => (
-              <div key={t.id} className="card p-6 hover:shadow-md hover:border-primary/30 transition">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <h3 className="font-semibold text-bingo-dark">{t.name}</h3>
-                  <span className="text-primary font-bold text-sm shrink-0">{t.price}</span>
-                </div>
-                <p className="text-xs text-slate-500 mb-4">{t.desc}</p>
-                <div className="flex gap-3">
-                  {t.price === '免费体验' ? (
-                    <button onClick={startFree} className="btn-primary text-xs px-4 py-2">开始测评</button>
-                  ) : (
-                    <button onClick={() => startTest(t)} className="btn-primary text-xs px-4 py-2">预约测评</button>
-                  )}
-                  <button type="button" className="rounded-lg border border-primary text-primary text-xs px-4 py-2 hover:bg-primary/10 transition">查看样例报告</button>
-                </div>
-              </div>
-            ))}
           </div>
 
           <div className="card p-6 bg-cyan-50 border-primary/20">
@@ -144,157 +362,504 @@ export default function EventAITest() {
         </>
       )}
 
-      {/* ── 预约 ── */}
-      {phase === 'booking' && (
-        <div className="max-w-lg mx-auto">
-          <h1 className="text-2xl font-bold text-bingo-dark mb-2">预约专项测评</h1>
-          <p className="text-slate-600 text-sm mb-6">选择测评时间，专员确认后推送测评链接至手机</p>
-          <form onSubmit={submitBooking} className="card p-8 space-y-5">
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">测评类型 *</label>
-              <select required className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary bg-white">
-                {TEST_TYPES.map(t => <option key={t.id}>{t.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">预约时间 *</label>
-              <input required type="datetime-local" value={bookTime} onChange={e => setBookTime(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">联系电话 *</label>
-              <input required className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary" placeholder="测评链接将发送至此手机号" />
-            </div>
-            <div className="flex gap-3">
-              <button type="submit" className="btn-primary flex-1 py-2.5 text-sm">提交预约</button>
-              <button type="button" onClick={() => setPhase('entry')} className="flex-1 border border-slate-200 rounded-lg py-2.5 text-sm text-slate-600 hover:bg-slate-50">返回</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* ── 知识点小科普弹窗（每5题） ── */}
-      {phase === 'testing' && showTip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowTip(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-bingo-dark mb-2">💡 知识点小科普</h3>
-            <p className="text-sm text-slate-600 mb-4">{TIP_AFTER_5}</p>
-            <button onClick={() => { setShowTip(false); nextOrSubmit() }} className="w-full btn-primary py-2.5">继续答题</button>
-          </div>
-        </div>
-      )}
-
-      {/* ── 在线测评 ── */}
       {phase === 'testing' && (
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-bold text-bingo-dark">AI基础认知测评（免费体验）</h1>
-            <span className="text-sm text-slate-500">{currentQ + 1} / {MOCK_QUESTIONS.length}</span>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+            <h1 className="text-xl font-bold text-bingo-dark">
+              {selectedTest?.name || 'AI 测评'}
+              {selectedTest?.stage ? (
+                <span className="block sm:inline sm:ml-2 text-sm font-semibold text-primary">（{selectedTest.stage}）</span>
+              ) : null}
+            </h1>
+            <span className="text-sm text-slate-500 tabular-nums shrink-0">{quizQuestions.length ? `${currentQ + 1} / ${quizQuestions.length}` : '—'}</span>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-2 mb-8">
-            <div className="bg-primary h-2 rounded-full transition-all" style={{ width: ((currentQ + 1) / MOCK_QUESTIONS.length * 100) + '%' }} />
+          <div className="w-full bg-slate-100 rounded-full h-2 mb-6">
+            <div className="bg-primary h-2 rounded-full transition-all" style={{ width: (quizQuestions.length ? ((currentQ + 1) / quizQuestions.length) * 100 : 0) + '%' }} />
           </div>
 
-          {MOCK_QUESTIONS[currentQ] && (
-            <div className="card p-8">
-              <h2 className="font-semibold text-bingo-dark text-base mb-6">Q{currentQ + 1}. {MOCK_QUESTIONS[currentQ].q}</h2>
-              <div className="space-y-3">
-                {MOCK_QUESTIONS[currentQ].opts.map((opt, i) => (
-                  <button key={i} onClick={() => setAnswers({ ...answers, [currentQ]: opt[0] })}
-                    className={'w-full text-left px-5 py-3 rounded-xl border text-sm transition ' + (answers[currentQ] === opt[0] ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-slate-200 hover:border-primary/30 hover:bg-slate-50')}>
-                    {opt}
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+            <div className="flex-1 min-w-0 w-full">
+              {quizQuestions[currentQ] && (
+                <div className="card p-8">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="font-semibold text-bingo-dark text-base">{currentQ + 1}. {quizQuestions[currentQ].q}</h2>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  {quizQuestions[currentQ].type === 'fill_blank'
+                    ? '填空题'
+                    : quizQuestions[currentQ].type === 'judge'
+                      ? '判断题'
+                      : '选择题'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mb-4">
+                所属评价要点：{dimensionMeta(quizQuestions[currentQ].dim)?.name || '—'}
+              </p>
+              {quizQuestions[currentQ].type === 'fill_blank' ? (
+                <input
+                  type="text"
+                  value={String(answers[currentQ] ?? '').replace(/^skip$/, '')}
+                  onChange={(e) => setAnswers({ ...answers, [currentQ]: e.target.value })}
+                  disabled={answers[currentQ] === 'skip'}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 disabled:bg-slate-50 disabled:text-slate-400"
+                  placeholder="请输入答案"
+                  autoComplete="off"
+                />
+              ) : quizQuestions[currentQ].type === 'judge' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { v: true, label: '正确' },
+                    { v: false, label: '错误' },
+                  ].map(({ v, label }) => (
+                    <button
+                      key={String(v)}
+                      type="button"
+                      onClick={() => setAnswers({ ...answers, [currentQ]: v })}
+                      className={
+                        'px-5 py-3 rounded-xl border text-sm font-medium transition ' +
+                        (answers[currentQ] === v
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-slate-200 text-slate-700 hover:border-primary/30 hover:bg-slate-50')
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(quizQuestions[currentQ].opts || []).map((opt, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setAnswers({ ...answers, [currentQ]: opt[0] })}
+                      className={
+                        'w-full text-left px-5 py-3 rounded-xl border text-sm transition ' +
+                        (answers[currentQ] === opt[0]
+                          ? 'border-primary bg-primary/5 text-primary font-medium'
+                          : 'border-slate-200 hover:border-primary/30 hover:bg-slate-50')
+                      }
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setAnswers({ ...answers, [currentQ]: 'skip' })}
+                className={
+                  'mt-4 w-full py-2.5 rounded-xl text-sm border transition ' +
+                  (answers[currentQ] === 'skip'
+                    ? 'border-amber-500 bg-amber-50 text-amber-900 font-medium'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50')
+                }
+              >
+                不会（本题跳过）
+              </button>
+              <div className="flex gap-3 mt-6">
+                {currentQ > 0 && (
+                  <button type="button" onClick={() => setCurrentQ((q) => q - 1)} className="rounded-lg border border-slate-200 text-slate-600 px-5 py-2.5 text-sm hover:bg-slate-50">
+                    上一题
                   </button>
+                )}
+                <button
+                  type="button"
+                  onClick={nextOrSubmit}
+                  disabled={!canNext}
+                  className="btn-primary ml-auto px-5 py-2.5 text-sm disabled:opacity-45 disabled:pointer-events-none"
+                >
+                  {currentQ < quizQuestions.length - 1 ? '下一题' : '提交测评'}
+                </button>
+              </div>
+                </div>
+              )}
+            </div>
+
+            {quizQuestions.length > 0 && (
+              <aside
+                className="w-full lg:w-52 xl:w-56 shrink-0 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-3 shadow-sm lg:sticky lg:top-24 self-start"
+                aria-label="题目进度"
+              >
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <p className="text-xs font-semibold text-bingo-dark">题目进度</p>
+                  <p className="text-[11px] text-slate-500 tabular-nums">
+                    <span className="text-slate-400">已处理 </span>
+                    {
+                      quizQuestions.filter((q, i) => {
+                        const st = getQuizItemStatus(q, answers[i])
+                        return st === 'done' || st === 'skip'
+                      }).length
+                    }
+                    <span className="text-slate-400"> / </span>
+                    {quizQuestions.length}
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {quizQuestions.map((q, i) => {
+                    const st = getQuizItemStatus(q, answers[i])
+                    const isCur = i === currentQ
+                    const base =
+                      'h-9 w-full rounded-lg text-xs font-semibold tabular-nums transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 '
+                    let cls = base
+                    if (isCur) cls += 'bg-primary text-white shadow-md ring-2 ring-primary/35 ring-offset-1 ring-offset-slate-50'
+                    else if (st === 'done') cls += 'bg-emerald-500 text-white hover:bg-emerald-600'
+                    else if (st === 'skip') cls += 'bg-amber-100 text-amber-900 border border-amber-200 hover:bg-amber-200/80'
+                    else cls += 'bg-white text-slate-400 border border-slate-200 border-dashed hover:border-slate-300 hover:text-slate-600'
+
+                    const title =
+                      st === 'done'
+                        ? '已作答，点击跳转'
+                        : st === 'skip'
+                          ? '已标记不会，点击跳转'
+                          : isCur
+                            ? '当前题目'
+                            : '未作答，点击跳转'
+                    return (
+                      <button key={q.id || i} type="button" title={title} onClick={() => setCurrentQ(i)} className={cls}>
+                        {i + 1}
+                      </button>
+                    )
+                  })}
+                </div>
+                <ul className="mt-3 pt-3 border-t border-slate-200/80 space-y-1.5 text-[10px] text-slate-500">
+                  <li className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm bg-primary shrink-0 ring-2 ring-primary/30" />
+                    当前
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm bg-emerald-500 shrink-0" />
+                    已答
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm bg-amber-100 border border-amber-300 shrink-0" />
+                    跳过
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm border border-dashed border-slate-300 bg-white shrink-0" />
+                    未答
+                  </li>
+                </ul>
+              </aside>
+            )}
+          </div>
+        </div>
+      )}
+
+      {phase === 'report' && reportSnapshot && reportStats && dimStats && radarOption && (
+        <div className="max-w-lg mx-auto sm:max-w-xl md:max-w-2xl pb-12">
+          {/* 顶栏：与站点主题一致（bingo-dark + cyan / primary） */}
+          <div className="rounded-b-3xl bg-gradient-to-b from-bingo-dark via-cyan-900 to-primary text-white px-5 pt-8 pb-20 text-center shadow-lg">
+            <p className="text-sm text-white/90">{selectedTest?.id === 'general' ? '普通综合测评' : 'L3快速测评'}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mt-1">测评完成</h1>
+            <div className="flex items-stretch justify-center gap-0 mt-8 text-sm">
+              {[
+                { v: `${reportStats.accPct}%`, label: '总正确率' },
+                { v: `${reportStats.correct}/${reportStats.n}`, label: '正确题数' },
+                { v: fmtMmSs(reportStats.elapsedSec), label: '用时' },
+                { v: String(reportStats.skip), label: '不会' },
+              ].map((cell, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center justify-center px-1 border-l border-white/30 first:border-l-0 min-w-0">
+                  <span className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{cell.v}</span>
+                  <span className="text-[11px] text-white/85 mt-1">{cell.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="-mt-14 relative z-10 bg-white rounded-t-3xl shadow-xl border border-slate-100 px-4 sm:px-6 pt-6 pb-8">
+            <div className="flex items-center gap-2 flex-wrap mb-3">
+              <h2 className="text-base font-bold text-bingo-dark">综合评价</h2>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-primary text-white px-2 py-0.5 rounded-full">
+                <span aria-hidden>✦</span> AI
+              </span>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed mb-6">{reportStats.aiText}</p>
+
+            <div className="mb-6">
+              <p className="text-xs font-medium text-slate-700 flex items-center gap-1.5 mb-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                已掌握
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {reportStats.masteredTags.length ? (
+                  reportStats.masteredTags.map((d) => (
+                    <span key={d.key} className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100">
+                      {d.name} {d.pct}%
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">暂无明显满分维度，继续加油</span>
+                )}
+              </div>
+            </div>
+            <div className="mb-8">
+              <p className="text-xs font-medium text-slate-700 flex items-center gap-1.5 mb-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                待加强
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {reportStats.weakTags.length ? (
+                  reportStats.weakTags.map((d) => (
+                    <span key={d.key} className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-100">
+                      {d.name} {d.pct}%
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">当前无低于 80% 的薄弱维度</span>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-4 mb-8">
+              <p className="text-xs text-slate-500 mb-2">知识掌握雷达图（轴：L3_单元表评价要点，与飞书表一致后可整体替换数据源）</p>
+              <ReactECharts option={radarOption} style={{ height: 300 }} opts={{ renderer: 'svg' }} />
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-white px-3 py-4 mb-8">
+              <h3 className="text-sm font-bold text-bingo-dark mb-4">分维度成绩</h3>
+              <div className="space-y-5">
+                {dimStats.map((d) => {
+                  const barPct = d.pct
+                  const isZero = barPct === 0
+                  const isPass = d.passed && !isZero
+                  const isFail = !isZero && !d.passed
+                  const barColor = isZero ? 'bg-slate-200' : isPass ? 'bg-emerald-500' : 'bg-red-400'
+                  return (
+                    <div key={d.key}>
+                      <div className="flex justify-between gap-2 items-start mb-1">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-bingo-dark">{d.name}</p>
+                          <p className="text-[11px] text-slate-400">{d.unit}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-bingo-dark tabular-nums">
+                            {d.correct}/{d.total}
+                            {d.skip > 0 ? <span className="text-[11px] font-normal text-slate-400 ml-1">跳过{d.skip}题</span> : null}
+                          </p>
+                          <span
+                            className={
+                              'inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full ' +
+                              (d.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-600')
+                            }
+                          >
+                            {d.passed ? '达标' : '未达标'}
+                          </span>
+                          <p className="text-[11px] text-slate-400 mt-0.5">正确率 {d.pct}%</p>
+                        </div>
+                      </div>
+                      <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={'h-full rounded-full transition-all ' + barColor}
+                          style={{ width: `${Math.min(100, barPct)}%` }}
+                        />
+                        <div
+                          className="absolute top-0 bottom-0 w-px bg-slate-500/70 z-10"
+                          style={{ left: `${PASS_PCT}%` }}
+                          title={`${PASS_PCT}% 达标线`}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <details className="rounded-2xl border border-slate-100 bg-white px-3 py-2 mb-8 group">
+              <summary className="cursor-pointer list-none py-2 px-1 text-sm font-bold text-bingo-dark flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+                <span>答题详情</span>
+                <span className="text-xs font-normal text-primary group-open:hidden">点击展开全部</span>
+                <span className="text-xs font-normal text-slate-500 hidden group-open:inline">点击收起</span>
+              </summary>
+              <ul className="divide-y divide-slate-100 max-h-[28rem] overflow-y-auto border-t border-slate-100 mt-2 pt-1">
+                {reportSnapshot.questions.map((q, i) => {
+                  const a = reportSnapshot.answers[i]
+                  const ok = isL3AnswerCorrect(q, a)
+                  const meta = dimensionMeta(q.dim)
+                  const pickedOpt = q.opts?.find((o) => o[0] === a)
+                  const yourText =
+                    a === 'skip'
+                      ? null
+                      : q.type === 'fill_blank'
+                        ? String(a).trim() || '—'
+                        : q.type === 'judge'
+                          ? a === true
+                            ? '正确'
+                            : a === false
+                              ? '错误'
+                              : '—'
+                          : pickedOpt || a || '—'
+                  const refText =
+                    q.type === 'fill_blank'
+                      ? (q.blanks || []).join(' / ')
+                      : q.type === 'judge'
+                        ? q.ans === true
+                          ? '正确'
+                          : '错误'
+                        : q.opts?.find((o) => o[0] === q.ans)?.slice(2)?.trim() || q.ans
+                  return (
+                    <li key={q.id} className="py-3 text-sm">
+                      <p className="font-medium text-bingo-dark">
+                        {i + 1}. {q.q}
+                        <span className="ml-2 text-[10px] font-normal text-slate-400">
+                          {q.type === 'fill_blank' ? '填空' : q.type === 'judge' ? '判断' : '选择'}
+                        </span>
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">维度：{meta?.name || '—'}</p>
+                      <p className="mt-1 text-slate-600">
+                        你的作答：
+                        <span className={ok ? 'text-emerald-600 font-medium' : a === 'skip' ? 'text-amber-600' : 'text-red-600'}>
+                          {a === 'skip' ? '不会（跳过）' : yourText}
+                        </span>
+                        {ok ? ' ✓' : a === 'skip' ? '' : ' ✗'}
+                      </p>
+                      {!ok && (
+                        <p className="text-xs text-slate-500 mt-0.5">参考答案：{refText}</p>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </details>
+
+            <div className="card p-6 mb-6 border border-slate-100 shadow-none">
+              <h2 className="font-semibold text-bingo-dark mb-4">定制化课程推荐</h2>
+              {selectedTest?.id === 'general' ? (
+                <p className="text-sm text-slate-600 mb-4 rounded-xl bg-primary/5 border border-primary/15 px-4 py-3 leading-relaxed">
+                  根据你的作答情况，我们结合薄弱维度列出下列课程，帮助你从零散了解到系统学习；可优先关注带「推荐」标签的入门课，再按兴趣选择进阶方向。
+                </p>
+              ) : null}
+              <div className="space-y-3">
+                {REPORT_COURSES.map((c, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 gap-2 flex-wrap">
+                    <div className="min-w-0">
+                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded mr-2">{c.tag}</span>
+                      <span className="font-medium text-bingo-dark">{c.name}</span>
+                      <span className="text-primary text-sm ml-2">{c.priceStr}</span>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Link to={c.to} state={{ fromTest: true }} className="text-xs border border-primary text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5">
+                        立即试听
+                      </Link>
+                      {c.courseId && (
+                        <Link
+                          to="/courses/checkout"
+                          state={{ courseName: c.name, fromTest: true, courseId: c.courseId, classType: { name: '标准班', price: c.price, lessons: 16 } }}
+                          className="btn-primary text-xs px-3 py-1.5"
+                        >
+                          加入购物车
+                        </Link>
+                      )}
+                      {!c.courseId && (
+                        <Link to={c.to} className="btn-primary text-xs px-3 py-1.5">
+                          查看详情
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
-              <div className="flex gap-3 mt-8">
-                {currentQ > 0 && (
-                  <button onClick={() => setCurrentQ(q => q - 1)} className="rounded-lg border border-slate-200 text-slate-600 px-5 py-2.5 text-sm hover:bg-slate-50">上一题</button>
-                )}
-                <button onClick={nextOrSubmit} className="btn-primary ml-auto px-5 py-2.5 text-sm">{currentQ < MOCK_QUESTIONS.length - 1 ? '下一题' : '提交测评'}</button>
-              </div>
             </div>
-          )}
+
+            <div className="flex flex-wrap gap-3">
+              <button type="button" className="btn-primary text-sm px-5 py-2.5">
+                保存报告
+              </button>
+              <button type="button" className="rounded-lg border border-primary text-primary text-sm px-5 py-2.5 hover:bg-primary/10">
+                分享至微信
+              </button>
+              <Link to="/profile/test" className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50">
+                查看历史报告
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setPhase('entry')
+                  setReportSnapshot(null)
+                }}
+                className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50"
+              >
+                重新测评
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ── 测评报告：3秒生成 + 课程推荐 + 立即试听/加入购物车 ── */}
-      {phase === 'report' && (
-        <div className="max-w-2xl mx-auto">
-          {!reportReady ? (
-            <div className="card p-12 text-center">
-              <div className="animate-pulse text-4xl mb-4">📊</div>
-              <p className="text-slate-600">正在生成可视化测评报告...</p>
-              <p className="text-sm text-slate-400 mt-2">预计3秒</p>
+      {recordsModalOpen ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="records-modal-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/45 backdrop-blur-[1px]"
+            aria-label="关闭弹层"
+            onClick={() => setRecordsModalOpen(false)}
+          />
+          <div className="relative z-10 flex max-h-[min(92vh,42rem)] w-full max-w-lg flex-col rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+              <h3 id="records-modal-title" className="text-base font-semibold text-bingo-dark">
+                评测记录
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRecordsModalOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="关闭"
+              >
+                <span className="block text-xl leading-none">×</span>
+              </button>
             </div>
-          ) : (
-            <>
-              <div className="card p-8 bg-gradient-to-br from-bingo-dark to-cyan-900 text-white mb-6 rounded-2xl text-center">
-                <div className="text-5xl mb-3">🎉</div>
-                <h1 className="text-2xl font-bold mb-1">测评完成！</h1>
-                <p className="text-slate-300 text-sm">报告已同步至个人中心</p>
-                <div className="mt-4 text-4xl font-bold text-cyan-300">82 <span className="text-base font-normal text-white/60">分</span></div>
-                <p className="text-sm text-white/70 mt-1">能力等级：AI进阶学员</p>
-                <div className="mt-4 pt-4 border-t border-white/20">
-                  <p className="text-sm text-cyan-200">在同龄（{quizCategory.age === 'primary' ? '小学' : quizCategory.age === 'junior' ? '初中' : '高中'}）中</p>
-                  <p className="text-2xl font-bold text-white mt-1">超越 <span className="text-cyan-300">78%</span> 的学员</p>
-                </div>
-              </div>
-
-              <div className="card p-6 mb-6">
-                <h2 className="font-semibold text-bingo-dark mb-5">各维度能力得分</h2>
-                <div className="space-y-4">
-                  {DIMENSIONS.map((d, i) => (
-                    <div key={i}>
-                      <div className="flex justify-between text-sm mb-1.5">
-                        <span className="text-slate-700">{d.name}</span>
-                        <span className="font-medium text-slate-700">{d.value}</span>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+              <p className="text-[11px] text-slate-500 mb-3">提交后自动保存在本机浏览器。</p>
+              {testRecords.length === 0 ? (
+                <p className="text-sm text-slate-500 py-10 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/80">
+                  暂无记录，完成一次测评后将显示在这里。
+                </p>
+              ) : (
+                <ul className="space-y-3 pb-2">
+                  {testRecords.map((row) => (
+                    <li key={row.id} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs">
+                      <p className="text-[10px] text-slate-500 tabular-nums">{fmtRecordTime(row.createdAt)}</p>
+                      <p className="font-medium text-bingo-dark mt-1 leading-snug">{row.testName}</p>
+                      {row.testStage ? <p className="text-[10px] text-slate-500 mt-0.5">{row.testStage}</p> : null}
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className="text-base font-bold text-primary tabular-nums">{row.accPct}%</span>
+                        <span
+                          className={
+                            'text-[10px] font-medium px-1.5 py-0.5 rounded-full ' +
+                            (row.accPct >= 80
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : row.accPct >= 60
+                                ? 'bg-cyan-100 text-cyan-800'
+                                : 'bg-amber-100 text-amber-900')
+                          }
+                        >
+                          {recordLevelLabel(row.accPct)}
+                        </span>
+                        <span className="text-[10px] text-slate-400 tabular-nums">
+                          {row.correct}/{row.n}
+                          {row.skip ? ` · 跳过${row.skip}` : ''} · {fmtMmSs(row.elapsedSec || 0)}
+                        </span>
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2">
-                        <div className={'h-2 rounded-full transition-all ' + d.color} style={{ width: d.value + '%' }} />
+                      <div className="flex flex-wrap gap-3 mt-2 pt-2 border-t border-slate-200/80">
+                        <button type="button" onClick={() => openSavedRecord(row)} className="text-[11px] text-primary font-medium hover:underline">
+                          查看报告
+                        </button>
+                        <button type="button" onClick={(e) => deleteSavedRecord(e, row.id)} className="text-[11px] text-slate-400 hover:text-red-600">
+                          删除
+                        </button>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
-              </div>
-
-              <div className="card p-6 mb-6">
-                <h2 className="font-semibold text-bingo-dark mb-3">个性化建议</h2>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">✓</span><span className="text-slate-600"><strong>优势：</strong>AI伦理意识强（91分），AI感知力出色（88分）。</span></div>
-                  <div className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">△</span><span className="text-slate-600"><strong>提升方向：</strong>AI应用力（65分）建议加强实操训练。</span></div>
-                </div>
-              </div>
-
-              <div className="card p-6 mb-6">
-                <h2 className="font-semibold text-bingo-dark mb-4">定制化课程推荐（3-5门）</h2>
-                <div className="space-y-3">
-                  {REPORT_COURSES.map((c, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                      <div>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded mr-2">{c.tag}</span>
-                        <span className="font-medium text-bingo-dark">{c.name}</span>
-                        <span className="text-primary text-sm ml-2">{c.priceStr}</span>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <Link to={c.to} state={{ fromTest: true }} className="text-xs border border-primary text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5">立即试听</Link>
-                        {c.courseId && <Link to="/courses/checkout" state={{ courseName: c.name, fromTest: true, courseId: c.courseId, classType: { name: '标准班', price: c.price, lessons: 16 } }} className="btn-primary text-xs px-3 py-1.5">加入购物车</Link>}
-                        {!c.courseId && <Link to={c.to} className="btn-primary text-xs px-3 py-1.5">查看详情</Link>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3 mb-6">
-                <button type="button" className="btn-primary text-sm px-5 py-2.5">保存报告</button>
-                <button type="button" className="rounded-lg border border-primary text-primary text-sm px-5 py-2.5 hover:bg-primary/10">分享至微信</button>
-                <Link to="/profile/test" className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50">查看历史报告</Link>
-                <button onClick={() => { setPhase('entry'); setReportReady(false) }} className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50">重新测评</button>
-              </div>
-            </>
-          )}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
