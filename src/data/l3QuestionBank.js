@@ -161,6 +161,120 @@ export function buildGeneralTestSession() {
   return list
 }
 
+function shuffleArrayInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+/** 课程结业考评：补充填空（与 L3 同系评价要点，可随飞书 wiki 替换） */
+const COURSE_FINAL_FILL_EXTRA = [
+  {
+    id: 'cfe-fill-1',
+    type: 'fill_blank',
+    dim: Z[0],
+    q: '请填空：把原始数据加工成模型可用输入的过程，常被称作____。',
+    blanks: ['特征工程', '特征'],
+  },
+  {
+    id: 'cfe-fill-2',
+    type: 'fill_blank',
+    dim: Z[3],
+    q: '请填空：____是指模型在训练数据上拟合过好，但在新数据上表现明显变差。',
+    blanks: ['过拟合'],
+  },
+  {
+    id: 'cfe-fill-3',
+    type: 'fill_blank',
+    dim: Z[4],
+    q: '请填空：分类任务中，除准确率外，____与召回率的调和平均常记作 F1。',
+    blanks: ['精确率', '精准率'],
+  },
+  {
+    id: 'cfe-fill-4',
+    type: 'fill_blank',
+    dim: Z[5],
+    q: '请填空：在训练过程中若监控到验证集指标持续变差，常采用____以提前结束训练防过拟合。',
+    blanks: ['早停', 'earlystopping', 'early stopping'],
+  },
+  {
+    id: 'cfe-fill-5',
+    type: 'fill_blank',
+    dim: Z[2],
+    q: '请填空：有标签数据学习输入到输出映射的学习范式称为____学习。',
+    blanks: ['监督'],
+  },
+]
+
+/** 课程结业考评：补充判断题 */
+const COURSE_FINAL_JUDGE_EXTRA = [
+  {
+    id: 'cfe-judge-1',
+    type: 'judge',
+    dim: Z[1],
+    q: '「测试集」适合反复调参直到调到最高分再报告，这是推荐做法。',
+    ans: false,
+  },
+  {
+    id: 'cfe-judge-2',
+    type: 'judge',
+    dim: Z[2],
+    q: '混淆矩阵可以用于同时观察真阳性、假阳性等情况。',
+    ans: true,
+  },
+  {
+    id: 'cfe-judge-3',
+    type: 'judge',
+    dim: Z[4],
+    q: '神经网络一定只能有两层隐藏层，否则无法训练。',
+    ans: false,
+  },
+  {
+    id: 'cfe-judge-4',
+    type: 'judge',
+    dim: Z[0],
+    q: '无监督学习典型应用之一是聚类或表示学习，不一定需要人工标签。',
+    ans: true,
+  },
+]
+
+/** 结业整体考评总题量（5 选择 + 3 填空 + 2 判断，再整体打乱） */
+export const COURSE_FINAL_EXAM_TOTAL = 10
+const CFE_N_CHOICE = 5
+const CFE_N_FILL = 3
+const CFE_N_JUDGE = 2
+
+/**
+ * 从 L3 选择题库 + L3/通用测评中的填空与判断扩展池随机抽题，固定 10 题且三者均有。
+ * 题干可与飞书 L3 wiki 同步：https://my.feishu.cn/wiki/BBdUwmalwiOkjPkjlSHcBe1qnSd
+ */
+export function buildCourseFinalExamSession() {
+  const choicePool = L3_QUESTION_BANK.map((q) => ({ ...q, type: 'choice' }))
+  shuffleArrayInPlace(choicePool)
+  const choices = choicePool.slice(0, CFE_N_CHOICE)
+
+  const fillPool = [
+    ...L3_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'fill_blank'),
+    ...COURSE_FINAL_FILL_EXTRA,
+  ]
+  shuffleArrayInPlace(fillPool)
+  const fills = fillPool.slice(0, CFE_N_FILL)
+
+  const judgePool = [
+    ...L3_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'judge'),
+    ...GENERAL_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'judge'),
+    ...COURSE_FINAL_JUDGE_EXTRA,
+  ]
+  shuffleArrayInPlace(judgePool)
+  const judges = judgePool.slice(0, CFE_N_JUDGE)
+
+  const merged = [...choices, ...fills, ...judges]
+  shuffleArrayInPlace(merged)
+  return merged
+}
+
 export const L3_QUESTION_BANK = [
   { id: 'l3-1', dim: Z[0], q: '在机器学习流程中，「特征工程」主要指什么？', opts: ['A. 把原始数据转成模型可用的输入表示', 'B. 编写前端页面', 'C. 压缩视频文件', 'D. 部署服务器'], ans: 'A' },
   { id: 'l3-2', dim: Z[1], q: '下列哪一项最符合「监督学习」的特点？', opts: ['A. 只有输入没有标签', 'B. 用带标签的数据学习输入到输出的映射', 'C. 只靠试错得分学习', 'D. 不能用于分类任务'], ans: 'B' },

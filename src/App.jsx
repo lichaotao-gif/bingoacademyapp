@@ -45,6 +45,7 @@ import Mall from './pages/Mall'
 import Franchise from './pages/Franchise'
 import Materials from './pages/Materials'
 import Study from './pages/Study'
+import StudyCourseFinalExam from './pages/StudyCourseFinalExam'
 import Profile from './pages/Profile'
 import ProfileWorks from './pages/ProfileWorks'
 import Register from './pages/Register'
@@ -94,7 +95,9 @@ export default function App() {
         <Route path="/franchise" element={<Franchise />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/study" element={<Study />} />
+        <Route path="/profile/study/exam/:courseId" element={<StudyCourseFinalExam />} />
         <Route path="/study" element={<Study />} />
+        <Route path="/study/exam/:courseId" element={<StudyCourseFinalExam />} />
         <Route path="/profile/works" element={<ProfileWorks />} />
         <Route path="/login" element={<Navigate to="/" state={{ openLogin: true }} replace />} />
         <Route path="/register" element={<Register />} />

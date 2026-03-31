@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import ShareActionPopover from '../components/ShareActionPopover'
+import { CourseFinalExamListCard } from '../components/CourseFinalExamBlock'
+import { COURSE_FINAL_EXAM_TOTAL } from '../data/l3QuestionBank'
 
 // ─── 课时环节类型（与后台一致：视频+互动含判断题+游戏+AI实验 任意组合） ─────────────────
 const SEGMENT_LABELS = {
@@ -23,7 +25,7 @@ const DEFAULT_VIDEO_POSTER =
   'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1280&q=80&auto=format&fit=crop'
 
 // ─── Mock 已购课程数据 ─────────────────────────────────────
-const MY_COURSES = [
+export const MY_COURSES = [
   {
     id: 'ai-enlighten',
     title: '《AI启蒙：走进智能世界》',
@@ -2341,7 +2343,6 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
             )}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">{course.sub}</p>
-          {/* 进度 */}
           <div className="mt-2">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-slate-500">学习进度</span>
@@ -2415,7 +2416,9 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium truncate ${lesson.isCurrent ? 'text-primary' : isDone ? 'text-slate-500' : 'text-bingo-dark'}`}>
                     {lesson.title}
-                    {lesson.isCurrent && <span className="ml-2 text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">继续学习</span>}
+                    {lesson.isCurrent && (
+                      <span className="ml-2 text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">继续学习</span>
+                    )}
                   </p>
                   <p className="text-xs text-slate-400">
                     {lesson.duration}
@@ -2451,33 +2454,40 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
             )
           })}
 
-          {/* 课时列表最后：整个课程的学习总结入口（始终显示，全部完成后可点击） */}
+          {/* 整个课程的学习总结（仅文字总结弹层；整体考评在下方独立区域） */}
           {onShowCourseSummary && (
             <div className="border-t border-slate-100">
-              {allCompleted ? (
-                <button
-                  type="button"
-                  onClick={() => onShowCourseSummary(course)}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-primary/5 transition text-left"
+              <button
+                type="button"
+                onClick={() => onShowCourseSummary(course)}
+                className={
+                  'w-full flex items-center gap-3 px-5 py-3.5 transition text-left ' +
+                  (allCompleted ? 'hover:bg-primary/5' : 'hover:bg-amber-50/80 bg-amber-50/30')
+                }
+              >
+                <div
+                  className={
+                    'shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm ' +
+                    (allCompleted ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-800')
+                  }
                 >
-                  <div className="shrink-0 w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm">📋</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-bingo-dark">整个课程的学习总结</p>
-                    <p className="text-xs text-slate-500">查看本课程学习总结与综合评价</p>
-                  </div>
-                  <span className="shrink-0 text-slate-400">→</span>
-                </button>
-              ) : (
-                <div className="w-full flex items-center gap-3 px-5 py-3.5 text-left text-slate-400">
-                  <div className="shrink-0 w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-sm">📋</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-500">整个课程的学习总结</p>
-                    <p className="text-xs text-slate-400">完成全部 {totalCount} 课时后可查看</p>
-                  </div>
+                  📋
                 </div>
-              )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-bingo-dark">整个课程的学习总结</p>
+                  <p className="text-xs text-slate-500">
+                    {allCompleted
+                      ? '查看多维度学习总结、收获与证书提示'
+                      : `进度 ${progressPct}% · 可先预览全文总结，学完全部 ${totalCount} 课时后再结业更有仪式感`}
+                  </p>
+                </div>
+                <span className="shrink-0 text-slate-400">→</span>
+              </button>
             </div>
           )}
+
+          {/* 课时列表末尾：整体考评入口（独立页答题） */}
+          <CourseFinalExamListCard courseId={course.id} allCompleted={allCompleted} />
 
           {/* 课程底部：证书/完成提示（底部内边距避让右下角固定按钮） */}
           <div className="px-5 py-3 pb-12 sm:pb-11 bg-slate-50/70 flex items-center justify-between gap-4">
@@ -2514,6 +2524,7 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
 
 // ─── 主页面 ─────────────────────────────────────────────────
 export default function Study() {
+  const navigate = useNavigate()
   const [playingLesson, setPlayingLesson] = useState(null)
   const [courseSummaryCourse, setCourseSummaryCourse] = useState(null)
   const [extraReviewsByCourse, setExtraReviewsByCourse] = useState({})
@@ -2667,6 +2678,29 @@ export default function Study() {
               <div className="flex-1 min-h-0 overflow-y-auto bg-[#0f172a] p-3 sm:p-4 md:p-5">
                 <div className="w-full max-w-full sm:max-w-[min(100%,48rem)] md:max-w-[min(100%,56rem)] lg:max-w-[min(100%,72rem)] mx-auto">
                   <CourseSummaryDarkCard data={s} />
+
+                  <div className="mt-5 rounded-xl border border-slate-600/70 bg-slate-800/60 p-4 sm:p-5">
+                    <p className="text-xs font-semibold text-violet-200 mb-1 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400" aria-hidden />
+                      结业整体考评
+                    </p>
+                    <p className="text-sm text-slate-300 leading-relaxed m-0 mb-4">
+                      共 {COURSE_FINAL_EXAM_TOTAL} 道随机题（L3：选择、填空、判断），在独立页面作答，流程与赛事中心「AI
+                      测评」一致；也可在展开课时列表底部卡片进入。点击下方将进入该课的考评页。
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const id = courseSummaryCourse.id
+                        setCourseSummaryCourse(null)
+                        navigate(`/profile/study/exam/${id}`)
+                      }}
+                      className="w-full sm:w-auto inline-flex justify-center py-3 px-5 rounded-xl text-sm font-semibold bg-violet-500 text-white hover:bg-violet-600"
+                    >
+                      进入整体考评
+                    </button>
+                  </div>
+
                   <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-center pb-6">
                     <Link
                       to="/cert"
