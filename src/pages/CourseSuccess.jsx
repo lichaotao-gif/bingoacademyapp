@@ -57,17 +57,21 @@ export default function CourseSuccess() {
 
       <div className="space-y-3 mb-8">
         <Link to="/profile/study" className="block w-full btn-primary py-3 font-bold">立即进入课堂</Link>
-        <button type="button" className="block w-full border border-slate-200 rounded-xl py-3 text-slate-600 hover:bg-slate-50">
-          下载学习资料包
-        </button>
-        <div className="card p-4 bg-slate-50 text-left flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-bingo-dark mb-2">班主任 / 助教</p>
-            <div className="w-24 h-24 bg-slate-200 rounded flex items-center justify-center text-slate-400 text-xs">二维码</div>
-            <p className="text-xs text-slate-500 mt-2">扫码添加企业微信，备注订单号</p>
-          </div>
-          <button type="button" className="text-sm border border-orange-500 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50">分享赚佣金</button>
-        </div>
+        {!isGroup && (
+          <>
+            <button type="button" className="block w-full border border-slate-200 rounded-xl py-3 text-slate-600 hover:bg-slate-50">
+              下载学习资料包
+            </button>
+            <div className="card p-4 bg-slate-50 text-left flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-bingo-dark mb-2">班主任 / 助教</p>
+                <div className="w-24 h-24 bg-slate-200 rounded flex items-center justify-center text-slate-400 text-xs">二维码</div>
+                <p className="text-xs text-slate-500 mt-2">扫码添加企业微信，备注订单号</p>
+              </div>
+              <button type="button" className="text-sm border border-orange-500 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50">分享赚佣金</button>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="card p-6 text-left">

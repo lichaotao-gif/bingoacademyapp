@@ -9,6 +9,9 @@ import {
   isL3AnswerCorrect,
 } from '../data/l3QuestionBank'
 import { appendAiTestRecord, getAiTestRecords, getAiTestRecordById, removeAiTestRecord } from '../utils/aiTestRecordsStorage'
+import ReportShareModal from '../components/ReportShareModal'
+import ReportSummaryUserHeader from '../components/ReportSummaryUserHeader'
+import { saveReportAsPdf } from '../utils/saveReportAsPdf'
 
 const TEST_TYPES = [
   {
@@ -125,7 +128,9 @@ export default function EventAITest() {
   const [reportSnapshot, setReportSnapshot] = useState(null)
   const [testRecords, setTestRecords] = useState(() => getAiTestRecords())
   const [recordsModalOpen, setRecordsModalOpen] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const testStartRef = useRef(null)
+  const reportPdfRef = useRef(null)
 
   useEffect(() => {
     if (phase === 'entry') setTestRecords(getAiTestRecords())
@@ -547,11 +552,14 @@ export default function EventAITest() {
 
       {phase === 'report' && reportSnapshot && reportStats && dimStats && radarOption && (
         <div className="max-w-lg mx-auto sm:max-w-xl md:max-w-2xl pb-12">
-          {/* 顶栏：与站点主题一致（bingo-dark + cyan / primary） */}
-          <div className="rounded-b-3xl bg-gradient-to-b from-bingo-dark via-cyan-900 to-primary text-white px-5 pt-8 pb-20 text-center shadow-lg">
-            <p className="text-sm text-white/90">{selectedTest?.id === 'general' ? '普通综合测评' : 'L3快速测评'}</p>
-            <h1 className="text-2xl sm:text-3xl font-bold mt-1">测评完成</h1>
-            <div className="flex items-stretch justify-center gap-0 mt-8 text-sm">
+          <div ref={reportPdfRef}>
+            {/* 顶栏：与站点主题一致（bingo-dark + cyan / primary） */}
+            <div className="rounded-b-3xl bg-gradient-to-b from-bingo-dark via-cyan-900 to-primary text-white px-5 pt-8 pb-20 text-center shadow-lg">
+            <ReportSummaryUserHeader />
+            <p className="mt-3 text-2xl font-bold leading-snug text-white sm:text-3xl md:text-4xl">
+              {selectedTest?.id === 'general' ? '普通综合测评' : 'L3快速测评'}
+            </p>
+            <div className="mt-8 flex items-stretch justify-center gap-0 text-sm">
               {[
                 { v: `${reportStats.accPct}%`, label: '总正确率' },
                 { v: `${reportStats.correct}/${reportStats.n}`, label: '正确题数' },
@@ -622,7 +630,6 @@ export default function EventAITest() {
                   const barPct = d.pct
                   const isZero = barPct === 0
                   const isPass = d.passed && !isZero
-                  const isFail = !isZero && !d.passed
                   const barColor = isZero ? 'bg-slate-200' : isPass ? 'bg-emerald-500' : 'bg-red-400'
                   return (
                     <div key={d.key}>
@@ -670,7 +677,7 @@ export default function EventAITest() {
                 <span className="text-xs font-normal text-primary group-open:hidden">点击展开全部</span>
                 <span className="text-xs font-normal text-slate-500 hidden group-open:inline">点击收起</span>
               </summary>
-              <ul className="divide-y divide-slate-100 max-h-[28rem] overflow-y-auto border-t border-slate-100 mt-2 pt-1">
+              <ul className="report-detail-list divide-y divide-slate-100 max-h-[28rem] overflow-y-auto border-t border-slate-100 mt-2 pt-1">
                 {reportSnapshot.questions.map((q, i) => {
                   const a = reportSnapshot.answers[i]
                   const ok = isL3AnswerCorrect(q, a)
@@ -759,29 +766,51 @@ export default function EventAITest() {
                 ))}
               </div>
             </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button type="button" className="btn-primary text-sm px-5 py-2.5">
-                保存报告
-              </button>
-              <button type="button" className="rounded-lg border border-primary text-primary text-sm px-5 py-2.5 hover:bg-primary/10">
-                分享至微信
-              </button>
-              <Link to="/profile/test" className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50">
-                查看历史报告
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setPhase('entry')
-                  setReportSnapshot(null)
-                }}
-                className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50"
-              >
-                重新测评
-              </button>
-            </div>
           </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3 px-4 sm:px-6">
+            <button
+              type="button"
+              className="btn-primary text-sm px-5 py-2.5"
+              onClick={async () => {
+                try {
+                  const stamp = new Date().toISOString().slice(0, 19).replace(/T/, '_').replace(/:/g, '-')
+                  await saveReportAsPdf(reportPdfRef.current, `AI测评报告-${stamp}.pdf`)
+                } catch {
+                  window.alert('导出 PDF 失败，请稍后重试或使用浏览器打印。')
+                }
+              }}
+            >
+              保存报告
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-primary text-primary text-sm px-5 py-2.5 hover:bg-primary/10"
+              onClick={() => setShareModalOpen(true)}
+            >
+              分享
+            </button>
+            <Link to="/profile/test" className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50">
+              查看历史报告
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setPhase('entry')
+                setReportSnapshot(null)
+              }}
+              className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50"
+            >
+              重新测评
+            </button>
+          </div>
+          <ReportShareModal
+            open={shareModalOpen}
+            onClose={() => setShareModalOpen(false)}
+            shareUrl={typeof window !== 'undefined' ? window.location.href : ''}
+            title="分享测评报告"
+          />
         </div>
       )}
 

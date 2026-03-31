@@ -1,6 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
+import ReportShareModal from './ReportShareModal'
+import ReportSummaryUserHeader from './ReportSummaryUserHeader'
+import { saveReportAsPdf } from '../utils/saveReportAsPdf'
 import {
   buildCourseFinalExamSession,
   COURSE_FINAL_EXAM_TOTAL,
@@ -110,7 +113,9 @@ export default function CourseFinalExamBlock({ courseTitle }) {
   const [answers, setAnswers] = useState({})
   const [currentQ, setCurrentQ] = useState(0)
   const [reportSnapshot, setReportSnapshot] = useState(null)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const testStartRef = useRef(null)
+  const reportPdfRef = useRef(null)
 
   function startExam() {
     setQuizQuestions(buildCourseFinalExamSession())
@@ -423,10 +428,11 @@ export default function CourseFinalExamBlock({ courseTitle }) {
     ]
     return (
       <div className="max-w-lg mx-auto sm:max-w-xl md:max-w-2xl pb-12">
-        <div className="rounded-b-3xl bg-gradient-to-b from-bingo-dark via-cyan-900 to-primary text-white px-5 pt-8 pb-20 text-center shadow-lg">
-          <p className="text-sm text-white/90">结业整体考评 · L3</p>
-          <h1 className="text-2xl sm:text-3xl font-bold mt-1">考评完成</h1>
-          <div className="flex items-stretch justify-center gap-0 mt-8 text-sm">
+        <div ref={reportPdfRef}>
+          <div className="rounded-b-3xl bg-gradient-to-b from-bingo-dark via-cyan-900 to-primary text-white px-5 pt-8 pb-20 text-center shadow-lg">
+          <ReportSummaryUserHeader />
+          <p className="mt-3 text-2xl font-bold leading-snug text-white sm:text-3xl md:text-4xl">结业整体考评 · L3</p>
+          <div className="mt-8 flex items-stretch justify-center gap-0 text-sm">
             {statCells.map((cell, i) => (
               <div key={i} className="flex-1 flex flex-col items-center justify-center px-1 border-l border-white/30 first:border-l-0 min-w-0">
                 <span className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{cell.v}</span>
@@ -536,7 +542,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
               <span className="text-xs font-normal text-primary group-open:hidden">点击展开全部</span>
               <span className="text-xs font-normal text-slate-500 hidden group-open:inline">点击收起</span>
             </summary>
-            <ul className="divide-y divide-slate-100 max-h-[28rem] overflow-y-auto border-t border-slate-100 mt-2 pt-1">
+            <ul className="report-detail-list divide-y divide-slate-100 max-h-[28rem] overflow-y-auto border-t border-slate-100 mt-2 pt-1">
               {reportSnapshot.questions.map((q, i) => {
                 const a = reportSnapshot.answers[i]
                 const ok = isL3AnswerCorrect(q, a)
@@ -584,19 +590,41 @@ export default function CourseFinalExamBlock({ courseTitle }) {
               })}
             </ul>
           </details>
-
-          <div className="flex flex-wrap gap-3">
-            <button type="button" className="btn-primary text-sm px-5 py-2.5">
-              保存报告
-            </button>
-            <button type="button" className="rounded-lg border border-primary text-primary text-sm px-5 py-2.5 hover:bg-primary/10">
-              分享至微信
-            </button>
-            <button type="button" onClick={redoExam} className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50">
-              重做考评
-            </button>
-          </div>
         </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3 px-4 sm:px-6">
+          <button
+            type="button"
+            className="btn-primary text-sm px-5 py-2.5"
+            onClick={async () => {
+              try {
+                const stamp = new Date().toISOString().slice(0, 19).replace(/T/, '_').replace(/:/g, '-')
+                await saveReportAsPdf(reportPdfRef.current, `结业考评报告-${stamp}.pdf`)
+              } catch {
+                window.alert('导出 PDF 失败，请稍后重试或使用浏览器打印。')
+              }
+            }}
+          >
+            保存报告
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-primary text-primary text-sm px-5 py-2.5 hover:bg-primary/10"
+            onClick={() => setShareModalOpen(true)}
+          >
+            分享
+          </button>
+          <button type="button" onClick={redoExam} className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50">
+            重做考评
+          </button>
+        </div>
+        <ReportShareModal
+          open={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          shareUrl={typeof window !== 'undefined' ? window.location.href : ''}
+          title="分享结业考评"
+        />
       </div>
     )
   }
