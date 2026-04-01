@@ -8,8 +8,10 @@ import {
   buildCourseFinalExamSession,
   COURSE_FINAL_EXAM_TOTAL,
   dimensionMeta,
+  formatMultiChoiceAnswerLine,
   isL3AnswerCorrect,
   L3_EVALUATION_DIMENSIONS,
+  shortAnswerRefLine,
 } from '../data/l3QuestionBank'
 
 const PASS_PCT = 60
@@ -20,6 +22,8 @@ function getQuizItemStatus(q, a) {
   if (a === 'skip') return 'skip'
   if (a == null) return 'empty'
   if (q.type === 'fill_blank' && String(a).trim() === '') return 'empty'
+  if (q.type === 'short_answer' && String(a).trim() === '') return 'empty'
+  if (q.type === 'multi_choice' && (!Array.isArray(a) || a.length === 0)) return 'empty'
   if (q.type === 'judge' && a !== true && a !== false) return 'empty'
   return 'done'
 }
@@ -46,15 +50,15 @@ function buildCourseFinalExamSummaryText(dimStats, accPct) {
   let text =
     '本次整体考评题目与飞书 L3 建模素养题库同源，随机抽取共 ' +
     String(COURSE_FINAL_EXAM_TOTAL) +
-    ' 题，涵盖选择、填空与判断，用于检验整门课学完后对核心概念的把握。'
+    ' 题，涵盖单选、多选、填空、简答与判断，用于检验整门课学完后对核心概念的把握。'
   if (accPct >= 85) {
-    text += ` 你的正确率为 ${accPct}%，整体掌握扎实，可继续通过综合项目巩固迁移能力。`
+    text += ` 你的得分为 ${accPct} 分（满分100），整体掌握扎实，可继续通过综合项目巩固迁移能力。`
   } else if (accPct >= 70) {
-    text += ` 正确率 ${accPct}%，基础良好，建议针对错题涉及的能力要点回看对应章节与互动练习。`
+    text += ` 得分 ${accPct} 分（满分100），基础良好，建议针对错题涉及的能力要点回看对应章节与互动练习。`
   } else if (accPct >= 50) {
-    text += ` 正确率 ${accPct}%，仍有明显提升空间，可对照 L3 单元评价要点逐项查漏补缺。`
+    text += ` 得分 ${accPct} 分（满分100），仍有明显提升空间，可对照 L3 单元评价要点逐项查漏补缺。`
   } else {
-    text += ` 正确率 ${accPct}%，建议系统复习课程主线后使用「重做考评」再次检验。`
+    text += ` 得分 ${accPct} 分（满分100），建议系统复习课程主线后使用「重做考评」再次检验。`
   }
   if (weak.length) {
     text += ` 相对薄弱的维度包括：${weak.map((w) => w.name).join('、')}。`
@@ -94,7 +98,7 @@ export function CourseFinalExamListCard({ courseId, allCompleted = false }) {
           <p className="text-sm font-medium text-bingo-dark">结业整体考评</p>
           <p className="text-xs text-slate-500">
             {allCompleted
-              ? `共 ${COURSE_FINAL_EXAM_TOTAL} 道随机题（L3 · 选择/填空/判断），独立页作答，流程同 AI 测评`
+              ? `共 ${COURSE_FINAL_EXAM_TOTAL} 道随机题（L3 · 单选/多选/填空/简答/判断），独立页作答，流程同 AI 测评`
               : `学完全部课节后结业自检 · 共 ${COURSE_FINAL_EXAM_TOTAL} 题，可先了解入口`}
           </p>
         </div>
@@ -128,8 +132,9 @@ export default function CourseFinalExamBlock({ courseTitle }) {
   function submitTest() {
     const qs = [...quizQuestions]
     const ans = { ...answers }
-    qs.forEach((_, i) => {
+    qs.forEach((q, i) => {
       if (ans[i] == null) ans[i] = 'skip'
+      if (q.type === 'multi_choice' && Array.isArray(ans[i]) && ans[i].length === 0) ans[i] = 'skip'
     })
     const elapsed = testStartRef.current ? Math.max(1, Math.round((Date.now() - testStartRef.current) / 1000)) : 0
     setReportSnapshot({ questions: qs, answers: ans, elapsedSec: elapsed })
@@ -156,9 +161,13 @@ export default function CourseFinalExamBlock({ courseTitle }) {
     (aNow != null &&
       (qNow?.type === 'fill_blank'
         ? String(aNow).trim().length > 0
-        : qNow?.type === 'judge'
-          ? aNow === true || aNow === false
-          : true))
+        : qNow?.type === 'short_answer'
+          ? String(aNow).trim().length > 0
+          : qNow?.type === 'multi_choice'
+            ? Array.isArray(aNow) && aNow.length > 0
+            : qNow?.type === 'judge'
+              ? aNow === true || aNow === false
+              : true))
 
   function nextOrSubmit() {
     const len = quizQuestions.length
@@ -190,7 +199,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
       series: [
         {
           type: 'radar',
-          data: [{ value: values, name: '掌握度', areaStyle: { opacity: 0.22 }, lineStyle: { width: 2 } }],
+          data: [{ value: values, name: '得分', areaStyle: { opacity: 0.22 }, lineStyle: { width: 2 } }],
         },
       ],
     }
@@ -221,7 +230,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
         <h2 className="text-xl sm:text-2xl font-bold text-bingo-dark m-0 mb-3">学完后整体检验</h2>
         <p className="text-sm text-slate-600 leading-relaxed m-0 mb-4">
           下列 {COURSE_FINAL_EXAM_TOTAL}{' '}
-          道随机题（飞书 L3：选择、填空、判断），流程与「AI 测评」一致。提交后可查看评价总结与逐题明细，也可重做换一批题目。
+          道随机题（飞书 L3：单选、多选、填空、简答、判断），流程与「AI 测评」一致。提交后可查看评价总结与逐题明细，也可通过「重做考评」换一批题目。
         </p>
         {courseTitle ? <p className="text-sm text-slate-500 m-0 mb-6 border-l-2 border-primary/30 pl-3">{courseTitle}</p> : null}
         <button type="button" onClick={startExam} className="btn-primary inline-flex justify-center py-3 px-6 rounded-xl text-sm font-semibold">
@@ -259,7 +268,15 @@ export default function CourseFinalExamBlock({ courseTitle }) {
                     {currentQ + 1}. {qNow.q}
                   </h3>
                   <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                    {qNow.type === 'fill_blank' ? '填空题' : qNow.type === 'judge' ? '判断题' : '选择题'}
+                    {qNow.type === 'fill_blank'
+                      ? '填空题'
+                      : qNow.type === 'short_answer'
+                        ? '简答题'
+                        : qNow.type === 'multi_choice'
+                          ? '多选题'
+                          : qNow.type === 'judge'
+                            ? '判断题'
+                            : '单选题'}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mb-4 m-0">所属评价要点：{dimensionMeta(qNow.dim)?.name || '—'}</p>
@@ -274,6 +291,58 @@ export default function CourseFinalExamBlock({ courseTitle }) {
                     placeholder="请输入答案"
                     autoComplete="off"
                   />
+                ) : qNow.type === 'short_answer' ? (
+                  <textarea
+                    value={String(answers[currentQ] ?? '').replace(/^skip$/, '')}
+                    onChange={(e) => setAnswers({ ...answers, [currentQ]: e.target.value })}
+                    disabled={answers[currentQ] === 'skip'}
+                    rows={5}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 disabled:bg-slate-50 disabled:text-slate-400 resize-y min-h-[120px]"
+                    placeholder="请简要作答（系统将按要点关键词自动判分，演示用）"
+                    autoComplete="off"
+                  />
+                ) : qNow.type === 'multi_choice' ? (
+                  <div className="space-y-3">
+                    <p className="text-[11px] text-slate-500 m-0">可选多项，须全部选对得分</p>
+                    {(qNow.opts || []).map((opt, i) => {
+                      const letter = String(opt).trim().charAt(0)
+                      const sel = Array.isArray(answers[currentQ]) ? answers[currentQ] : []
+                      const on = sel.includes(letter)
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            const cur = Array.isArray(answers[currentQ]) ? [...answers[currentQ]] : []
+                            const idx = cur.indexOf(letter)
+                            if (idx >= 0) cur.splice(idx, 1)
+                            else cur.push(letter)
+                            cur.sort()
+                            setAnswers({ ...answers, [currentQ]: cur })
+                          }}
+                          disabled={answers[currentQ] === 'skip'}
+                          className={
+                            'w-full text-left px-5 py-3 rounded-xl border text-sm transition flex items-start gap-3 bg-white ' +
+                            (on
+                              ? 'border-primary bg-primary/5 text-primary font-medium'
+                              : 'border-slate-200 hover:border-primary/30 hover:bg-slate-50') +
+                            (answers[currentQ] === 'skip' ? ' opacity-50 pointer-events-none' : '')
+                          }
+                        >
+                          <span
+                            className={
+                              'mt-0.5 shrink-0 w-5 h-5 rounded border flex items-center justify-center text-[10px] ' +
+                              (on ? 'border-primary bg-primary text-white' : 'border-slate-300 bg-white')
+                            }
+                            aria-hidden
+                          >
+                            {on ? '✓' : ''}
+                          </span>
+                          <span>{opt}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 ) : qNow.type === 'judge' ? (
                   <div className="grid grid-cols-2 gap-3">
                     {[
@@ -324,7 +393,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50')
                   }
                 >
-                  不会（本题跳过）
+                  不会
                 </button>
                 <div className="flex gap-3 mt-6">
                   {currentQ > 0 && (
@@ -404,7 +473,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
                   </li>
                   <li className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-sm bg-amber-100 border border-amber-300 shrink-0" aria-hidden />
-                    跳过
+                    不会
                   </li>
                   <li className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-sm border border-dashed border-slate-300 bg-white shrink-0" aria-hidden />
@@ -421,7 +490,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
 
   if (phase === 'report' && reportSnapshot && reportStats && dimStats && radarOption) {
     const statCells = [
-      { v: `${reportStats.accPct}%`, label: '总正确率' },
+      { v: `${reportStats.accPct}分`, label: '得分（满分100）' },
       { v: `${reportStats.correct}/${reportStats.n}`, label: '正确题数' },
       { v: fmtMmSs(reportStats.elapsedSec), label: '用时' },
       { v: String(reportStats.skip), label: '不会' },
@@ -460,7 +529,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
               {reportStats.masteredTags.length ? (
                 reportStats.masteredTags.map((d) => (
                   <span key={d.key} className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100">
-                    {d.name} {d.pct}%
+                    {d.name} {d.pct}分
                   </span>
                 ))
               ) : (
@@ -477,11 +546,11 @@ export default function CourseFinalExamBlock({ courseTitle }) {
               {reportStats.weakTags.length ? (
                 reportStats.weakTags.map((d) => (
                   <span key={d.key} className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-100">
-                    {d.name} {d.pct}%
+                    {d.name} {d.pct}分
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-slate-400">当前无低于 80% 的薄弱维度</span>
+                <span className="text-xs text-slate-400">当前无低于 80 分的薄弱维度</span>
               )}
             </div>
           </div>
@@ -509,7 +578,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
                       <div className="text-right shrink-0">
                         <p className="text-sm font-bold text-bingo-dark tabular-nums">
                           {d.correct}/{d.total}
-                          {d.skip > 0 ? <span className="text-[11px] font-normal text-slate-400 ml-1">跳过{d.skip}题</span> : null}
+                          {d.skip > 0 ? <span className="text-[11px] font-normal text-slate-400 ml-1">不会{d.skip}题</span> : null}
                         </p>
                         <span
                           className={
@@ -519,7 +588,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
                         >
                           {d.passed ? '达标' : '未达标'}
                         </span>
-                        <p className="text-[11px] text-slate-400 mt-0.5">正确率 {d.pct}%</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">得分 {d.pct}分（满分100）</p>
                       </div>
                     </div>
                     <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -527,7 +596,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
                       <div
                         className="absolute top-0 bottom-0 w-px bg-slate-500/70 z-10"
                         style={{ left: `${PASS_PCT}%` }}
-                        title={`${PASS_PCT}% 达标线`}
+                        title={`${PASS_PCT}分 达标线`}
                       />
                     </div>
                   </div>
@@ -553,34 +622,50 @@ export default function CourseFinalExamBlock({ courseTitle }) {
                     ? null
                     : q.type === 'fill_blank'
                       ? String(a).trim() || '—'
-                      : q.type === 'judge'
-                        ? a === true
-                          ? '正确'
-                          : a === false
-                            ? '错误'
-                            : '—'
-                        : pickedOpt || a || '—'
+                      : q.type === 'short_answer'
+                        ? String(a).trim() || '—'
+                        : q.type === 'multi_choice'
+                          ? formatMultiChoiceAnswerLine(q, a)
+                          : q.type === 'judge'
+                            ? a === true
+                              ? '正确'
+                              : a === false
+                                ? '错误'
+                                : '—'
+                            : pickedOpt || a || '—'
                 const refText =
                   q.type === 'fill_blank'
                     ? (q.blanks || []).join(' / ')
-                    : q.type === 'judge'
-                      ? q.ans === true
-                        ? '正确'
-                        : '错误'
-                      : q.opts?.find((o) => o[0] === q.ans)?.slice(2)?.trim() || q.ans
+                    : q.type === 'short_answer'
+                      ? shortAnswerRefLine(q)
+                      : q.type === 'multi_choice'
+                        ? formatMultiChoiceAnswerLine(q, q.ans)
+                        : q.type === 'judge'
+                          ? q.ans === true
+                            ? '正确'
+                            : '错误'
+                          : q.opts?.find((o) => o[0] === q.ans)?.slice(2)?.trim() || q.ans
                 return (
                   <li key={q.id || i} className="py-3 text-sm">
                     <p className="font-medium text-bingo-dark">
                       {i + 1}. {q.q}
                       <span className="ml-2 text-[10px] font-normal text-slate-400">
-                        {q.type === 'fill_blank' ? '填空' : q.type === 'judge' ? '判断' : '选择'}
+                        {q.type === 'fill_blank'
+                          ? '填空'
+                          : q.type === 'short_answer'
+                            ? '简答'
+                            : q.type === 'multi_choice'
+                              ? '多选'
+                              : q.type === 'judge'
+                                ? '判断'
+                                : '单选'}
                       </span>
                     </p>
                     <p className="text-xs text-slate-500 mt-1">维度：{meta?.name || '—'}</p>
                     <p className="mt-1 text-slate-600">
                       你的作答：
                       <span className={ok ? 'text-emerald-600 font-medium' : a === 'skip' ? 'text-amber-600' : 'text-red-600'}>
-                        {a === 'skip' ? '不会（跳过）' : yourText}
+                        {a === 'skip' ? '不会' : yourText}
                       </span>
                       {ok ? ' ✓' : a === 'skip' ? '' : ' ✗'}
                     </p>

@@ -6,28 +6,51 @@ import {
   buildGeneralTestSession,
   L3_EVALUATION_DIMENSIONS,
   dimensionMeta,
+  formatMultiChoiceAnswerLine,
   isL3AnswerCorrect,
+  shortAnswerRefLine,
 } from '../data/l3QuestionBank'
 import { appendAiTestRecord, getAiTestRecords, getAiTestRecordById, removeAiTestRecord } from '../utils/aiTestRecordsStorage'
 import ReportShareModal from '../components/ReportShareModal'
 import ReportSummaryUserHeader from '../components/ReportSummaryUserHeader'
 import { saveReportAsPdf } from '../utils/saveReportAsPdf'
 
+const CN_STAR = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九']
+
+/** 与认证中心九星·四阶体系一致，阶名已写入评测标题，不再单独展示「阶段」 */
+function stageInTitleForStar(star) {
+  if (star <= 3) return '启智阶'
+  if (star <= 6) return '基础阶'
+  if (star <= 8) return '精研阶'
+  return '智创阶'
+}
+
+const STAR_EVALUATION_TYPES = Array.from({ length: 9 }, (_, i) => {
+  const star = i + 1
+  const stage = stageInTitleForStar(star)
+  const cn = CN_STAR[star]
+  return {
+    id: `star_${star}`,
+    name: `${cn}星AI评测 · ${stage}`,
+    event: '建模素养/L3',
+    duration: 12 + star * 2,
+    originalPrice: star <= 3 ? '¥99' : star <= 6 ? '¥169' : star <= 8 ? '¥229' : '¥299',
+    currentPrice: star <= 3 ? '免费' : `¥${29 + star * 8}/次`,
+    desc: `对标${stage}${cn}星能力标准：单选、多选、填空、简答与判断综合测评，覆盖 L3 建模素养要点；完成后可查看维度分析与课程推荐。`,
+  }
+})
+
 const TEST_TYPES = [
   {
     id: 'general',
     name: '普通测评',
-    stage: '',
     event: '综合摸底',
     duration: 12,
     originalPrice: '',
     currentPrice: '免费',
-    desc: '适合还不确定具体学习方向的同学：综合摸底，仅含选择题与判断题。完成后结合薄弱维度为你推荐适合入门或强化的课程。',
+    desc: '适合还不确定具体学习方向的同学：综合摸底，含单选、多选、判断与简答样题。完成后结合薄弱维度为你推荐适合入门或强化的课程。',
   },
-  { id: 'modeling_3star', name: '三星AI建模师评测', stage: 'AI探索者', event: '建模素养/L3', duration: 20, originalPrice: '¥199', currentPrice: '免费', desc: '临时 6 题（选择 + 填空 + 判断），覆盖 L3 建模基础要点；正式版将恢复完整题库' },
-  { id: 'creative', name: 'AI创新能力专项测评', stage: '', event: '科创类赛事', duration: 40, originalPrice: '¥79', currentPrice: '¥39/次', desc: '测评创新思维、项目设计能力' },
-  { id: 'code', name: 'AI编程与算法测评', stage: '', event: '编程/机器人赛事', duration: 60, originalPrice: '¥99', currentPrice: '¥59/次', desc: '测评Python编程、机器学习基础' },
-  { id: 'literacy', name: '青少年AI素养综合测评', stage: '', event: '素养类/升学赛事', duration: 45, originalPrice: '¥89', currentPrice: '¥49/次', desc: '多维度评估AI素养，生成能力图谱' },
+  ...STAR_EVALUATION_TYPES,
 ]
 
 function isFreeTest(t) {
@@ -114,6 +137,8 @@ function getQuizItemStatus(q, a) {
   if (a === 'skip') return 'skip'
   if (a == null) return 'empty'
   if (q.type === 'fill_blank' && String(a).trim() === '') return 'empty'
+  if (q.type === 'short_answer' && String(a).trim() === '') return 'empty'
+  if (q.type === 'multi_choice' && (!Array.isArray(a) || a.length === 0)) return 'empty'
   if (q.type === 'judge' && a !== true && a !== false) return 'empty'
   return 'done'
 }
@@ -180,8 +205,9 @@ export default function EventAITest() {
     const elapsed = testStartRef.current ? Math.max(1, Math.round((Date.now() - testStartRef.current) / 1000)) : 0
     const qs = [...quizQuestions]
     const ans = { ...answers }
-    qs.forEach((_, i) => {
+    qs.forEach((q, i) => {
       if (ans[i] == null) ans[i] = 'skip'
+      if (q.type === 'multi_choice' && Array.isArray(ans[i]) && ans[i].length === 0) ans[i] = 'skip'
     })
     const payload = { questions: qs, answers: ans, elapsedSec: elapsed }
     const n = qs.length
@@ -195,7 +221,7 @@ export default function EventAITest() {
     const accPct = n ? Math.round((correct / n) * 100) : 0
     appendAiTestRecord({
       testName: selectedTest?.name || '测评',
-      testStage: selectedTest?.stage || '',
+      testStage: '',
       testId: selectedTest?.id || null,
       n,
       correct,
@@ -237,9 +263,13 @@ export default function EventAITest() {
     (aNow != null &&
       (qNow?.type === 'fill_blank'
         ? String(aNow).trim().length > 0
-        : qNow?.type === 'judge'
-          ? aNow === true || aNow === false
-          : true))
+        : qNow?.type === 'short_answer'
+          ? String(aNow).trim().length > 0
+          : qNow?.type === 'multi_choice'
+            ? Array.isArray(aNow) && aNow.length > 0
+            : qNow?.type === 'judge'
+              ? aNow === true || aNow === false
+              : true))
 
   const dimStats = useMemo(() => {
     if (!reportSnapshot) return null
@@ -264,7 +294,7 @@ export default function EventAITest() {
       series: [
         {
           type: 'radar',
-          data: [{ value: values, name: '掌握度', areaStyle: { opacity: 0.22 }, lineStyle: { width: 2 } }],
+          data: [{ value: values, name: '得分', areaStyle: { opacity: 0.22 }, lineStyle: { width: 2 } }],
         },
       ],
     }
@@ -325,8 +355,7 @@ export default function EventAITest() {
                 <div key={t.id} className="card p-6 hover:shadow-md hover:border-primary/30 transition">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-bingo-dark">{t.name}</h3>
-                      {t.stage ? <p className="text-[11px] text-primary font-medium mt-0.5">阶段：{t.stage}</p> : null}
+                      <h3 className="font-semibold text-bingo-dark leading-snug">{t.name}</h3>
                     </div>
                     <div className="flex flex-col items-end gap-0.5 shrink-0">
                       {t.originalPrice ? (
@@ -370,12 +399,7 @@ export default function EventAITest() {
       {phase === 'testing' && (
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-            <h1 className="text-xl font-bold text-bingo-dark">
-              {selectedTest?.name || 'AI 测评'}
-              {selectedTest?.stage ? (
-                <span className="block sm:inline sm:ml-2 text-sm font-semibold text-primary">（{selectedTest.stage}）</span>
-              ) : null}
-            </h1>
+            <h1 className="text-xl font-bold text-bingo-dark leading-snug">{selectedTest?.name || 'AI 测评'}</h1>
             <span className="text-sm text-slate-500 tabular-nums shrink-0">{quizQuestions.length ? `${currentQ + 1} / ${quizQuestions.length}` : '—'}</span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2 mb-6">
@@ -391,9 +415,13 @@ export default function EventAITest() {
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                   {quizQuestions[currentQ].type === 'fill_blank'
                     ? '填空题'
-                    : quizQuestions[currentQ].type === 'judge'
-                      ? '判断题'
-                      : '选择题'}
+                    : quizQuestions[currentQ].type === 'short_answer'
+                      ? '简答题'
+                      : quizQuestions[currentQ].type === 'multi_choice'
+                        ? '多选题'
+                        : quizQuestions[currentQ].type === 'judge'
+                          ? '判断题'
+                          : '单选题'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mb-4">
@@ -409,6 +437,58 @@ export default function EventAITest() {
                   placeholder="请输入答案"
                   autoComplete="off"
                 />
+              ) : quizQuestions[currentQ].type === 'short_answer' ? (
+                <textarea
+                  value={String(answers[currentQ] ?? '').replace(/^skip$/, '')}
+                  onChange={(e) => setAnswers({ ...answers, [currentQ]: e.target.value })}
+                  disabled={answers[currentQ] === 'skip'}
+                  rows={5}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 disabled:bg-slate-50 disabled:text-slate-400 resize-y min-h-[120px]"
+                  placeholder="请简要作答（系统将按要点关键词自动判分，演示用）"
+                  autoComplete="off"
+                />
+              ) : quizQuestions[currentQ].type === 'multi_choice' ? (
+                <div className="space-y-3">
+                  <p className="text-[11px] text-slate-500 m-0">可选多项，须全部选对得分</p>
+                  {(quizQuestions[currentQ].opts || []).map((opt, i) => {
+                    const letter = String(opt).trim().charAt(0)
+                    const sel = Array.isArray(answers[currentQ]) ? answers[currentQ] : []
+                    const on = sel.includes(letter)
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          const cur = Array.isArray(answers[currentQ]) ? [...answers[currentQ]] : []
+                          const idx = cur.indexOf(letter)
+                          if (idx >= 0) cur.splice(idx, 1)
+                          else cur.push(letter)
+                          cur.sort()
+                          setAnswers({ ...answers, [currentQ]: cur })
+                        }}
+                        disabled={answers[currentQ] === 'skip'}
+                        className={
+                          'w-full text-left px-5 py-3 rounded-xl border text-sm transition flex items-start gap-3 ' +
+                          (on
+                            ? 'border-primary bg-primary/5 text-primary font-medium'
+                            : 'border-slate-200 hover:border-primary/30 hover:bg-slate-50') +
+                          (answers[currentQ] === 'skip' ? ' opacity-50 pointer-events-none' : '')
+                        }
+                      >
+                        <span
+                          className={
+                            'mt-0.5 shrink-0 w-5 h-5 rounded border flex items-center justify-center text-[10px] ' +
+                            (on ? 'border-primary bg-primary text-white' : 'border-slate-300 bg-white')
+                          }
+                          aria-hidden
+                        >
+                          {on ? '✓' : ''}
+                        </span>
+                        <span>{opt}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               ) : quizQuestions[currentQ].type === 'judge' ? (
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -459,7 +539,7 @@ export default function EventAITest() {
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50')
                 }
               >
-                不会（本题跳过）
+                不会
               </button>
               <div className="flex gap-3 mt-6">
                 {currentQ > 0 && (
@@ -537,7 +617,7 @@ export default function EventAITest() {
                   </li>
                   <li className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-sm bg-amber-100 border border-amber-300 shrink-0" />
-                    跳过
+                    不会
                   </li>
                   <li className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-sm border border-dashed border-slate-300 bg-white shrink-0" />
@@ -557,11 +637,11 @@ export default function EventAITest() {
             <div className="rounded-b-3xl bg-gradient-to-b from-bingo-dark via-cyan-900 to-primary text-white px-5 pt-8 pb-20 text-center shadow-lg">
             <ReportSummaryUserHeader />
             <p className="mt-3 text-2xl font-bold leading-snug text-white sm:text-3xl md:text-4xl">
-              {selectedTest?.id === 'general' ? '普通综合测评' : 'L3快速测评'}
+              {selectedTest?.id === 'general' ? '普通综合测评' : selectedTest?.name || 'L3快速测评'}
             </p>
             <div className="mt-8 flex items-stretch justify-center gap-0 text-sm">
               {[
-                { v: `${reportStats.accPct}%`, label: '总正确率' },
+                { v: `${reportStats.accPct}分`, label: '得分（满分100）' },
                 { v: `${reportStats.correct}/${reportStats.n}`, label: '正确题数' },
                 { v: fmtMmSs(reportStats.elapsedSec), label: '用时' },
                 { v: String(reportStats.skip), label: '不会' },
@@ -592,7 +672,7 @@ export default function EventAITest() {
                 {reportStats.masteredTags.length ? (
                   reportStats.masteredTags.map((d) => (
                     <span key={d.key} className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100">
-                      {d.name} {d.pct}%
+                      {d.name} {d.pct}分
                     </span>
                   ))
                 ) : (
@@ -609,11 +689,11 @@ export default function EventAITest() {
                 {reportStats.weakTags.length ? (
                   reportStats.weakTags.map((d) => (
                     <span key={d.key} className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-100">
-                      {d.name} {d.pct}%
+                      {d.name} {d.pct}分
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-slate-400">当前无低于 80% 的薄弱维度</span>
+                  <span className="text-xs text-slate-400">当前无低于 80 分的薄弱维度</span>
                 )}
               </div>
             </div>
@@ -641,7 +721,7 @@ export default function EventAITest() {
                         <div className="text-right shrink-0">
                           <p className="text-sm font-bold text-bingo-dark tabular-nums">
                             {d.correct}/{d.total}
-                            {d.skip > 0 ? <span className="text-[11px] font-normal text-slate-400 ml-1">跳过{d.skip}题</span> : null}
+                            {d.skip > 0 ? <span className="text-[11px] font-normal text-slate-400 ml-1">不会{d.skip}题</span> : null}
                           </p>
                           <span
                             className={
@@ -651,7 +731,7 @@ export default function EventAITest() {
                           >
                             {d.passed ? '达标' : '未达标'}
                           </span>
-                          <p className="text-[11px] text-slate-400 mt-0.5">正确率 {d.pct}%</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">得分 {d.pct}分（满分100）</p>
                         </div>
                       </div>
                       <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -662,7 +742,7 @@ export default function EventAITest() {
                         <div
                           className="absolute top-0 bottom-0 w-px bg-slate-500/70 z-10"
                           style={{ left: `${PASS_PCT}%` }}
-                          title={`${PASS_PCT}% 达标线`}
+                          title={`${PASS_PCT}分 达标线`}
                         />
                       </div>
                     </div>
@@ -688,34 +768,50 @@ export default function EventAITest() {
                       ? null
                       : q.type === 'fill_blank'
                         ? String(a).trim() || '—'
-                        : q.type === 'judge'
-                          ? a === true
-                            ? '正确'
-                            : a === false
-                              ? '错误'
-                              : '—'
-                          : pickedOpt || a || '—'
+                        : q.type === 'short_answer'
+                          ? String(a).trim() || '—'
+                          : q.type === 'multi_choice'
+                            ? formatMultiChoiceAnswerLine(q, a)
+                            : q.type === 'judge'
+                              ? a === true
+                                ? '正确'
+                                : a === false
+                                  ? '错误'
+                                  : '—'
+                              : pickedOpt || a || '—'
                   const refText =
                     q.type === 'fill_blank'
                       ? (q.blanks || []).join(' / ')
-                      : q.type === 'judge'
-                        ? q.ans === true
-                          ? '正确'
-                          : '错误'
-                        : q.opts?.find((o) => o[0] === q.ans)?.slice(2)?.trim() || q.ans
+                      : q.type === 'short_answer'
+                        ? shortAnswerRefLine(q)
+                        : q.type === 'multi_choice'
+                          ? formatMultiChoiceAnswerLine(q, q.ans)
+                          : q.type === 'judge'
+                            ? q.ans === true
+                              ? '正确'
+                              : '错误'
+                            : q.opts?.find((o) => o[0] === q.ans)?.slice(2)?.trim() || q.ans
                   return (
                     <li key={q.id} className="py-3 text-sm">
                       <p className="font-medium text-bingo-dark">
                         {i + 1}. {q.q}
                         <span className="ml-2 text-[10px] font-normal text-slate-400">
-                          {q.type === 'fill_blank' ? '填空' : q.type === 'judge' ? '判断' : '选择'}
+                          {q.type === 'fill_blank'
+                            ? '填空'
+                            : q.type === 'short_answer'
+                              ? '简答'
+                              : q.type === 'multi_choice'
+                                ? '多选'
+                                : q.type === 'judge'
+                                  ? '判断'
+                                  : '单选'}
                         </span>
                       </p>
                       <p className="text-xs text-slate-500 mt-1">维度：{meta?.name || '—'}</p>
                       <p className="mt-1 text-slate-600">
                         你的作答：
                         <span className={ok ? 'text-emerald-600 font-medium' : a === 'skip' ? 'text-amber-600' : 'text-red-600'}>
-                          {a === 'skip' ? '不会（跳过）' : yourText}
+                          {a === 'skip' ? '不会' : yourText}
                         </span>
                         {ok ? ' ✓' : a === 'skip' ? '' : ' ✗'}
                       </p>
@@ -729,38 +825,23 @@ export default function EventAITest() {
             </details>
 
             <div className="card p-6 mb-6 border border-slate-100 shadow-none">
-              <h2 className="font-semibold text-bingo-dark mb-4">定制化课程推荐</h2>
+              <h2 className="font-semibold text-bingo-dark mb-4">课程推荐</h2>
               {selectedTest?.id === 'general' ? (
                 <p className="text-sm text-slate-600 mb-4 rounded-xl bg-primary/5 border border-primary/15 px-4 py-3 leading-relaxed">
-                  根据你的作答情况，我们结合薄弱维度列出下列课程，帮助你从零散了解到系统学习；可优先关注带「推荐」标签的入门课，再按兴趣选择进阶方向。
+                  根据你的作答情况，我们结合薄弱维度列出下列课程，帮助你从零散了解到系统学习；可优先从列表中的入门课开始，再按兴趣选择进阶方向。
                 </p>
               ) : null}
               <div className="space-y-3">
                 {REPORT_COURSES.map((c, i) => (
                   <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 gap-2 flex-wrap">
                     <div className="min-w-0">
-                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded mr-2">{c.tag}</span>
                       <span className="font-medium text-bingo-dark">{c.name}</span>
                       <span className="text-primary text-sm ml-2">{c.priceStr}</span>
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      <Link to={c.to} state={{ fromTest: true }} className="text-xs border border-primary text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5">
-                        立即试听
+                    <div className="shrink-0">
+                      <Link to={c.to} state={{ fromTest: true }} className="btn-primary text-xs px-3 py-1.5 inline-flex">
+                        查看详情
                       </Link>
-                      {c.courseId && (
-                        <Link
-                          to="/courses/checkout"
-                          state={{ courseName: c.name, fromTest: true, courseId: c.courseId, classType: { name: '标准班', price: c.price, lessons: 16 } }}
-                          className="btn-primary text-xs px-3 py-1.5"
-                        >
-                          加入购物车
-                        </Link>
-                      )}
-                      {!c.courseId && (
-                        <Link to={c.to} className="btn-primary text-xs px-3 py-1.5">
-                          查看详情
-                        </Link>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -855,7 +936,7 @@ export default function EventAITest() {
                       <p className="font-medium text-bingo-dark mt-1 leading-snug">{row.testName}</p>
                       {row.testStage ? <p className="text-[10px] text-slate-500 mt-0.5">{row.testStage}</p> : null}
                       <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className="text-base font-bold text-primary tabular-nums">{row.accPct}%</span>
+                        <span className="text-base font-bold text-primary tabular-nums">{row.accPct}分</span>
                         <span
                           className={
                             'text-[10px] font-medium px-1.5 py-0.5 rounded-full ' +
@@ -870,7 +951,7 @@ export default function EventAITest() {
                         </span>
                         <span className="text-[10px] text-slate-400 tabular-nums">
                           {row.correct}/{row.n}
-                          {row.skip ? ` · 跳过${row.skip}` : ''} · {fmtMmSs(row.elapsedSec || 0)}
+                          {row.skip ? ` · 不会${row.skip}` : ''} · {fmtMmSs(row.elapsedSec || 0)}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-3 mt-2 pt-2 border-t border-slate-200/80">

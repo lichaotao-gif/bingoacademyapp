@@ -109,8 +109,16 @@ export default function Layout({ children }) {
       <footer className="bg-bingo-dark text-slate-400 text-sm py-8 border-t border-cyan-500/20 bg-gradient-to-r from-[#0f172a] to-[#1e293b]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap justify-between gap-6">
           <div>
-            <span className="text-cyan-400 font-semibold">缤果AI学院</span>
-            <p className="mt-1">AI课程 + 权威赛事 · 启蒙-进阶-竞赛-升学-就业</p>
+            <Link to="/" className="inline-flex" aria-label="缤果AI学院首页">
+              <img
+                src="/logo.svg"
+                alt="缤果AI学院"
+                className="h-8 w-auto max-h-9 max-w-[min(100%,220px)] object-contain object-left sm:h-9 opacity-95 hover:opacity-100 transition-opacity"
+                width={307}
+                height={85}
+              />
+            </Link>
+            <p className="mt-2">AI课程 + 权威赛事 · 启蒙-进阶-竞赛-升学-就业</p>
           </div>
           <div className="flex gap-6">
             <div>

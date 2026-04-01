@@ -47,6 +47,7 @@ import Materials from './pages/Materials'
 import Study from './pages/Study'
 import StudyCourseFinalExam from './pages/StudyCourseFinalExam'
 import Profile from './pages/Profile'
+import ProfileEdit from './pages/ProfileEdit'
 import ProfileWorks from './pages/ProfileWorks'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="/mall/materials" element={<Materials />} />
         <Route path="/franchise" element={<Franchise />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/edit" element={<ProfileEdit />} />
         <Route path="/profile/study" element={<Study />} />
         <Route path="/profile/study/exam/:courseId" element={<StudyCourseFinalExam />} />
         <Route path="/study" element={<Study />} />

@@ -29,7 +29,7 @@ export default function CourseSuccess() {
       <div className="text-6xl mb-4">✅</div>
       <h1 className="text-2xl font-bold text-bingo-dark mb-2">支付成功</h1>
       <p className="text-slate-600 mb-2">课程已解锁 · {course}</p>
-      <p className="text-sm text-slate-500 mb-8">课程链接、学习资料已发送至您的手机 · 开课前将推送提醒</p>
+      <p className="text-sm text-slate-500 mb-8">课程已加入「我的学习」，可随时进入课堂；重要通知将在站内提醒</p>
 
       {isGroup && (
         <div className="card p-5 text-left mb-8 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50/80">

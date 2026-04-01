@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getSessionUser, sessionUserDisplayAvatarUrl } from '../utils/sessionUser'
 
 // ─── 会员体系数据 ─────────────────────────────────────────
 const MEMBER_LEVELS = [
@@ -1216,6 +1217,8 @@ export default function Profile() {
     { key: 'orders', label: '我的订单', icon: '📦' },
   ]
 
+  const sessionUser = getSessionUser()
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* ── 顶部通栏：用户信息 + 会员状态 ── */}
@@ -1224,9 +1227,16 @@ export default function Profile() {
           <div className="flex flex-wrap items-start gap-5">
             {/* 头像+基本信息 */}
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary/30 flex items-center justify-center text-white text-2xl font-bold shrink-0 border-2 border-cyan-400/30">头</div>
+              <img
+                src={sessionUserDisplayAvatarUrl(sessionUser)}
+                alt=""
+                className="w-16 h-16 rounded-full object-cover shrink-0 border-2 border-cyan-400/30 bg-white/10"
+                width={64}
+                height={64}
+                decoding="async"
+              />
               <div>
-                <p className="font-bold text-lg">昵称 · 缤果学员</p>
+                <p className="font-bold text-lg">昵称 · {sessionUser.nickname}</p>
                 <p className="text-white/70 text-xs mt-0.5">学员ID: BG20250001 · 绑定手机：138****8888</p>
                 <button type="button" className="text-xs text-cyan-400 hover:text-white mt-1 transition">安全设置 →</button>
               </div>
@@ -1252,7 +1262,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <Link to="/login" className="text-xs text-white/70 hover:text-white border border-white/20 rounded-xl px-4 py-2 transition self-start shrink-0">编辑资料</Link>
+            <Link to="/profile/edit" className="text-xs text-white/70 hover:text-white border border-white/20 rounded-xl px-4 py-2 transition self-start shrink-0">编辑资料</Link>
           </div>
         </div>
       </section>

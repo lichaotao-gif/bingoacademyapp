@@ -13,7 +13,7 @@ export const L3_EVALUATION_DIMENSIONS = [
 
 const Z = ['feature_encoding', 'train_eval', 'ml_theory', 'spatial_state', 'search_tool', 'search_algo']
 
-/** 临时测评：6 题（选择 + 填空 + 判断），题干可与飞书 L3 文档同步替换 */
+/** 临时测评：每类各 1 道样题（单选 / 多选 / 填空 / 判断 / 简答），题干可与飞书 L3 文档同步替换 */
 export const L3_TEST_SESSION_TEMPLATE = [
   {
     id: 'mix-1',
@@ -24,20 +24,17 @@ export const L3_TEST_SESSION_TEMPLATE = [
     ans: 'A',
   },
   {
-    id: 'mix-2',
-    type: 'choice',
+    id: 'mix-mc-1',
+    type: 'multi_choice',
     dim: Z[2],
-    q: '下列哪一项最符合「监督学习」的特点？',
-    opts: ['A. 只有输入没有标签', 'B. 用带标签的数据学习输入到输出的映射', 'C. 只靠试错得分学习', 'D. 不能用于分类任务'],
-    ans: 'B',
-  },
-  {
-    id: 'mix-3',
-    type: 'choice',
-    dim: Z[1],
-    q: '「验证集」最常见的用途是？',
-    opts: ['A. 最终对外报告的唯一分数', 'B. 调参与早停等模型选择', 'C. 替代测试集公布', 'D. 只用于画图'],
-    ans: 'B',
+    q: '下列哪些说法更符合「泛化」与数据划分相关要点？（多选）',
+    opts: [
+      'A. 在未见数据上的表现接近训练表现通常更好',
+      'B. 仅在训练集上极高准确率就足够，可不做验证',
+      'C. 划分独立测试集或验证集有助于估计泛化',
+      'D. 模型复杂度与数据量、噪声等完全无关',
+    ],
+    ans: ['A', 'C'],
   },
   {
     id: 'mix-judge-1',
@@ -54,16 +51,17 @@ export const L3_TEST_SESSION_TEMPLATE = [
     blanks: ['测试', '验证'],
   },
   {
-    id: 'mix-5',
-    type: 'fill_blank',
-    dim: Z[2],
-    q: '请填空：深度学习中，____传播用于根据损失计算梯度以更新参数。',
-    blanks: ['反向', '反向传播'],
+    id: 'mix-sa-1',
+    type: 'short_answer',
+    dim: Z[4],
+    q: '请用自己的话简要说明：为什么划分训练集与测试集有助于评估模型的泛化能力？（30～80 字为宜）',
+    refKeywords: ['未见', '新数据', '泛化', '过拟合', '真实', '评估'],
+    refSample: '可用未见过的数据评估模型表现，减少仅在训练数据上好、在新数据上差（过拟合）的误判。',
   },
 ]
 
-/** 当前临时测评题量（测试用，后续可改回 20） */
-export const QUIZ_SESSION_COUNT = 6
+/** 当前临时测评题量（与模板一致，每题型 1 道样题） */
+export const QUIZ_SESSION_COUNT = 5
 
 export function normalizeFillAnswer(s) {
   return String(s ?? '')
@@ -83,14 +81,69 @@ export function isFillBlankCorrectLoose(q, userAnswer) {
   })
 }
 
+/** 简答题：归一化后做子串匹配（命中任一要点词且字数达标即判对，演示用） */
+export function normalizeShortAnswer(s) {
+  return String(s ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s，。、；：！？,.;:!?'"''""\-／/]/g, '')
+}
+
+export function isShortAnswerCorrectLoose(q, userAnswer) {
+  if (!q.refKeywords?.length) return false
+  const u = normalizeShortAnswer(userAnswer)
+  if (u.length < 8) return false
+  return q.refKeywords.some((k) => {
+    const kn = normalizeShortAnswer(k)
+    return kn.length >= 2 && u.includes(kn)
+  })
+}
+
+/** 多选题：答案为选项字母数组，如 ['A','C'] */
+export function normalizeMultiChoiceLetters(ans) {
+  if (ans == null || ans === 'skip') return []
+  if (!Array.isArray(ans)) return []
+  return [
+    ...new Set(
+      ans
+        .map((x) => String(x).trim().toUpperCase().charAt(0))
+        .filter((c) => c >= 'A' && c <= 'Z'),
+    ),
+  ].sort()
+}
+
+export function isMultiChoiceCorrect(q, answer) {
+  if (q.type !== 'multi_choice') return false
+  const u = normalizeMultiChoiceLetters(answer)
+  const correct = normalizeMultiChoiceLetters(q.ans)
+  if (u.length !== correct.length) return false
+  return u.every((v, i) => v === correct[i])
+}
+
+/** 报告用：多选已选/参考答案展示为完整选项句 */
+export function formatMultiChoiceAnswerLine(q, letters) {
+  const L = normalizeMultiChoiceLetters(letters)
+  if (!L.length) return '—'
+  return L.map((l) => q.opts?.find((o) => String(o).trim().charAt(0) === l) || l).join('；')
+}
+
 export function isL3AnswerCorrect(q, answer) {
   if (answer === 'skip' || answer == null) return false
   if (q.type === 'fill_blank') return isFillBlankCorrectLoose(q, answer)
+  if (q.type === 'short_answer') return isShortAnswerCorrectLoose(q, answer)
+  if (q.type === 'multi_choice') return isMultiChoiceCorrect(q, answer)
   if (q.type === 'judge') return answer === q.ans
   return answer === q.ans
 }
 
-/** 洗牌后返回当次测评题目（固定 6 题结构） */
+/** 报告区展示用参考答案文案 */
+export function shortAnswerRefLine(q) {
+  if (q.type !== 'short_answer') return '—'
+  if (q.refSample) return q.refSample
+  return (q.refKeywords || []).join('、') || '—'
+}
+
+/** 洗牌后返回当次测评题目（与模板题量一致） */
 export function buildL3TestSession() {
   const list = [...L3_TEST_SESSION_TEMPLATE]
   for (let i = list.length - 1; i > 0; i--) {
@@ -100,7 +153,7 @@ export function buildL3TestSession() {
   return list
 }
 
-/** 普通综合测评：仅选择题 + 判断题，面向尚未明确学习方向的学生（题量可与 L3 区分） */
+/** 普通综合测评：每类各 1 道样题（单选 / 多选 / 判断 / 简答） */
 export const GENERAL_TEST_SESSION_TEMPLATE = [
   {
     id: 'gen-c1',
@@ -111,46 +164,36 @@ export const GENERAL_TEST_SESSION_TEMPLATE = [
     ans: 'B',
   },
   {
-    id: 'gen-j1',
-    type: 'judge',
+    id: 'gen-mc-1',
+    type: 'multi_choice',
     dim: Z[1],
-    q: '在严谨的开发流程中，应用「测试集」反复调参直到分数最高是可取做法。',
-    ans: false,
+    q: '下列哪些做法更有利于严谨地评估模型？（多选）',
+    opts: [
+      'A. 使用与训练过程独立的测试集做最终评估',
+      'B. 用验证集做调参与模型选择',
+      'C. 反复在测试集上调参直到分数最高再对外报告',
+      'D. 结合任务特点选择合适的指标（如不只看准确率）',
+    ],
+    ans: ['A', 'B', 'D'],
   },
   {
-    id: 'gen-c2',
-    type: 'choice',
-    dim: Z[2],
-    q: '训练集与测试集划分的主要目的更接近下列哪一项？',
-    opts: ['A. 加快训练速度', 'B. 减少参数量', 'C. 估计模型在未见数据上的泛化能力', 'D. 让损失一定为 0'],
-    ans: 'C',
-  },
-  {
-    id: 'gen-j2',
+    id: 'gen-j1',
     type: 'judge',
     dim: Z[3],
     q: '「过拟合」通常指模型在训练集上表现较好，但在新数据上明显变差。',
     ans: true,
   },
   {
-    id: 'gen-c3',
-    type: 'choice',
-    dim: Z[4],
-    q: '下列哪项更属于典型的模型正则化手段？',
-    opts: ['A. L2 权重惩罚或 Dropout', 'B. 盲目增大批量大小', 'C. 删除全部验证集', 'D. 把标签随机打乱'],
-    ans: 'A',
-  },
-  {
-    id: 'gen-c4',
-    type: 'choice',
-    dim: Z[5],
-    q: '「交叉验证」更常用于什么目的？',
-    opts: ['A. 更稳健地估计模型表现与方差', 'B. 减少训练样本数量', 'C. 替代数据清洗', 'D. 仅用于计算机视觉'],
-    ans: 'A',
+    id: 'gen-sa-1',
+    type: 'short_answer',
+    dim: Z[0],
+    q: '请简述：你认为「人工智能」与「普通计算机程序」最主要的区别是什么？（一句话即可）',
+    refKeywords: ['学习', '数据', '经验', '规律', '自适应', '训练', '模型'],
+    refSample: 'AI 往往能从数据中学习规律并改进表现；普通程序多按固定规则逐步执行。',
   },
 ]
 
-export const GENERAL_QUIZ_COUNT = 6
+export const GENERAL_QUIZ_COUNT = 4
 
 export function buildGeneralTestSession() {
   const list = [...GENERAL_TEST_SESSION_TEMPLATE]
@@ -240,14 +283,64 @@ const COURSE_FINAL_JUDGE_EXTRA = [
   },
 ]
 
-/** 结业整体考评总题量（5 选择 + 3 填空 + 2 判断，再整体打乱） */
+const COURSE_FINAL_SHORT_EXTRA = [
+  {
+    id: 'cfe-sa-1',
+    type: 'short_answer',
+    dim: Z[3],
+    q: '请简述「过拟合」在实际建模中有什么表现？你会用哪些思路缓解？（要点即可）',
+    refKeywords: ['训练', '新数据', '泛化', '正则', '验证', '早停', '数据'],
+    refSample: '训练集上很好、新数据上变差；可调参/早停、正则、增数据或简化模型等。',
+  },
+  {
+    id: 'cfe-sa-2',
+    type: 'short_answer',
+    dim: Z[5],
+    q: '说明「搜索」在解决路径规划或博弈类问题时，大致要定义哪几类要素？',
+    refKeywords: ['状态', '动作', '目标', '启发', '代价', '空间'],
+    refSample: '如状态空间、允许的移动或动作、代价或目标函数，必要时用启发信息引导搜索。',
+  },
+]
+
+const COURSE_FINAL_MULTI_EXTRA = [
+  {
+    id: 'cfe-mc-1',
+    type: 'multi_choice',
+    dim: Z[2],
+    q: '下列哪些情况更可能提示需要检查「数据管线」或标注质量？（多选）',
+    opts: [
+      'A. 训练损失很快接近 0 但验证集表现异常差且分布诡异',
+      'B. 标签与输入明显不一致的样本比例偏高',
+      'C. 验证集与训练集来自同一分布且划分规范',
+      'D. 特征在不同折交叉验证中统计特性漂移明显',
+    ],
+    ans: ['A', 'B', 'D'],
+  },
+  {
+    id: 'cfe-mc-2',
+    type: 'multi_choice',
+    dim: Z[4],
+    q: '部署机器学习应用时，通常需要重点考虑哪些方面？（多选）',
+    opts: [
+      'A. 延迟、吞吐与资源占用',
+      'B. 输入输出契约与版本管理',
+      'C. 只要训练准确率高即可忽略监控',
+      'D. 安全、隐私与合规风险',
+    ],
+    ans: ['A', 'B', 'D'],
+  },
+]
+
+/** 结业整体考评总题量（4 单选 + 1 多选 + 2 填空 + 1 简答 + 2 判断，再整体打乱） */
 export const COURSE_FINAL_EXAM_TOTAL = 10
-const CFE_N_CHOICE = 5
-const CFE_N_FILL = 3
+const CFE_N_CHOICE = 4
+const CFE_N_MULTI = 1
+const CFE_N_FILL = 2
+const CFE_N_SHORT = 1
 const CFE_N_JUDGE = 2
 
 /**
- * 从 L3 选择题库 + L3/通用测评中的填空与判断扩展池随机抽题，固定 10 题且三者均有。
+ * 从 L3 选择题库 + 填空 / 多选 / 简答 / 判断扩展池随机抽题，固定 10 题且各类型均有。
  * 题干可与飞书 L3 wiki 同步：https://my.feishu.cn/wiki/BBdUwmalwiOkjPkjlSHcBe1qnSd
  */
 export function buildCourseFinalExamSession() {
@@ -255,12 +348,28 @@ export function buildCourseFinalExamSession() {
   shuffleArrayInPlace(choicePool)
   const choices = choicePool.slice(0, CFE_N_CHOICE)
 
+  const multiPool = [
+    ...L3_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'multi_choice'),
+    ...GENERAL_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'multi_choice'),
+    ...COURSE_FINAL_MULTI_EXTRA,
+  ]
+  shuffleArrayInPlace(multiPool)
+  const multis = multiPool.slice(0, CFE_N_MULTI)
+
   const fillPool = [
     ...L3_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'fill_blank'),
     ...COURSE_FINAL_FILL_EXTRA,
   ]
   shuffleArrayInPlace(fillPool)
   const fills = fillPool.slice(0, CFE_N_FILL)
+
+  const shortPool = [
+    ...L3_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'short_answer'),
+    ...GENERAL_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'short_answer'),
+    ...COURSE_FINAL_SHORT_EXTRA,
+  ]
+  shuffleArrayInPlace(shortPool)
+  const shorts = shortPool.slice(0, CFE_N_SHORT)
 
   const judgePool = [
     ...L3_TEST_SESSION_TEMPLATE.filter((t) => t.type === 'judge'),
@@ -270,7 +379,7 @@ export function buildCourseFinalExamSession() {
   shuffleArrayInPlace(judgePool)
   const judges = judgePool.slice(0, CFE_N_JUDGE)
 
-  const merged = [...choices, ...fills, ...judges]
+  const merged = [...choices, ...multis, ...fills, ...shorts, ...judges]
   shuffleArrayInPlace(merged)
   return merged
 }

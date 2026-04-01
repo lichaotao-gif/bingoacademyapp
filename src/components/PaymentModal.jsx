@@ -23,35 +23,19 @@ export default function PaymentModal({ open, onClose, courseName, price, payment
   const navigate = useNavigate()
   const [payMethod, setPayMethod] = useState('wechat')
   const [couponCode, setCouponCode] = useState('')
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const [errors, setErrors] = useState({})
 
   if (!open) return null
 
   const isGroup = Boolean(paymentState?.groupBuy)
   const isFree = price === '0元' || price === '免费' || price === '赠送'
 
-  const validate = () => {
-    const next = {}
-    if (!name.trim()) next.name = '请填写姓名'
-    if (!phone.trim()) next.phone = '请填写手机号'
-    else if (!/^1\d{10}$/.test(phone.trim())) next.phone = '请输入正确的手机号'
-    if (!email.trim()) next.email = '请填写邮箱'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = '请输入正确的邮箱'
-    setErrors(next)
-    return Object.keys(next).length === 0
-  }
-
   const handleConfirmPay = () => {
-    if (!validate()) return
     onClose()
     if (isFree) {
-      navigate('/courses/success', { state: { courseName, classType: { name: '-', price: 0 }, contact: { name, phone, email }, ...paymentState } })
+      navigate('/courses/success', { state: { courseName, classType: { name: '-', price: 0 }, ...paymentState } })
     } else {
       const classType = paymentState?.classType || { name: '标准班', price: parseInt(String(price).replace(/[^\d]/g, ''), 10) || 0 }
-      navigate('/courses/success', { state: { courseName, classType, contact: { name, phone, email }, ...paymentState } })
+      navigate('/courses/success', { state: { courseName, classType, ...paymentState } })
     }
   }
 
@@ -79,40 +63,6 @@ export default function PaymentModal({ open, onClose, courseName, price, payment
                 拼团单号 · {paymentState.groupId}
               </p>
             )}
-          </div>
-
-          <div className="space-y-3">
-            <p className="font-semibold text-bingo-dark">联系信息</p>
-            <div>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="姓名"
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.name ? 'border-red-400' : 'border-slate-200'}`}
-              />
-              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
-            </div>
-            <div>
-              <input
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                placeholder="手机号"
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.phone ? 'border-red-400' : 'border-slate-200'}`}
-              />
-              {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
-            </div>
-            <div>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="邮箱"
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.email ? 'border-red-400' : 'border-slate-200'}`}
-              />
-              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-            </div>
           </div>
 
           {!isFree && (

@@ -2685,7 +2685,7 @@ export default function Study() {
                       结业整体考评
                     </p>
                     <p className="text-sm text-slate-300 leading-relaxed m-0 mb-4">
-                      共 {COURSE_FINAL_EXAM_TOTAL} 道随机题（L3：选择、填空、判断），在独立页面作答，流程与赛事中心「AI
+                      共 {COURSE_FINAL_EXAM_TOTAL} 道随机题（L3：单选、多选、填空、简答、判断），在独立页面作答，流程与赛事中心「AI
                       测评」一致；也可在展开课时列表底部卡片进入。点击下方将进入该课的考评页。
                     </p>
                     <button

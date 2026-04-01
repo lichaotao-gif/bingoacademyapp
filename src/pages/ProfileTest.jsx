@@ -51,12 +51,12 @@ export default function ProfileTest() {
                 {r.testStage ? ` · ${r.testStage}` : ''} · {recordLevelLabel(r.accPct)}
               </p>
               <p className="text-xs text-slate-400 mt-1 tabular-nums">
-                正确率 {r.accPct}%（{r.correct}/{r.n}
+                得分 {r.accPct} 分 / 满分100（{r.correct}/{r.n}
                 {r.skip ? `，跳过 ${r.skip} 题` : ''}）
               </p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <span className="text-2xl font-bold text-primary tabular-nums">{r.accPct}%</span>
+              <span className="text-2xl font-bold text-primary tabular-nums">{r.accPct}分</span>
               <Link to={`/events/ai-test?record=${encodeURIComponent(r.id)}`} className="text-sm text-primary hover:underline whitespace-nowrap">
                 查看详情
               </Link>
