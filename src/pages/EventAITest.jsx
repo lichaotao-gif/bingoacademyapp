@@ -89,12 +89,6 @@ function fmtRecordTime(iso) {
   }
 }
 
-function recordLevelLabel(accPct) {
-  if (accPct >= 80) return '优秀'
-  if (accPct >= 60) return '良好'
-  return '须加强'
-}
-
 function buildDimensionStats(questions, answers) {
   const map = Object.fromEntries(L3_EVALUATION_DIMENSIONS.map((d) => [d.key, { correct: 0, total: 0, skip: 0 }]))
   questions.forEach((q, i) => {
@@ -655,12 +649,7 @@ export default function EventAITest() {
           </div>
 
           <div className="-mt-14 relative z-10 bg-white rounded-t-3xl shadow-xl border border-slate-100 px-4 sm:px-6 pt-6 pb-8">
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              <h2 className="text-base font-bold text-bingo-dark">综合评价</h2>
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-primary text-white px-2 py-0.5 rounded-full">
-                <span aria-hidden>✦</span> AI
-              </span>
-            </div>
+            <h2 className="text-base font-bold text-bingo-dark mb-3">综合评价</h2>
             <p className="text-sm text-slate-600 leading-relaxed mb-6">{reportStats.aiText}</p>
 
             <div className="mb-6">
@@ -934,21 +923,8 @@ export default function EventAITest() {
                     <li key={row.id} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs">
                       <p className="text-[10px] text-slate-500 tabular-nums">{fmtRecordTime(row.createdAt)}</p>
                       <p className="font-medium text-bingo-dark mt-1 leading-snug">{row.testName}</p>
-                      {row.testStage ? <p className="text-[10px] text-slate-500 mt-0.5">{row.testStage}</p> : null}
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span className="text-base font-bold text-primary tabular-nums">{row.accPct}分</span>
-                        <span
-                          className={
-                            'text-[10px] font-medium px-1.5 py-0.5 rounded-full ' +
-                            (row.accPct >= 80
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : row.accPct >= 60
-                                ? 'bg-cyan-100 text-cyan-800'
-                                : 'bg-amber-100 text-amber-900')
-                          }
-                        >
-                          {recordLevelLabel(row.accPct)}
-                        </span>
                         <span className="text-[10px] text-slate-400 tabular-nums">
                           {row.correct}/{row.n}
                           {row.skip ? ` · 不会${row.skip}` : ''} · {fmtMmSs(row.elapsedSec || 0)}

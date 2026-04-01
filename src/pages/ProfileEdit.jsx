@@ -13,7 +13,7 @@ const PRESET_AVATARS = [
   { seed: 'code-kid', label: '编程少年' },
   { seed: 'sunny-mom', label: '阳光家长' },
   { seed: 'robot-friend', label: '机器人' },
-  { seed: 'galaxy-explorer', label: '探索者' },
+  { seed: 'galaxy-explorer', label: '银河' },
 ]
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024

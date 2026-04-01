@@ -15,12 +15,6 @@ function fmtRecordTime(iso) {
   }
 }
 
-function recordLevelLabel(accPct) {
-  if (accPct >= 80) return 'AI进阶学员'
-  if (accPct >= 60) return 'AI入门学员'
-  return '待提升'
-}
-
 export default function ProfileTest() {
   const reports = getAiTestRecords()
 
@@ -46,10 +40,7 @@ export default function ProfileTest() {
           <div key={r.id} className="card p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="min-w-0">
               <p className="font-medium text-bingo-dark">{r.testName}</p>
-              <p className="text-sm text-slate-500 mt-1">
-                {fmtRecordTime(r.createdAt)}
-                {r.testStage ? ` · ${r.testStage}` : ''} · {recordLevelLabel(r.accPct)}
-              </p>
+              <p className="text-sm text-slate-500 mt-1">{fmtRecordTime(r.createdAt)}</p>
               <p className="text-xs text-slate-400 mt-1 tabular-nums">
                 得分 {r.accPct} 分 / 满分100（{r.correct}/{r.n}
                 {r.skip ? `，跳过 ${r.skip} 题` : ''}）

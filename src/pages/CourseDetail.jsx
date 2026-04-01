@@ -365,7 +365,6 @@ export default function CourseDetail() {
   const classTypes = course.classTypes || CLASS_TYPES_LEVEL1
   const defaultClass = classTypes[0]
   const [showTrialEndModal, setShowTrialEndModal] = useState(false)
-  const [expandedOutline, setExpandedOutline] = useState(null)
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [showQa, setShowQa] = useState(false)
   const [coverError, setCoverError] = useState(false)
@@ -599,20 +598,13 @@ export default function CourseDetail() {
           <div className="card p-4 lg:p-5 rounded-2xl h-full flex flex-col min-h-0 md:min-h-[320px]">
             <h3 className="font-semibold text-bingo-dark mb-3 lg:text-base shrink-0">课程大纲</h3>
             <div className="flex-1 min-h-0 overflow-y-auto">
-              {(course.outline || []).map((t, i) => (
-                <div key={i} className="border-b border-slate-100 last:border-0 py-2">
-                  <button onClick={() => setExpandedOutline(expandedOutline === i ? null : i)} className="flex items-center justify-between w-full text-left text-sm min-h-[44px] py-2">
-                    <span>{i + 1}. {t}</span>
-                    <span className="text-slate-400">{expandedOutline === i ? '▲' : '▼'}</span>
-                  </button>
-                  {expandedOutline === i && (
-                    <p className="text-xs text-slate-500 mt-1 pl-2">约15分钟 · 目标：掌握{t}</p>
-                  )}
-                  {course.trial && i < 2 && (
-                    <button onClick={() => setShowTrialEndModal(true)} className="text-[10px] text-amber-600 mt-1">免费试学</button>
-                  )}
-                </div>
-              ))}
+              <ul className="list-none m-0 p-0">
+                {(course.outline || []).map((t, i) => (
+                  <li key={i} className="border-b border-slate-100 last:border-0 py-2.5 text-sm text-slate-700 leading-snug">
+                    {i + 1}. {t}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
           <div className="card p-4 lg:p-5 rounded-2xl h-full flex flex-col min-h-0 md:min-h-[320px]">

@@ -512,12 +512,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
         </div>
 
         <div className="-mt-14 relative z-10 bg-white rounded-t-3xl shadow-xl border border-slate-100 px-4 sm:px-6 pt-6 pb-8">
-          <div className="flex items-center gap-2 flex-wrap mb-3">
-            <h2 className="text-base font-bold text-bingo-dark">综合评价</h2>
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-primary text-white px-2 py-0.5 rounded-full">
-              <span aria-hidden>✦</span> AI
-            </span>
-          </div>
+          <h2 className="text-base font-bold text-bingo-dark mb-3">综合评价</h2>
           <p className="text-sm text-slate-600 leading-relaxed mb-6">{reportStats.summaryText}</p>
 
           <div className="mb-6">

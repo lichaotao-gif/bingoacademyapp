@@ -2300,10 +2300,8 @@ function buildCourseSummary(course) {
 function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, onOpenReviewModal }) {
   const [expanded, setExpanded] = useState(false)
   const [shareAnchorRect, setShareAnchorRect] = useState(null)
-  const [watched, setWatched] = useState(() =>
-    Object.fromEntries(course.lessons.map(l => [l.id, l.watched]))
-  )
 
+  const watched = Object.fromEntries(course.lessons.map((l) => [l.id, Boolean(l.watched)]))
   const watchedCount = Object.values(watched).filter(Boolean).length
   const totalCount = course.lessons.length
   const progressPct = Math.round((watchedCount / totalCount) * 100)
@@ -2313,10 +2311,6 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
     progressPct === 100 ? 'bg-emerald-500' :
     progressPct >= 50 ? 'bg-primary' :
     'bg-amber-400'
-
-  const toggleWatched = (id) => {
-    setWatched(prev => ({ ...prev, [id]: !prev[id] }))
-  }
 
   const shareUrl =
     typeof window !== 'undefined' ? `${window.location.origin}/courses/detail/${course.id}` : ''
@@ -2430,24 +2424,16 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
                 {/* 操作按钮 */}
                 <div className="shrink-0 flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => onPlayLesson(lesson)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition
-                      ${lesson.isCurrent
+                    className={
+                      'text-xs px-3 py-1.5 rounded-lg font-medium transition ' +
+                      (lesson.isCurrent
                         ? 'bg-primary text-white hover:bg-primary/90'
-                        : isDone
-                          ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 opacity-0 group-hover:opacity-100'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 opacity-0 group-hover:opacity-100'
-                      }`}
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 opacity-0 group-hover:opacity-100')
+                    }
                   >
-                    {isDone ? '重看' : '播放'}
-                  </button>
-                  <button
-                    onClick={() => toggleWatched(lesson.id)}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg transition opacity-0 group-hover:opacity-100
-                      ${isDone ? 'text-slate-400 hover:text-red-500' : 'text-emerald-600 hover:bg-emerald-50'}`}
-                    title={isDone ? '标记未学' : '标记已学'}
-                  >
-                    {isDone ? '取消' : '✓ 标记已学'}
+                    {isDone ? '再次学习' : '开始学习'}
                   </button>
                 </div>
               </div>
