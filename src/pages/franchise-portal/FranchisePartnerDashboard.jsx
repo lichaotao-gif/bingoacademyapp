@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { FRANCHISE_PROMOTABLE_COURSES } from '../../utils/franchisePartnerStorage'
+import { displayPartnerOrgName, FRANCHISE_PROMOTABLE_COURSES } from '../../utils/franchisePartnerStorage'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
 function fmtMoney(n) {
@@ -13,8 +13,8 @@ function fmtDate(iso) {
 }
 
 export default function FranchisePartnerDashboard() {
-  const { ws } = useFranchiseWorkspace()
-  if (!ws) return <p className="text-slate-500 text-sm">加载中…</p>
+  const { session, ws } = useFranchiseWorkspace()
+  if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
 
   const settled = ws.orders.filter((o) => o.status === '已结算')
   const pending = ws.orders.filter((o) => o.status !== '已结算')
@@ -22,10 +22,13 @@ export default function FranchisePartnerDashboard() {
   const classCount = ws.classes.length
   const studentCount = ws.students.length
 
+  const orgDisplay = displayPartnerOrgName(session)
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-bold text-bingo-dark">数据看板</h1>
+        <p className="text-base sm:text-lg font-semibold text-bingo-dark">{orgDisplay}</p>
+        <h1 className="text-xl font-bold text-bingo-dark mt-2">数据看板</h1>
         <p className="text-sm text-slate-500 mt-1">推广、订单与教学运营概览（演示数据）</p>
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { clearPartnerSession, getPartnerSession } from '../../utils/franchisePartnerStorage'
+import { clearPartnerSession, displayPartnerOrgName, getPartnerSession } from '../../utils/franchisePartnerStorage'
 
 const NAV = [
   { to: '/franchise-partner/dashboard', label: '数据看板', icon: '📊' },
@@ -27,6 +27,8 @@ export default function FranchisePartnerLayout() {
   }, [navigate])
 
   if (!session) return null
+
+  const orgDisplay = displayPartnerOrgName(session)
 
   const logout = () => {
     clearPartnerSession()
@@ -82,7 +84,7 @@ export default function FranchisePartnerLayout() {
           >
             ☰ 菜单
           </button>
-          <span className="text-xs text-slate-500 truncate">{session.orgName}</span>
+          <span className="text-xs text-slate-500 truncate">{orgDisplay}</span>
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto">
           <Outlet context={{ session }} />

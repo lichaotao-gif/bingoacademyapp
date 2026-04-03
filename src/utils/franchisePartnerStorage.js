@@ -39,6 +39,15 @@ export function clearPartnerSession() {
   localStorage.removeItem(SESSION_KEY)
 }
 
+/** 侧栏/看板展示用机构名称（兼容旧 session 仅有手机号） */
+export function displayPartnerOrgName(session) {
+  if (!session) return '缤果AI学院·加盟商'
+  if (session.orgName) return session.orgName
+  const p = String(session.phone || '').replace(/\D/g, '')
+  if (p.length >= 11) return `缤果AI学院·加盟商（${p.slice(0, 3)}****${p.slice(-4)}）`
+  return '缤果AI学院·加盟商'
+}
+
 function defaultWorkspace(partnerId, refCode) {
   return {
     partnerId,
