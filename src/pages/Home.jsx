@@ -231,12 +231,17 @@ export default function Home() {
                 </Link>
               </div>
               {/* B端CTA */}
-              <div className="bg-sky-900/50 rounded-2xl p-5 border border-sky-400/20">
-                <p className="text-xs text-sky-300 mb-3 font-medium">B端 · 机构 / 加盟商</p>
+              <div className="bg-sky-900/50 rounded-2xl p-5 border border-sky-400/20 space-y-2.5">
+                <p className="text-xs text-sky-300 font-medium">B端 · 机构 / 加盟商</p>
                 <Link to="/franchise"
                   className="flex items-center justify-between w-full bg-sky-600 hover:bg-sky-500 text-white px-5 py-3 rounded-xl text-sm font-semibold transition">
                   <span>🏫 加盟合作咨询</span>
                   <span className="text-white/70 text-xs">免费获取方案 →</span>
+                </Link>
+                <Link to="/franchise-partner/login"
+                  className="flex items-center justify-between w-full bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-xl text-sm font-medium transition border border-sky-400/30">
+                  <span>🔐 加盟商工作台登录</span>
+                  <span className="text-sky-200 text-xs">推广 · 分佣 · 班级 →</span>
                 </Link>
               </div>
             </div>

@@ -51,6 +51,15 @@ import ProfileEdit from './pages/ProfileEdit'
 import ProfileWorks from './pages/ProfileWorks'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
+import FranchisePartnerLogin from './pages/franchise-portal/FranchisePartnerLogin'
+import FranchisePartnerLayout from './pages/franchise-portal/FranchisePartnerLayout'
+import FranchisePartnerDashboard from './pages/franchise-portal/FranchisePartnerDashboard'
+import FranchisePartnerPromote from './pages/franchise-portal/FranchisePartnerPromote'
+import FranchisePartnerOrders from './pages/franchise-portal/FranchisePartnerOrders'
+import FranchisePartnerFinance from './pages/franchise-portal/FranchisePartnerFinance'
+import FranchisePartnerClasses from './pages/franchise-portal/FranchisePartnerClasses'
+import FranchisePartnerStudents from './pages/franchise-portal/FranchisePartnerStudents'
+import FranchisePartnerProgress from './pages/franchise-portal/FranchisePartnerProgress'
 
 export default function App() {
   return (
@@ -94,6 +103,17 @@ export default function App() {
         <Route path="/mall" element={<Mall />} />
         <Route path="/mall/materials" element={<Materials />} />
         <Route path="/franchise" element={<Franchise />} />
+        <Route path="/franchise-partner/login" element={<FranchisePartnerLogin />} />
+        <Route path="/franchise-partner" element={<FranchisePartnerLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<FranchisePartnerDashboard />} />
+          <Route path="promote" element={<FranchisePartnerPromote />} />
+          <Route path="orders" element={<FranchisePartnerOrders />} />
+          <Route path="finance" element={<FranchisePartnerFinance />} />
+          <Route path="classes" element={<FranchisePartnerClasses />} />
+          <Route path="students" element={<FranchisePartnerStudents />} />
+          <Route path="progress" element={<FranchisePartnerProgress />} />
+        </Route>
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/edit" element={<ProfileEdit />} />
         <Route path="/profile/study" element={<Study />} />

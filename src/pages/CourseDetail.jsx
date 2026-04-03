@@ -370,6 +370,7 @@ export default function CourseDetail() {
   const [coverError, setCoverError] = useState(false)
   const [searchParams] = useSearchParams()
   const incomingGroupId = searchParams.get('group')?.trim() || ''
+  const promoteRef = searchParams.get('ref')?.trim() || ''
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [paymentModalPayload, setPaymentModalPayload] = useState({
@@ -392,6 +393,15 @@ export default function CourseDetail() {
   useEffect(() => {
     setPurchasedIds(getPurchasedCourseIds())
   }, [resolvedCourseId])
+
+  useEffect(() => {
+    if (!promoteRef) return
+    try {
+      sessionStorage.setItem('bingo_franchise_ref', promoteRef)
+    } catch {
+      /* ignore */
+    }
+  }, [promoteRef])
 
   useEffect(() => {
     const refresh = () => setPurchasedIds(getPurchasedCourseIds())

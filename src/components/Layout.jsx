@@ -8,6 +8,7 @@ export default function Layout({ children }) {
   const loc = useLocation()
   const navigate = useNavigate()
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const franchisePartnerPortal = loc.pathname.startsWith('/franchise-partner')
 
   useEffect(() => {
     if (loc.state?.openLogin) {
@@ -30,51 +31,55 @@ export default function Layout({ children }) {
                 height={85}
               />
             </Link>
-            <nav className="hidden lg:flex flex-1 items-center justify-evenly gap-2 min-w-0 flex-nowrap">
-              {allNavGroups.map((group, gi) => (
-                <React.Fragment key={gi}>
-                  {gi > 0 && (
-                    <span className="w-0.5 h-5 bg-cyan-400/80 shrink-0 rounded-full" aria-hidden />
-                  )}
-                  <div className="flex items-center justify-center gap-1 shrink-0 py-1">
-                    {group.map(({ path, label }) =>
-                      path === '/login' ? (
-                        <button
-                          key={path}
-                          type="button"
-                          onClick={() => setShowLoginModal(true)}
-                          className="px-2 py-2 rounded-lg text-sm whitespace-nowrap shrink-0 transition-colors text-slate-300 hover:text-white hover:bg-white/10"
-                        >
-                          {label}
-                        </button>
-                      ) : (
-                        <Link
-                          key={path}
-                          to={path}
-                          className={`px-2 py-2 rounded-lg text-sm whitespace-nowrap shrink-0 transition-colors ${
-                            loc.pathname === path ? 'bg-cyan-500 text-white' : 'text-slate-300 hover:text-white hover:bg-white/10'
-                          }`}
-                        >
-                          {label}
-                        </Link>
-                      )
+            {!franchisePartnerPortal && (
+              <nav className="hidden lg:flex flex-1 items-center justify-evenly gap-2 min-w-0 flex-nowrap">
+                {allNavGroups.map((group, gi) => (
+                  <React.Fragment key={gi}>
+                    {gi > 0 && (
+                      <span className="w-0.5 h-5 bg-cyan-400/80 shrink-0 rounded-full" aria-hidden />
                     )}
-                  </div>
-                </React.Fragment>
+                    <div className="flex items-center justify-center gap-1 shrink-0 py-1">
+                      {group.map(({ path, label }) =>
+                        path === '/login' ? (
+                          <button
+                            key={path}
+                            type="button"
+                            onClick={() => setShowLoginModal(true)}
+                            className="px-2 py-2 rounded-lg text-sm whitespace-nowrap shrink-0 transition-colors text-slate-300 hover:text-white hover:bg-white/10"
+                          >
+                            {label}
+                          </button>
+                        ) : (
+                          <Link
+                            key={path}
+                            to={path}
+                            className={`px-2 py-2 rounded-lg text-sm whitespace-nowrap shrink-0 transition-colors ${
+                              loc.pathname === path ? 'bg-cyan-500 text-white' : 'text-slate-300 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            {label}
+                          </Link>
+                        )
+                      )}
+                    </div>
+                  </React.Fragment>
+                ))}
+              </nav>
+            )}
+          </div>
+          {/* 移动端折叠导航（加盟商工作台不展示） */}
+          {!franchisePartnerPortal && (
+            <div className="lg:hidden pb-3 flex flex-wrap gap-1">
+              {mainNav.slice(0, 6).map(({ path, label }) => (
+                <Link key={path} to={path} className="px-2 py-1 text-xs rounded bg-white/10">{label}</Link>
               ))}
-            </nav>
-          </div>
-          {/* 移动端折叠导航 */}
-          <div className="lg:hidden pb-3 flex flex-wrap gap-1">
-            {mainNav.slice(0, 6).map(({ path, label }) => (
-              <Link key={path} to={path} className="px-2 py-1 text-xs rounded bg-white/10">{label}</Link>
-            ))}
-            <Link to="/career" className="px-2 py-1 text-xs rounded bg-white/10">AI职业发展</Link>
-            <Link to="/mall" className="px-2 py-1 text-xs rounded bg-white/10">AI工具资源库</Link>
-            <Link to="/franchise" className="px-2 py-1 text-xs rounded bg-sky-500">加盟合作</Link>
-            <Link to="/profile" className="px-2 py-1 text-xs rounded bg-primary">我的AI工作台</Link>
-            <button type="button" onClick={() => setShowLoginModal(true)} className="px-2 py-1 text-xs rounded bg-white/10">登录</button>
-          </div>
+              <Link to="/career" className="px-2 py-1 text-xs rounded bg-white/10">AI职业发展</Link>
+              <Link to="/mall" className="px-2 py-1 text-xs rounded bg-white/10">AI工具资源库</Link>
+              <Link to="/franchise" className="px-2 py-1 text-xs rounded bg-sky-500">加盟合作</Link>
+              <Link to="/profile" className="px-2 py-1 text-xs rounded bg-primary">我的AI工作台</Link>
+              <button type="button" onClick={() => setShowLoginModal(true)} className="px-2 py-1 text-xs rounded bg-white/10">登录</button>
+            </div>
+          )}
         </div>
       </header>
 
