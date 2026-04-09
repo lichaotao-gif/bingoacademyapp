@@ -8,7 +8,10 @@ import { AdminErrorBoundary } from './AdminErrorBoundary.jsx'
 const AdminApp = lazy(() => import('../admin/src/AdminRoot.tsx'))
 
 function Root() {
-  const isAdmin = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+  const isAdmin =
+    typeof window !== 'undefined' &&
+    window.location.pathname.startsWith(`${base}/admin`.replace(/\/+/g, '/'))
   if (isAdmin) {
     return (
       <AdminErrorBoundary>
@@ -18,8 +21,9 @@ function Root() {
       </AdminErrorBoundary>
     )
   }
+  const routerBasename = base || undefined
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename}>
       <App />
     </BrowserRouter>
   )

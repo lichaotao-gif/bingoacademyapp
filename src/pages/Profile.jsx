@@ -1312,9 +1312,8 @@ export default function Profile() {
           {/* 其他功能 */}
           {[
             { to: '/profile/study', icon: '📚', label: '学习中心', note: '我的课程' },
-            { to: '/profile/test', icon: '📊', label: '测评中心', note: '历史报告' },
             { to: '/profile/points', icon: '⭐', label: '积分商城', note: '积分兑换' },
-            { to: '/events/ai-test', icon: '🧪', label: 'AI测评', note: '能力测评' },
+            { to: '/events/ai-test', icon: '🧪', label: '测评中心', note: '能力测评' },
             { to: '/profile#tools', icon: '🛠️', label: '我的教具', note: '' },
             { to: '/community', icon: '💬', label: '消息通知', note: '' },
             { to: '/profile#settings', icon: '⚙️', label: '设置中心', note: '' },

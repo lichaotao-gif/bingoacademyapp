@@ -315,8 +315,8 @@ export default function EventAITest() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="flex items-center gap-3 mb-2">
-        <Link to="/events" className="text-sm text-slate-500 hover:text-primary">
-          赛事中心
+        <Link to="/courses" className="text-sm text-slate-500 hover:text-primary">
+          AI能力课程
         </Link>
         <span className="text-slate-300">/</span>
         <span className="text-sm text-slate-700">测评中心</span>
@@ -325,7 +325,7 @@ export default function EventAITest() {
       {phase === 'entry' && (
         <>
           <div className="card p-8 bg-gradient-to-br from-bingo-dark to-cyan-900 text-white mb-8 rounded-2xl">
-            <h1 className="text-2xl font-bold mb-2">测评中心</h1>
+            <h1 className="text-2xl font-bold mb-2">AI测评</h1>
             <p className="text-slate-300 text-sm">选择下方测评类型，完成后可查看能力分析与课程推荐。</p>
           </div>
 

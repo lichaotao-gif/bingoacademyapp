@@ -48,7 +48,7 @@ function buildDimensionStats(questions, answers) {
 function buildCourseFinalExamSummaryText(dimStats, accPct) {
   const weak = dimStats.filter((x) => x.total > 0 && x.pct < PASS_PCT)
   let text =
-    '本次整体考评题目与飞书 L3 建模素养题库同源，随机抽取共 ' +
+    '本次整体考评随机抽取共 ' +
     String(COURSE_FINAL_EXAM_TOTAL) +
     ' 题，涵盖单选、多选、填空、简答与判断，用于检验整门课学完后对核心概念的把握。'
   if (accPct >= 85) {
@@ -98,7 +98,7 @@ export function CourseFinalExamListCard({ courseId, allCompleted = false }) {
           <p className="text-sm font-medium text-bingo-dark">结业整体考评</p>
           <p className="text-xs text-slate-500">
             {allCompleted
-              ? `共 ${COURSE_FINAL_EXAM_TOTAL} 道随机题（L3 · 单选/多选/填空/简答/判断），独立页作答，流程同 AI 测评`
+              ? `共 ${COURSE_FINAL_EXAM_TOTAL} 题，独立页面作答`
               : `学完全部课节后结业自检 · 共 ${COURSE_FINAL_EXAM_TOTAL} 题，可先了解入口`}
           </p>
         </div>
@@ -229,8 +229,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
         <p className="text-[11px] font-semibold tracking-wide text-primary uppercase mb-2">结业 · 整体考评</p>
         <h2 className="text-xl sm:text-2xl font-bold text-bingo-dark m-0 mb-3">学完后整体检验</h2>
         <p className="text-sm text-slate-600 leading-relaxed m-0 mb-4">
-          下列 {COURSE_FINAL_EXAM_TOTAL}{' '}
-          道随机题（飞书 L3：单选、多选、填空、简答、判断），流程与「AI 测评」一致。提交后可查看评价总结与逐题明细，也可通过「重做考评」换一批题目。
+          共 {COURSE_FINAL_EXAM_TOTAL} 道题。提交后可查看评价总结与逐题明细，也可通过「重做考评」换一批题目。
         </p>
         {courseTitle ? <p className="text-sm text-slate-500 m-0 mb-6 border-l-2 border-primary/30 pl-3">{courseTitle}</p> : null}
         <button type="button" onClick={startExam} className="btn-primary inline-flex justify-center py-3 px-6 rounded-xl text-sm font-semibold">
@@ -551,7 +550,7 @@ export default function CourseFinalExamBlock({ courseTitle }) {
           </div>
 
           <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-4 mb-8">
-            <p className="text-xs text-slate-500 mb-2">知识掌握雷达图（轴：L3_单元表评价要点，与飞书表一致后可整体替换数据源）</p>
+            <p className="text-xs text-slate-500 mb-2">知识掌握雷达图（按课程能力维度）</p>
             <ReactECharts option={radarOption} style={{ height: 300 }} opts={{ renderer: 'svg' }} />
           </div>
 

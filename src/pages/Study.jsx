@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import ShareActionPopover from '../components/ShareActionPopover'
 import { CourseFinalExamListCard } from '../components/CourseFinalExamBlock'
-import { COURSE_FINAL_EXAM_TOTAL } from '../data/l3QuestionBank'
 
 // ─── 课时环节类型（与后台一致：视频+互动含判断题+游戏+AI实验 任意组合） ─────────────────
 const SEGMENT_LABELS = {
@@ -2671,8 +2670,7 @@ export default function Study() {
                       结业整体考评
                     </p>
                     <p className="text-sm text-slate-300 leading-relaxed m-0 mb-4">
-                      共 {COURSE_FINAL_EXAM_TOTAL} 道随机题（L3：单选、多选、填空、简答、判断），在独立页面作答，流程与赛事中心「AI
-                      测评」一致；也可在展开课时列表底部卡片进入。点击下方将进入该课的考评页。
+                      结业整体考评在独立页面完成；也可在课时列表底部进入。点击下方进入该课考评页。
                     </p>
                     <button
                       type="button"
