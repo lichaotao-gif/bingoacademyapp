@@ -25,8 +25,8 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5176,
-      /** false：5176 被占用时自动尝试 5177、5178…（请以终端里打印的 Local 链接为准） */
-      strictPort: false,
+      /** true：始终使用 5176；被占用则直接报错，避免静默改端口导致看错地址 */
+      strictPort: true,
       proxy: { '/api': { target: 'http://localhost:8080', changeOrigin: true } },
     },
   }

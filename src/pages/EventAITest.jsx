@@ -148,6 +148,8 @@ export default function EventAITest() {
   const [testRecords, setTestRecords] = useState(() => getAiTestRecords())
   const [recordsModalOpen, setRecordsModalOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  /** 仅测评类型卡片：链接 + 微信扫码（#eval-xxx） */
+  const [promoShare, setPromoShare] = useState(null)
   const testStartRef = useRef(null)
   const reportPdfRef = useRef(null)
 
@@ -157,6 +159,16 @@ export default function EventAITest() {
 
   useEffect(() => {
     if (phase !== 'entry') setRecordsModalOpen(false)
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'entry') return
+    const id = window.location.hash?.replace(/^#/, '')
+    if (!id || !id.startsWith('eval-')) return
+    const t = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 80)
+    return () => window.clearTimeout(t)
   }, [phase])
 
   useEffect(() => {
@@ -346,9 +358,13 @@ export default function EventAITest() {
 
             <div className="grid md:grid-cols-2 gap-5">
               {TEST_TYPES.map((t) => (
-                <div key={t.id} className="card p-6 hover:shadow-md hover:border-primary/30 transition">
+                <div
+                  key={t.id}
+                  id={`eval-${t.id}`}
+                  className="card p-6 hover:shadow-md hover:border-primary/30 transition flex flex-col"
+                >
                   <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 pr-2">
                       <h3 className="font-semibold text-bingo-dark leading-snug">{t.name}</h3>
                     </div>
                     <div className="flex flex-col items-end gap-0.5 shrink-0">
@@ -358,10 +374,29 @@ export default function EventAITest() {
                       <span className={`font-bold text-sm tabular-nums ${isFreeTest(t) ? 'text-emerald-600' : 'text-primary'}`}>{t.currentPrice}</span>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500 mb-4">{t.desc}</p>
-                  <div className="flex gap-3 flex-wrap">
-                    <button type="button" onClick={() => startAssessment(t)} className="btn-primary text-xs px-4 py-2">
+                  <p className="text-xs text-slate-500 mb-4 flex-1">{t.desc}</p>
+                  <div className="mt-auto flex items-center justify-between gap-3 flex-nowrap">
+                    <button type="button" onClick={() => startAssessment(t)} className="btn-primary text-xs px-4 py-2 shrink-0">
                       开始测评
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPromoShare({
+                          title: `分享 · ${t.name}`,
+                          url:
+                            typeof window !== 'undefined'
+                              ? `${window.location.origin}/events/ai-test#eval-${t.id}`
+                              : '',
+                        })
+                      }
+                      className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border border-primary bg-white text-xs px-4 py-2 font-medium text-primary shadow-sm hover:bg-primary/10 transition"
+                      aria-label={`分享「${t.name}」`}
+                    >
+                      <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      分享
                     </button>
                   </div>
                 </div>
@@ -946,6 +981,14 @@ export default function EventAITest() {
           </div>
         </div>
       ) : null}
+
+      <ReportShareModal
+        open={promoShare != null}
+        onClose={() => setPromoShare(null)}
+        title={promoShare?.title || '分享'}
+        shareUrl={promoShare?.url || ''}
+        subtitle="复制链接或微信扫码；打开链接后将定位到对应测评卡片。"
+      />
     </div>
   )
 }

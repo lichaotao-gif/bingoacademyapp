@@ -1,6 +1,39 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+/**
+ * 微信支付（购课）对接说明（与 ~/.cursor/skills/wechatpay-basic-payment 一致：须服务端 APIv3 下单）
+ *
+ * - 普通商户 + 微信内 H5/公众号：JSAPI（服务端 POST .../v3/pay/transactions/jsapi，返回 prepay_id 等，前端 WeixinJSBridge.invoke）
+ * - 外部手机浏览器：H5（服务端返回 mweb_url，前端 location.href）
+ * - 配置：在 .env 中设置 VITE_PAY_API_BASE=https://你的后端域名 ，后端实现 POST /pay/wechat/jsapi（或你自定义路径，并改下方 url）
+ * - 私钥、商户号、APIv3 密钥仅放服务端，勿提交到前端仓库
+ */
+const PAY_API = import.meta.env.VITE_PAY_API_BASE || ''
+
+function invokeJsapiPay(jsapiParams, onSuccess, onFail) {
+  const invoke = () => {
+    window.WeixinJSBridge?.invoke(
+      'getBrandWCPayRequest',
+      {
+        appId: jsapiParams.appId,
+        timeStamp: jsapiParams.timeStamp,
+        nonceStr: jsapiParams.nonceStr,
+        package: jsapiParams.package,
+        signType: jsapiParams.signType || 'RSA',
+        paySign: jsapiParams.paySign,
+      },
+      (res) => {
+        const msg = res?.err_msg || ''
+        if (msg === 'get_brand_wcpay_request:ok') onSuccess()
+        else onFail(msg || '支付取消或失败')
+      }
+    )
+  }
+  if (typeof window.WeixinJSBridge !== 'undefined') invoke()
+  else document.addEventListener('WeixinJSBridgeReady', invoke, false)
+}
+
 // 微信支付 logo（绿色气泡）
 const WeChatPayLogo = ({ className = 'w-10 h-10' }) => (
   <span className={className} aria-hidden>
@@ -24,9 +57,57 @@ export default function CoursePayment() {
 
   const [payMethod, setPayMethod] = useState('wechat')
   const [couponCode, setCouponCode] = useState('')
+  const [paying, setPaying] = useState(false)
+  const [payHint, setPayHint] = useState('')
 
-  const handlePay = () => {
-    navigate('/courses/success', { state: { courseName: course, classType } })
+  const handlePay = async () => {
+    if (payMethod === 'alipay') {
+      navigate('/courses/success', { state: { courseName: course, classType } })
+      return
+    }
+
+    if (!PAY_API) {
+      navigate('/courses/success', { state: { courseName: course, classType } })
+      return
+    }
+
+    setPaying(true)
+    setPayHint('')
+    try {
+      const amountFen = Math.round(Number(classType.price) * 100)
+      const outTradeNo = `course_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+      const res = await fetch(`${PAY_API.replace(/\/$/, '')}/pay/wechat/jsapi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          outTradeNo,
+          description: `${course} · ${classType.name}`,
+          amount: { total: amountFen, currency: 'CNY' },
+          courseName: course,
+          classType,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message || data.detail || `下单失败 ${res.status}`)
+
+      if (data.mweb_url) {
+        window.location.href = data.mweb_url
+        return
+      }
+      if (data.jsapiParams) {
+        invokeJsapiPay(
+          data.jsapiParams,
+          () => navigate('/courses/success', { state: { courseName: course, classType, outTradeNo } }),
+          (err) => setPayHint(err)
+        )
+        return
+      }
+      throw new Error('后端需返回 jsapiParams（公众号/小程序支付）或 mweb_url（H5 支付）')
+    } catch (e) {
+      setPayHint(e?.message || '支付请求失败')
+    } finally {
+      setPaying(false)
+    }
   }
 
   return (
@@ -72,9 +153,26 @@ export default function CoursePayment() {
         </div>
       </div>
 
-      <button onClick={handlePay} className="w-full btn-primary py-3 font-bold text-base">确认支付 ¥{classType.price}</button>
+      {payHint ? (
+        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">{payHint}</p>
+      ) : null}
+
+      <button
+        type="button"
+        disabled={paying}
+        onClick={handlePay}
+        className="w-full btn-primary py-3 font-bold text-base disabled:opacity-60"
+      >
+        {paying ? '请求支付中…' : `确认支付 ¥${classType.price}`}
+      </button>
 
       <p className="text-xs text-slate-500 text-center mt-4">支付超时订单保留30分钟，可返回继续支付</p>
+      {!PAY_API ? (
+        <p className="text-[11px] text-slate-400 text-center mt-2 leading-relaxed">
+          真实微信支付：在微信商户平台配置商户号与 API 证书，后端按技能包「商户模式 → 接口索引」调用 jsapi/h5 下单接口；配置{' '}
+          <code className="bg-slate-100 px-1 rounded">VITE_PAY_API_BASE</code> 后本页将向你的后端请求 prepay。
+        </p>
+      ) : null}
     </div>
   )
 }

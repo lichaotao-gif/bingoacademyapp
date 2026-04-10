@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 function buildQrImageUrl(text) {
@@ -8,7 +8,8 @@ function buildQrImageUrl(text) {
 /**
  * 分享：复制当前页链接 + 微信扫码二维码（外链生成图）
  */
-export default function ReportShareModal({ open, onClose, shareUrl, title = '分享' }) {
+export default function ReportShareModal({ open, onClose, shareUrl, title = '分享', subtitle }) {
+  const titleId = useId()
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -29,17 +30,21 @@ export default function ReportShareModal({ open, onClose, shareUrl, title = '分
     }
   }
 
+  const hint =
+    subtitle ||
+    '支持链接复制分享；微信内可转发链接，其他环境可用下方二维码在微信中扫码打开。'
+
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="report-share-title">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <button type="button" className="absolute inset-0 bg-slate-900/50 backdrop-blur-[1px]" aria-label="关闭" onClick={onClose} />
       <div
         className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="report-share-title" className="text-lg font-bold text-bingo-dark mb-1">
+        <h3 id={titleId} className="text-lg font-bold text-bingo-dark mb-1">
           {title}
         </h3>
-        <p className="text-xs text-slate-500 mb-4">将链接发给别人，或使用微信扫描二维码在手机中打开。</p>
+        <p className="text-xs text-slate-500 mb-4">{hint}</p>
 
         <p className="text-xs font-medium text-slate-700 mb-1.5">复制链接</p>
         <div className="flex gap-2 mb-6">
