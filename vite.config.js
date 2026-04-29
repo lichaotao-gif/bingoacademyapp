@@ -24,8 +24,12 @@ export default defineConfig(({ mode }) => {
       include: ['react', 'react-dom', 'react-router-dom', 'antd', '@ant-design/icons'],
     },
     server: {
-      port: 5176,
-      /** true：始终使用 5176；被占用则直接报错，避免静默改端口导致看错地址 */
+      /** 固定 5288（更新端口时改此处即可） */
+      port: 5288,
+      /**
+       * true：只用上面端口；被占用时直接报错退出，绝不静默改端口。
+       * 若报错：lsof -i :5288 查看占用进程并结束后，再执行 npm run dev。
+       */
       strictPort: true,
       proxy: { '/api': { target: 'http://localhost:8080', changeOrigin: true } },
     },

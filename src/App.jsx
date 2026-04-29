@@ -60,6 +60,11 @@ import FranchisePartnerFinance from './pages/franchise-portal/FranchisePartnerFi
 import FranchisePartnerClasses from './pages/franchise-portal/FranchisePartnerClasses'
 import FranchisePartnerStudents from './pages/franchise-portal/FranchisePartnerStudents'
 import FranchisePartnerProgress from './pages/franchise-portal/FranchisePartnerProgress'
+import FranchisePartnerRecharge from './pages/franchise-portal/FranchisePartnerRecharge'
+import FranchisePartnerDiscounts from './pages/franchise-portal/FranchisePartnerDiscounts'
+import FranchisePartnerBalance from './pages/franchise-portal/FranchisePartnerBalance'
+import FranchisePartnerSettings from './pages/franchise-portal/FranchisePartnerSettings'
+import FranchisePartnerTeachingMaterials from './pages/franchise-portal/FranchisePartnerTeachingMaterials'
 
 export default function App() {
   return (
@@ -110,6 +115,11 @@ export default function App() {
           <Route path="promote" element={<FranchisePartnerPromote />} />
           <Route path="orders" element={<FranchisePartnerOrders />} />
           <Route path="finance" element={<FranchisePartnerFinance />} />
+          <Route path="recharge" element={<FranchisePartnerRecharge />} />
+          <Route path="teaching-materials" element={<FranchisePartnerTeachingMaterials />} />
+          <Route path="discounts" element={<FranchisePartnerDiscounts />} />
+          <Route path="balance" element={<FranchisePartnerBalance />} />
+          <Route path="settings" element={<FranchisePartnerSettings />} />
           <Route path="classes" element={<FranchisePartnerClasses />} />
           <Route path="students" element={<FranchisePartnerStudents />} />
           <Route path="progress" element={<FranchisePartnerProgress />} />

@@ -9,6 +9,12 @@ export default function Layout({ children }) {
   const navigate = useNavigate()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const franchisePartnerPortal = loc.pathname.startsWith('/franchise-partner')
+  /** 已登录加盟商工作台：隐藏官网顶栏/底栏与悬浮营销，沉浸后台 */
+  const franchiseWorkspace =
+    loc.pathname.startsWith('/franchise-partner') && !loc.pathname.startsWith('/franchise-partner/login')
+  /** 加盟商登录页：与后台一致不叠悬浮按钮/底栏/客服，避免挡住「登录」 */
+  const franchisePartnerLoginPage = loc.pathname.includes('/franchise-partner/login')
+  const showPublicMarketingLayers = !franchiseWorkspace && !franchisePartnerLoginPage
 
   useEffect(() => {
     if (loc.state?.openLogin) {
@@ -17,8 +23,12 @@ export default function Layout({ children }) {
     }
   }, [loc.state, loc.pathname, navigate])
 
+  /** 加盟商登录页也不展示官网顶栏，避免 sticky/z-50 遮挡主区域点击 */
+  const showSiteHeader = !franchiseWorkspace && !franchisePartnerLoginPage
+
   return (
     <div className="min-h-screen flex flex-col">
+      {showSiteHeader ? (
       <header className="sticky top-0 z-50 bg-bingo-dark text-white shadow-lg border-b border-cyan-500/20 bg-gradient-to-r from-[#0f172a] to-[#1e293b]">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-4 lg:gap-6 min-h-14 flex-nowrap">
@@ -82,11 +92,23 @@ export default function Layout({ children }) {
           )}
         </div>
       </header>
+      ) : null}
 
       <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} />
-      <main className="flex-1 pb-20 lg:pb-0">{children}</main>
+      <main
+        className={
+          franchiseWorkspace
+            ? 'flex-1 min-h-0'
+            : franchisePartnerLoginPage
+              ? 'flex-1'
+              : 'flex-1 pb-20 lg:pb-0'
+        }
+      >
+        {children}
+      </main>
 
       {/* 右侧悬浮栏：微信咨询、电话咨询、紧急报名 */}
+      {showPublicMarketingLayers ? (
       <div className="fixed right-4 bottom-20 z-40 flex flex-col items-end gap-2">
         <Link to="/events/ai-test"
           className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white text-primary text-sm font-medium shadow-lg hover:bg-slate-50 transition border border-primary/20">
@@ -103,14 +125,18 @@ export default function Layout({ children }) {
           🔥 紧急报名
         </Link>
       </div>
+      ) : null}
 
       {/* 移动端底部悬浮条 */}
+      {showPublicMarketingLayers ? (
       <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden flex items-center justify-center gap-3 px-4 py-3 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
         <Link to="/courses" className="flex-1 max-w-[140px] py-2.5 rounded-xl bg-primary text-white text-sm font-bold text-center">课程报名</Link>
         <a href="tel:400-xxx-xxxx" className="flex-1 max-w-[140px] py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-medium text-center">一键拨号</a>
       </div>
+      ) : null}
 
-      <ChatPopup />
+      {showPublicMarketingLayers ? <ChatPopup /> : null}
+      {showPublicMarketingLayers ? (
       <footer className="bg-bingo-dark text-slate-400 text-sm py-8 border-t border-cyan-500/20 bg-gradient-to-r from-[#0f172a] to-[#1e293b]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap justify-between gap-6">
           <div>
@@ -152,6 +178,7 @@ export default function Layout({ children }) {
           专家团队 · 合作赛事授权 · 正品保障
         </div>
       </footer>
+      ) : null}
     </div>
   )
 }
