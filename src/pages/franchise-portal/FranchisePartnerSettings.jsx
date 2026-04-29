@@ -71,9 +71,11 @@ function ReviewBadge({ status }) {
 
 function FieldRow({ label, children, className = '' }) {
   return (
-    <div className={`grid gap-1 sm:grid-cols-[10rem_1fr] sm:gap-4 py-3 border-b border-slate-100 last:border-0 ${className}`}>
-      <dt className="text-slate-500 text-sm shrink-0">{label}</dt>
-      <dd className="text-slate-900 text-sm font-medium break-words min-w-0">{children}</dd>
+    <div
+      className={`grid w-full grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 items-start sm:gap-x-4 lg:gap-x-6 py-3 border-b border-slate-100 last:border-0 ${className}`}
+    >
+      <dt className="text-slate-500 text-sm shrink-0 max-w-[46%] sm:max-w-[12rem] lg:max-w-[14rem]">{label}</dt>
+      <dd className="text-slate-900 text-sm font-medium break-words min-w-0 w-full">{children}</dd>
     </div>
   )
 }
@@ -233,7 +235,7 @@ export default function FranchisePartnerSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="w-full space-y-6">
       {!ws ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 flex flex-wrap items-center justify-between gap-3">
           <span>工作台数据加载较慢或未就绪，机构信息可能暂不可用。</span>
@@ -260,8 +262,10 @@ export default function FranchisePartnerSettings() {
         </div>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8 xl:gap-10 lg:items-start">
+        <div className="min-w-0 space-y-6">
+      <section className="w-full rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex w-full flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
           <div>
             <h2 className="text-base font-semibold text-slate-900">我的机构</h2>
             <p className="text-xs text-slate-500 mt-1">当前对外与合规依据以「生效资质」为准</p>
@@ -279,11 +283,11 @@ export default function FranchisePartnerSettings() {
           </div>
         </div>
 
-        <div className="px-5 py-2">
+        <div className="w-full px-5 py-2">
           {!ws ? (
             <p className="text-sm text-slate-500 py-8 text-center">正在加载机构档案…</p>
           ) : snap ? (
-            <dl>
+            <dl className="w-full">
               <FieldRow label="机构名称">{snap.orgName || '—'}</FieldRow>
               <FieldRow label="法定代表人">{snap.legalRepresentative || '—'}</FieldRow>
               <FieldRow label="机构地址">{snap.address || '—'}</FieldRow>
@@ -324,7 +328,7 @@ export default function FranchisePartnerSettings() {
           <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/40">
             <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">待审核提交预览（未生效）</p>
             <p className="text-xs text-slate-500 mt-1">提交时间：{fmtTime(iq.pendingReview.submittedAt)}</p>
-            <dl className="mt-3 space-y-0">
+            <dl className="mt-3 w-full space-y-0">
               <FieldRow label="机构名称">{iq.pendingReview.snapshot.orgName}</FieldRow>
               <FieldRow label="法定代表人">{iq.pendingReview.snapshot.legalRepresentative}</FieldRow>
               <FieldRow label="营业执照号">{iq.pendingReview.snapshot.businessLicenseNumber}</FieldRow>
@@ -343,18 +347,20 @@ export default function FranchisePartnerSettings() {
           </div>
         ) : null}
       </section>
+        </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-        <div>
+        <div className="min-w-0 space-y-6">
+      <section className="w-full rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="w-full">
           <h2 className="text-base font-semibold text-slate-900 mb-4">登录账号</h2>
-          <dl className="space-y-0">
+          <dl className="w-full space-y-0">
             <FieldRow label="联系人">{contactName}</FieldRow>
             <FieldRow label="登录手机">{maskPhone(phone)}</FieldRow>
             <FieldRow label="最近登录">{raw?.loginAt ? fmtTime(raw.loginAt) : '—'}</FieldRow>
           </dl>
         </div>
 
-        <div className="pt-6 border-t border-slate-100">
+        <div className="w-full pt-6 border-t border-slate-100">
           <h2 className="text-base font-semibold text-slate-900 mb-1">登录密码</h2>
           <p className="text-xs text-slate-500 mb-4">
             {hasStoredPassword
@@ -367,42 +373,42 @@ export default function FranchisePartnerSettings() {
               setPwdErr('')
               setPwdModalOpen(true)
             }}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-semibold hover:bg-slate-50 shadow-sm"
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-semibold hover:bg-slate-50 shadow-sm sm:w-auto"
           >
             修改密码
           </button>
         </div>
 
-        <div className="pt-6 border-t border-slate-100">
+        <div className="w-full pt-6 border-t border-slate-100">
           <h2 className="text-base font-semibold text-slate-900 mb-1">退出账号</h2>
           <p className="text-xs text-slate-500 mb-4">退出后将清除当前登录状态，需重新登录才能使用工作台。</p>
           <button
             type="button"
             onClick={handleLogout}
-            className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-sm font-semibold hover:bg-rose-100"
+            className="w-full px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-sm font-semibold hover:bg-rose-100 sm:w-auto"
           >
             退出当前账号
           </button>
         </div>
       </section>
 
-      <details className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-3 text-sm text-slate-600">
+      <details className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-3 text-sm text-slate-600">
         <summary className="cursor-pointer font-medium text-slate-700 select-none">演示 · 模拟总部审核</summary>
         {!ws ? <p className="mt-2 text-xs text-slate-500">请先点击上方「重新加载」拉取工作台数据后再试。</p> : null}
         <p className="mt-2 text-xs leading-relaxed">
           本地演示无真实总部接口。提交资质后，可用下方按钮模拟「通过 / 驳回」以查看状态与文案变化。
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex w-full flex-wrap gap-2">
           <button
             type="button"
             onClick={runDemoApprove}
             disabled={!ws}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold"
+            className="min-w-0 flex-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold sm:flex-none"
           >
             模拟审核通过
           </button>
         </div>
-        <div className="mt-3 flex flex-col sm:flex-row sm:items-end gap-2">
+        <div className="mt-3 flex w-full flex-col gap-2 sm:flex-row sm:items-end">
           <label className="flex-1 text-xs block">
             <span className="text-slate-500">驳回原因</span>
             <input
@@ -422,6 +428,8 @@ export default function FranchisePartnerSettings() {
           </button>
         </div>
       </details>
+        </div>
+      </div>
 
       {pwdModalOpen ? (
         <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="pwd-modal-title">

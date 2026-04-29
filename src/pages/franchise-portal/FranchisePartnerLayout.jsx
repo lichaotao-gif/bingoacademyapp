@@ -222,7 +222,7 @@ export default function FranchisePartnerLayout() {
       ) : null}
 
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 bg-white border-b border-slate-200/90 shadow-sm">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-3 sm:px-4 md:px-6 lg:px-8 py-3.5 bg-white border-b border-slate-200/90 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Link to="/" className="lg:hidden shrink-0 py-0.5" aria-label="缤果AI学院首页">
               <img
@@ -259,7 +259,7 @@ export default function FranchisePartnerLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto overflow-y-auto">
+        <main className="flex-1 w-full min-w-0 max-w-[1800px] mx-auto overflow-y-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 md:px-6 lg:px-8">
           {showContentBack ? (
             <div className="flex flex-nowrap items-center gap-3 mb-4 sm:mb-6 min-w-0">
               <button

@@ -15,16 +15,16 @@ function fmtDateTime(iso) {
 const PAY_LABEL = { balance: '账户余额', wechat: '微信支付' }
 
 const COVER_THEME = {
-  'kit-ai-starter': { from: '#6366f1', to: '#22d3ee', dot: '#ffffff', code: 'K01' },
-  'robot-microbit': { from: '#0ea5e9', to: '#14b8a6', dot: '#dcfce7', code: 'K02' },
-  'sensor-ai-kit': { from: '#f97316', to: '#facc15', dot: '#fff7ed', code: 'K03' },
-  'jetson-nano-edu': { from: '#7c3aed', to: '#f43f5e', dot: '#f5d0fe', code: 'K04' },
-  'ai-xlab-pack': { from: '#16a34a', to: '#06b6d4', dot: '#dcfce7', code: 'K05' },
-  'drone-ai-lite': { from: '#2563eb', to: '#4338ca', dot: '#dbeafe', code: 'K06' },
+  'kit-ai-starter': { from: '#6366f1', to: '#22d3ee', dot: '#ffffff' },
+  'robot-microbit': { from: '#0ea5e9', to: '#14b8a6', dot: '#dcfce7' },
+  'sensor-ai-kit': { from: '#f97316', to: '#facc15', dot: '#fff7ed' },
+  'jetson-nano-edu': { from: '#7c3aed', to: '#f43f5e', dot: '#f5d0fe' },
+  'ai-xlab-pack': { from: '#16a34a', to: '#06b6d4', dot: '#dcfce7' },
+  'drone-ai-lite': { from: '#2563eb', to: '#4338ca', dot: '#dbeafe' },
 }
 
 function makeCoverDataUrl(product) {
-  const theme = COVER_THEME[product.id] || { from: '#334155', to: '#64748b', dot: '#e2e8f0', code: 'K00' }
+  const theme = COVER_THEME[product.id] || { from: '#334155', to: '#64748b', dot: '#e2e8f0' }
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="720" height="404" viewBox="0 0 720 404">
     <defs>
@@ -40,9 +40,6 @@ function makeCoverDataUrl(product) {
       <circle cx="560" cy="290" r="4"/><circle cx="595" cy="290" r="4"/><circle cx="630" cy="290" r="4"/><circle cx="665" cy="290" r="4"/>
       <circle cx="560" cy="326" r="4"/><circle cx="595" cy="326" r="4"/><circle cx="630" cy="326" r="4"/><circle cx="665" cy="326" r="4"/>
     </g>
-    <rect x="40" y="282" width="640" height="86" rx="16" fill="rgba(15,23,42,0.28)" />
-    <text x="64" y="332" fill="white" font-size="28" font-family="Arial, PingFang SC, Microsoft YaHei" font-weight="700">${product.name}</text>
-    <text x="64" y="80" fill="rgba(255,255,255,0.92)" font-size="24" font-family="Arial, PingFang SC, Microsoft YaHei" font-weight="700">缤果AI学具商城 · ${theme.code}</text>
   </svg>`
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
 }
@@ -79,6 +76,9 @@ export default function FranchisePartnerTeachingMaterials() {
     }
     return Math.round(t * 100) / 100
   }, [cartLines])
+
+  /** 购物车内商品总件数（各 SKU 数量之和） */
+  const cartTotalQty = useMemo(() => cartLines.reduce((sum, line) => sum + line.qty, 0), [cartLines])
 
   const shipmentRows = useMemo(() => {
     const rows = []
@@ -119,7 +119,10 @@ export default function FranchisePartnerTeachingMaterials() {
   }
 
   const openCheckout = () => {
-    if (!cartLines.length) return
+    if (!cartLines.length) {
+      window.alert('请先加入购物车')
+      return
+    }
     setSubmitErr('')
     setPayMethod(ws.balance >= cartTotal ? 'balance' : 'wechat')
     setCheckoutOpen(true)
@@ -202,7 +205,6 @@ export default function FranchisePartnerTeachingMaterials() {
                         </span>
                       ) : null}
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">{p.category}</p>
                     <p className="text-xs text-slate-600 mt-2 leading-relaxed">{p.desc}</p>
                     <p className="text-lg font-bold text-[#3B66FF] mt-3 tabular-nums">¥{p.price.toLocaleString('zh-CN')}</p>
                   </div>
@@ -225,29 +227,6 @@ export default function FranchisePartnerTeachingMaterials() {
                 </div>
               )
             })}
-          </div>
-
-          <div className="sticky bottom-0 z-10 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur shadow-lg p-4 flex flex-wrap items-center justify-between gap-4">
-            <div className="text-sm text-slate-600">
-              当前余额 <span className="font-bold text-[#3B66FF] tabular-nums">¥{ws.balance.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</span>
-              {cartLines.length ? (
-                <>
-                  <span className="mx-2 text-slate-300">|</span>
-                  购物车 <span className="font-semibold text-slate-800">{cartLines.length}</span> 种商品 · 合计
-                  <span className="font-bold text-slate-900 tabular-nums ml-1">¥{cartTotal.toFixed(2)}</span>
-                </>
-              ) : (
-                <span className="text-slate-400 ml-2">暂无商品，点击卡片按钮加入购物车</span>
-              )}
-            </div>
-            <button
-              type="button"
-              disabled={!cartLines.length}
-              onClick={openCheckout}
-              className="btn-primary px-6 py-3 rounded-xl text-sm font-semibold disabled:opacity-45 disabled:cursor-not-allowed"
-            >
-              购物车结算
-            </button>
           </div>
         </>
       ) : null}
@@ -418,6 +397,26 @@ export default function FranchisePartnerTeachingMaterials() {
           </div>
         </div>
       ) : null}
+
+      <button
+        type="button"
+        onClick={openCheckout}
+        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-[max(1.25rem,env(safe-area-inset-right,0px))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#3B66FF] text-white shadow-lg shadow-[#3B66FF]/30 hover:bg-[#2f56e6] transition-colors ring-4 ring-white"
+        aria-label={cartTotalQty > 0 ? `购物车，共${cartTotalQty}件商品` : '购物车'}
+      >
+        <span className="relative inline-flex">
+          <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="9" cy="21" r="1" />
+            <circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+          </svg>
+          {cartTotalQty > 0 ? (
+            <span className="absolute -right-3 -top-3 flex min-h-[22px] min-w-[22px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-bold tabular-nums leading-none text-white ring-2 ring-white">
+              {cartTotalQty > 99 ? '99+' : cartTotalQty}
+            </span>
+          ) : null}
+        </span>
+      </button>
     </div>
   )
 }
