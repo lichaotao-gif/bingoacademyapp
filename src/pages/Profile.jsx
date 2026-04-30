@@ -653,10 +653,10 @@ function PromoCenter({ onBack }) {
             <h3 className="font-semibold text-bingo-dark mb-4">🔥 高佣金推荐榜</h3>
             <div className="space-y-3">
               {[
-                { name: 'AI通识科学营（暑期班）', type: '精品研学', rate: '12%', tag: '热销' },
-                { name: '缤果AI赋能课（企业版）', type: '机构课程', rate: '15%', tag: '高佣' },
-                { name: '青少年AI创新挑战赛 · 报名套餐', type: '赛事', rate: '8%', tag: '' },
-                { name: '学习工具月卡 · 商城', type: '商城商品', rate: '10%', tag: '新品' },
+                { name: 'AI通识科学营（暑期班）', type: '精品研学', rate: '12%' },
+                { name: '缤果AI赋能课（企业版）', type: '机构课程', rate: '15%' },
+                { name: '青少年AI创新挑战赛 · 报名套餐', type: '赛事', rate: '8%' },
+                { name: '学习工具月卡 · 商城', type: '商城商品', rate: '10%' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-primary/5 transition">
                   <div className="flex items-center gap-3">
@@ -667,7 +667,6 @@ function PromoCenter({ onBack }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    {item.tag && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{item.tag}</span>}
                     <span className="text-sm font-bold text-amber-600">佣金 {item.rate}</span>
                     <button type="button" className="text-xs px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-cyan-600">一键分享</button>
                   </div>

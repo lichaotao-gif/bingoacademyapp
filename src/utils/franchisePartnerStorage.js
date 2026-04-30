@@ -23,13 +23,108 @@ export const FRANCHISE_PROMOTABLE_COURSES = [
   { id: 'ai-programming', name: 'AI编程入门课', price: 399 },
 ]
 
+/**
+ * 线下授课课时目录（按课程包 id）。
+ * 创建班级时选择课程包后复制到班级；管理员线下上完一节则勾选对应课时。
+ */
+export const FRANCHISE_OFFLINE_LESSON_CATALOG = {
+  'ai-enlighten': [
+    { id: 'ai-enlighten-L1', title: '第1课时 · 认识身边的智能' },
+    { id: 'ai-enlighten-L2', title: '第2课时 · 会思考的机器' },
+    { id: 'ai-enlighten-L3', title: '第3课时 · 数据与决策' },
+    { id: 'ai-enlighten-L4', title: '第4课时 · 安全与规则' },
+    { id: 'ai-enlighten-L5', title: '第5课时 · 创意小项目' },
+    { id: 'ai-enlighten-L6', title: '第6课时 · 阶段回顾与展示' },
+  ],
+  'ai-advance-basic': [
+    { id: 'ai-advance-basic-L1', title: '第1课时 · 算法与流程' },
+    { id: 'ai-advance-basic-L2', title: '第2课时 · 特征与表示' },
+    { id: 'ai-advance-basic-L3', title: '第3课时 · 简单分类实验' },
+    { id: 'ai-advance-basic-L4', title: '第4课时 · 模型评估入门' },
+    { id: 'ai-advance-basic-L5', title: '第5课时 · 综合练习' },
+    { id: 'ai-advance-basic-L6', title: '第6课时 · 阶段测评' },
+    { id: 'ai-advance-basic-L7', title: '第7课时 · 拓展与答疑' },
+  ],
+  'ai-advance-ml': [
+    { id: 'ai-advance-ml-L1', title: '第1课时 · 机器学习概览' },
+    { id: 'ai-advance-ml-L2', title: '第2课时 · 数据准备与清洗' },
+    { id: 'ai-advance-ml-L3', title: '第3课时 · 监督学习入门' },
+    { id: 'ai-advance-ml-L4', title: '第4课时 · 训练与验证' },
+    { id: 'ai-advance-ml-L5', title: '第5课时 · 小项目实战' },
+    { id: 'ai-advance-ml-L6', title: '第6课时 · 模型调优讨论' },
+    { id: 'ai-advance-ml-L7', title: '第7课时 · 成果汇报' },
+    { id: 'ai-advance-ml-L8', title: '第8课时 · 总结与进阶指引' },
+  ],
+  'ai-programming': [
+    { id: 'ai-programming-L1', title: '第1课时 · 编程环境与变量' },
+    { id: 'ai-programming-L2', title: '第2课时 · 条件与循环' },
+    { id: 'ai-programming-L3', title: '第3课时 · 函数与模块' },
+    { id: 'ai-programming-L4', title: '第4课时 · 与 AI 接口互动' },
+    { id: 'ai-programming-L5', title: '第5课时 · 综合小作品' },
+  ],
+}
+
+export function getOfflineLessonTemplate(courseId) {
+  const rows = FRANCHISE_OFFLINE_LESSON_CATALOG[courseId]
+  if (!rows?.length) return []
+  return rows.map((r) => ({ id: r.id, title: r.title, done: false }))
+}
+
+/** 按顺序合并多个课程包的线下课时（课时 id 在目录内已唯一）；含 packLabel 便于界面分组展示。 */
+export function getMergedOfflineLessonTemplates(courseIds) {
+  const seenPack = new Set()
+  const out = []
+  for (const courseId of courseIds) {
+    if (!courseId || seenPack.has(courseId)) continue
+    if (!FRANCHISE_OFFLINE_LESSON_CATALOG[courseId]?.length) continue
+    seenPack.add(courseId)
+    const pack = FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === courseId)
+    const packLabel = pack?.name || courseId
+    for (const r of FRANCHISE_OFFLINE_LESSON_CATALOG[courseId]) {
+      out.push({ id: r.id, title: r.title, done: false, packCourseId: courseId, packLabel })
+    }
+  }
+  return out
+}
+
+function inferOfflineCourseIdsFromLessons(lessons) {
+  if (!Array.isArray(lessons) || !lessons.length) return []
+  const hits = []
+  for (const courseId of Object.keys(FRANCHISE_OFFLINE_LESSON_CATALOG)) {
+    const p = `${courseId}-L`
+    if (lessons.some((l) => l.id && l.id.startsWith(p))) hits.push(courseId)
+  }
+  const firstIndex = (courseId) => {
+    const p = `${courseId}-L`
+    const i = lessons.findIndex((l) => l.id && l.id.startsWith(p))
+    return i === -1 ? 9999 : i
+  }
+  hits.sort((a, b) => firstIndex(a) - firstIndex(b))
+  return hits
+}
+
+function normalizeOfflineCourseIdsFromMeta(meta) {
+  if (Array.isArray(meta?.offlineCourseIds)) {
+    const picked = new Set()
+    for (const x of meta.offlineCourseIds) {
+      const id = String(x || '').trim()
+      if (!id || !FRANCHISE_OFFLINE_LESSON_CATALOG[id]?.length) continue
+      picked.add(id)
+    }
+    return FRANCHISE_PROMOTABLE_COURSES.map((c) => c.id).filter((id) => picked.has(id))
+  }
+  const single = typeof meta?.offlineCourseId === 'string' ? meta.offlineCourseId.trim() : ''
+  if (single && FRANCHISE_OFFLINE_LESSON_CATALOG[single]?.length) return [single]
+  return []
+}
+
 /** 教具商城：人工智能相关教具（演示价格，正式环境由总部商品中心维护） */
 export const FRANCHISE_TEACHING_PRODUCTS = [
   {
     id: 'kit-ai-starter',
     name: 'AI启蒙教具套装（主控+传感）',
     price: 680,
-    tag: '热销',
+    tag: '',
     desc: '适合低龄段课堂演示：灯光、声音等传感器与简易逻辑编程。',
     emoji: '🧩',
   },
@@ -45,7 +140,7 @@ export const FRANCHISE_TEACHING_PRODUCTS = [
     id: 'sensor-ai-kit',
     name: '人工智能感知传感器套装',
     price: 1280,
-    tag: '新课标',
+    tag: '',
     desc: '视觉 / 距离 / 声音多模态实验，配套实验报告模板。',
     emoji: '📡',
   },
@@ -53,7 +148,7 @@ export const FRANCHISE_TEACHING_PRODUCTS = [
     id: 'jetson-nano-edu',
     name: '边缘 AI 实验主机（教育版）',
     price: 3299,
-    tag: '校区必备',
+    tag: '',
     desc: '轻量深度学习推理演示，含散热与电源适配器。',
     emoji: '🖥️',
   },
@@ -660,18 +755,40 @@ function defaultWorkspace(partnerId, refCode) {
         name: '周六上午 · 幼儿英语启蒙班',
         studentIds: ['stu-1', 'stu-2'],
         createdAt: new Date(t0 - 86400000 * 30).toISOString(),
+        courseType: '素养启蒙',
+        startDate: '',
+        offlineCourseId: 'ai-enlighten',
+        offlineCourseIds: ['ai-enlighten'],
+        offlineCourseName: '《AI启蒙：走进智能世界》',
+        offlineLessons: getOfflineLessonTemplate('ai-enlighten').map((l, i) =>
+          i < 2 ? { ...l, done: true } : l,
+        ),
       },
       {
         id: 'cls-2',
         name: '暑期 · AI 竞赛冲刺班',
         studentIds: ['stu-3'],
         createdAt: new Date(t0 - 86400000 * 7).toISOString(),
+        courseType: '竞赛培优',
+        startDate: '',
+        offlineCourseId: 'ai-advance-ml',
+        offlineCourseIds: ['ai-advance-ml'],
+        offlineCourseName: '《机器学习入门与实战》',
+        offlineLessons: getOfflineLessonTemplate('ai-advance-ml').map((l, i) =>
+          i < 3 ? { ...l, done: true } : l,
+        ),
       },
       {
         id: 'cls-3',
         name: '周三晚 · 少儿编程基础班',
         studentIds: [],
         createdAt: new Date(t0 - 86400000 * 3).toISOString(),
+        courseType: '编程入门',
+        startDate: '',
+        offlineCourseId: 'ai-programming',
+        offlineCourseIds: ['ai-programming'],
+        offlineCourseName: 'AI编程入门课',
+        offlineLessons: getOfflineLessonTemplate('ai-programming'),
       },
     ],
     students: [
@@ -727,6 +844,64 @@ function defaultWorkspace(partnerId, refCode) {
   }
 }
 
+/** 旧数据班级补全线下课时结构；已有课时的班级补全 offlineCourseIds / 展示名。 */
+function ensureClassOfflineFields(ws) {
+  let changed = false
+  for (const c of ws.classes || []) {
+    const hasLessons = Array.isArray(c.offlineLessons) && c.offlineLessons.length > 0
+
+    if (hasLessons) {
+      if (!Array.isArray(c.offlineCourseIds) || c.offlineCourseIds.length === 0) {
+        const inferred = inferOfflineCourseIdsFromLessons(c.offlineLessons)
+        if (inferred.length) {
+          c.offlineCourseIds = inferred
+          c.offlineCourseId = inferred[0]
+          changed = true
+        } else if (c.offlineCourseId) {
+          c.offlineCourseIds = [c.offlineCourseId]
+          changed = true
+        }
+      }
+      if (c.offlineCourseIds?.length) {
+        const names = c.offlineCourseIds.map(
+          (id) => FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === id)?.name || id,
+        )
+        const joined = names.join('、')
+        if (joined && c.offlineCourseName !== joined) {
+          c.offlineCourseName = joined
+          changed = true
+        }
+        if (c.offlineCourseId !== c.offlineCourseIds[0]) {
+          c.offlineCourseId = c.offlineCourseIds[0]
+          changed = true
+        }
+      } else if (!c.offlineCourseName && c.offlineCourseId) {
+        const pack = FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === c.offlineCourseId)
+        c.offlineCourseName = pack?.name || c.offlineCourseId
+        changed = true
+      }
+      continue
+    }
+
+    const idsFromMeta = Array.isArray(c.offlineCourseIds) ? c.offlineCourseIds : []
+    const cid =
+      c.offlineCourseId && FRANCHISE_OFFLINE_LESSON_CATALOG[c.offlineCourseId]
+        ? c.offlineCourseId
+        : 'ai-enlighten'
+    const effectiveIds = idsFromMeta.filter((id) => FRANCHISE_OFFLINE_LESSON_CATALOG[id]?.length)
+    const toBuild = effectiveIds.length ? effectiveIds : [cid]
+    const merged = getMergedOfflineLessonTemplates(toBuild)
+    if (!merged.length) continue
+    const names = toBuild.map((id) => FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === id)?.name || id)
+    c.offlineCourseIds = toBuild
+    c.offlineCourseId = toBuild[0]
+    c.offlineCourseName = names.join('、')
+    c.offlineLessons = merged
+    changed = true
+  }
+  return changed
+}
+
 function normalizeEnrollments(ws) {
   let changed = false
   const fallbackPurchase = () => new Date(Date.now() - 86400000 * 7).toISOString()
@@ -772,6 +947,7 @@ export function getWorkspace(partnerId, refCode) {
     saveWorkspace(partnerId, ws)
   }
   if (normalizeEnrollments(ws)) saveWorkspace(partnerId, ws)
+  if (ensureClassOfflineFields(ws)) saveWorkspace(partnerId, ws)
   if (ensureInstitutionQualification(ws, partnerId, refCode)) saveWorkspace(partnerId, ws)
   if (stripOversizedLicenseAttachments(ws)) saveWorkspace(partnerId, ws)
   if (!Array.isArray(ws.materialOrders)) {
@@ -843,17 +1019,45 @@ export function rechargeCourse(partnerId, refCode, { studentId, courseId }) {
 
 export function createClass(partnerId, refCode, name, meta = {}) {
   const ws = getWorkspace(partnerId, refCode)
+  const n = name.trim()
+  if (!n) return { ok: false, msg: '请输入班级名称' }
+  const offlineCourseIds = normalizeOfflineCourseIdsFromMeta(meta)
+  if (!offlineCourseIds.length) {
+    return { ok: false, msg: '请至少选择一个线下课程包（可多选，课时目录由总部课程包同步）' }
+  }
+  const offlineLessons = getMergedOfflineLessonTemplates(offlineCourseIds)
+  if (!offlineLessons.length) {
+    return { ok: false, msg: '所选课程包暂无线下课时目录，请重新选择' }
+  }
   const id = `cls-${Date.now()}`
+  const names = offlineCourseIds.map((cid) => FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === cid)?.name || cid)
   ws.classes.push({
     id,
-    name: name.trim(),
+    name: n,
     studentIds: [],
     createdAt: new Date().toISOString(),
     courseType: typeof meta.courseType === 'string' ? meta.courseType.trim() : '',
     startDate: typeof meta.startDate === 'string' ? meta.startDate.trim() : '',
+    offlineCourseIds,
+    offlineCourseId: offlineCourseIds[0],
+    offlineCourseName: names.join('、'),
+    offlineLessons,
   })
   saveWorkspace(partnerId, ws)
-  return ws
+  return { ok: true, ws, newClassId: id }
+}
+
+/** 管理员勾选/取消某节线下课是否已上完 */
+export function setClassOfflineLessonDone(partnerId, refCode, classId, lessonId, done) {
+  const ws = getWorkspace(partnerId, refCode)
+  const cls = ws.classes.find((c) => c.id === classId)
+  if (!cls) return { ok: false, msg: '班级不存在' }
+  if (!Array.isArray(cls.offlineLessons)) return { ok: false, msg: '该班级未绑定线下课时' }
+  const le = cls.offlineLessons.find((l) => l.id === lessonId)
+  if (!le) return { ok: false, msg: '课时不存在' }
+  le.done = Boolean(done)
+  saveWorkspace(partnerId, ws)
+  return { ok: true, ws }
 }
 
 export function deleteClass(partnerId, refCode, classId) {

@@ -12,7 +12,7 @@ import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 const REMARK_PANEL_W = 352
 
 /** 姓名旁「备注」：悬停显示完整备注并可就地修改保存（fixed + portal，避免表格裁剪）。 */
-function StudentNameWithRemark({ studentId, name, remark, session, refresh }) {
+export function StudentNameWithRemark({ studentId, name, remark, session, refresh }) {
   const wrapRef = useRef(null)
   const textareaRef = useRef(null)
   const closeTimerRef = useRef(null)
@@ -163,6 +163,44 @@ function courseLabel(courseId) {
   return FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === courseId)?.name || courseId
 }
 
+function enrollmentStatusTone(status) {
+  if (status === '已完成') return 'bg-emerald-100 text-emerald-800'
+  if (status === '未开始') return 'bg-slate-100 text-slate-600'
+  return 'bg-sky-100 text-sky-800'
+}
+
+/** 班级名册 / 本班学员：每门线上课一行，各自进度与完成状态（与线下课无关） */
+export function OnlineCoursesPerLessonCell({ enrollments }) {
+  const list = Array.isArray(enrollments) ? enrollments.filter((e) => e && e.courseId) : []
+  if (!list.length) return <span className="text-slate-400">—</span>
+  return (
+    <ul className="space-y-1.5 text-xs leading-snug max-w-md">
+      {list.map((e) => {
+        const name = courseLabel(e.courseId)
+        const pctRaw = e.progressPct
+        const pct = pctRaw == null ? '—' : `${Math.min(100, Number(pctRaw))}%`
+        const st = e.status || '—'
+        return (
+          <li key={e.courseId} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-800">
+            <span className="font-medium text-slate-900 min-w-0">{name}</span>
+            <span className="tabular-nums text-slate-600 shrink-0">进度 {pct}</span>
+            {st !== '—' ? (
+              <span
+                className={
+                  'inline-flex items-center shrink-0 text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ' +
+                  enrollmentStatusTone(st)
+                }
+              >
+                {st}
+              </span>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 function fmtDateTime(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -181,12 +219,18 @@ export default function FranchisePartnerStudents() {
   const [name, setName] = useState('')
   const [msg, setMsg] = useState('')
 
-  useEffect(() => {
-    const q = searchParams.get('classId')
-    if (q && ws?.classes?.some((c) => c.id === q)) {
-      setTableClassFilter(q)
-    }
-  }, [searchParams, ws?.classes])
+  const pinClassId = useMemo(() => {
+    if (!classIdFromQuery || !ws?.classes?.length) return null
+    return ws.classes.some((c) => c.id === classIdFromQuery) ? classIdFromQuery : null
+  }, [classIdFromQuery, ws?.classes])
+
+  /** URL 带有效 classId 时锁定为该班，避免首帧 tableClassFilter 仍为「全部」而误渲染全表 */
+  const effectiveTableClassFilter = pinClassId || tableClassFilter
+
+  useLayoutEffect(() => {
+    if (pinClassId) setTableClassFilter(pinClassId)
+    else if (!searchParams.get('classId')) setTableClassFilter('all')
+  }, [pinClassId, searchParams])
 
   useEffect(() => {
     if (!modalOpen) return
@@ -204,7 +248,7 @@ export default function FranchisePartnerStudents() {
     if (!ws) return []
     const list = []
     for (const s of ws.students || []) {
-      if (tableClassFilter !== 'all' && s.classId !== tableClassFilter) continue
+      if (effectiveTableClassFilter !== 'all' && s.classId !== effectiveTableClassFilter) continue
       const cls = ws.classes.find((c) => c.id === s.classId)
       const className = cls?.name || '未分班'
       const enrollments = s.enrollments?.length ? s.enrollments : []
@@ -254,17 +298,37 @@ export default function FranchisePartnerStudents() {
       }
     }
     return list
-  }, [ws, tableClassFilter])
+  }, [ws, effectiveTableClassFilter])
+
+  const classRosterRows = useMemo(() => {
+    if (!ws || !pinClassId) return []
+    const list = []
+    for (const s of ws.students || []) {
+      if (s.classId !== pinClassId) continue
+      list.push({
+        key: s.id,
+        studentId: s.id,
+        name: s.name,
+        phone: s.phone,
+        remark: s.remark || '',
+        enrollments: Array.isArray(s.enrollments) ? s.enrollments : [],
+      })
+    }
+    list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN'))
+    return list
+  }, [ws, pinClassId])
+
+  const showPinnedClassRoster = Boolean(pinClassId)
 
   const studentCount = useMemo(() => {
     if (!ws) return 0
     const ids = new Set()
     for (const s of ws.students || []) {
-      if (tableClassFilter !== 'all' && s.classId !== tableClassFilter) continue
+      if (effectiveTableClassFilter !== 'all' && s.classId !== effectiveTableClassFilter) continue
       ids.add(s.id)
     }
     return ids.size
-  }, [ws, tableClassFilter])
+  }, [ws, effectiveTableClassFilter])
 
   /** 从班级管理带 classId 进入时，用于说明当前正在查看哪一班 */
   const viewedClassLabel = useMemo(() => {
@@ -279,8 +343,8 @@ export default function FranchisePartnerStudents() {
       return
     }
     const preset =
-      tableClassFilter !== 'all' && ws.classes.some((c) => c.id === tableClassFilter)
-        ? tableClassFilter
+      effectiveTableClassFilter !== 'all' && ws.classes.some((c) => c.id === effectiveTableClassFilter)
+        ? effectiveTableClassFilter
         : ws.classes[0]?.id || ''
     setModalClassId(preset)
     setPhone('')
@@ -315,8 +379,8 @@ export default function FranchisePartnerStudents() {
     setMsg('')
     if (!session) return
     const classIdToUse =
-      tableClassFilter !== 'all' && ws.classes.some((c) => c.id === tableClassFilter)
-        ? tableClassFilter
+      effectiveTableClassFilter !== 'all' && ws.classes.some((c) => c.id === effectiveTableClassFilter)
+        ? effectiveTableClassFilter
         : modalClassId
     if (!classIdToUse) {
       setMsg('请选择加入的班级')
@@ -360,38 +424,116 @@ export default function FranchisePartnerStudents() {
         </button>
       </div>
 
-      {classIdFromQuery && viewedClassLabel ? (
-        <p className="text-sm text-slate-600 -mt-2">
-          班级「{viewedClassLabel}」成员：共 <span className="font-medium text-slate-800">{studentCount}</span> 名学员；下表已按本班筛选，可在此查看或管理。
+      {showPinnedClassRoster && viewedClassLabel ? (
+        <p className="text-sm text-slate-600 -mt-2 leading-relaxed">
+          「{viewedClassLabel}」本班名册：共 <span className="font-medium text-slate-800">{studentCount}</span>{' '}
+          人（每人一行；每门线上课单独显示进度与状态。开通时间、最近学习等完整学情表请点「学情」或前往「学习进度」。）
         </p>
       ) : null}
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
         <h2 className="font-semibold text-bingo-dark">
-          {classIdFromQuery && viewedClassLabel ? '本班学员列表' : '学员明细'}
+          {showPinnedClassRoster && viewedClassLabel ? '本班学员列表' : '学员明细'}
         </h2>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="text-sm text-slate-600">班级筛选</label>
-          <select
-            value={tableClassFilter}
-            onChange={(e) => setTableClassFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm min-w-[10rem]"
-          >
-            <option value="all">全部班级</option>
-            {ws.classes.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          {showPinnedClassRoster ? (
+            <>
+              <span className="text-sm text-slate-600">当前查看本班成员</span>
+              <Link
+                to="/franchise-partner/students"
+                className="text-xs font-medium text-[#3B66FF] hover:text-[#2f56e6] hover:underline"
+              >
+                全部学员（全表）
+              </Link>
+            </>
+          ) : (
+            <>
+              <label className="text-sm text-slate-600">班级筛选</label>
+              <select
+                value={tableClassFilter}
+                onChange={(e) => setTableClassFilter(e.target.value)}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm min-w-[10rem]"
+              >
+                <option value="all">全部班级</option>
+                {ws.classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           <span className="text-xs text-slate-400">
-            共 {studentCount} 名学员 · {allRows.length} 条学习记录
+            {showPinnedClassRoster ? `共 ${studentCount} 人` : `共 ${studentCount} 名学员 · ${allRows.length} 条学习记录`}
           </span>
         </div>
       </div>
 
-      {allRows.length === 0 ? (
+      {(showPinnedClassRoster ? classRosterRows.length === 0 : allRows.length === 0) ? (
         <p className="text-sm text-slate-500">
-          当前筛选下暂无学员。点击右上角「添加学生」，或调整班级筛选。
+          当前筛选下暂无学员。点击右上角「添加学生」
+          {showPinnedClassRoster ? '。' : '，或调整班级筛选。'}
         </p>
+      ) : showPinnedClassRoster ? (
+        <div className="overflow-x-auto card rounded-2xl border border-slate-200">
+          <table className="w-full border-collapse text-sm text-left min-w-[640px]">
+            <thead className="bg-slate-50 text-xs text-slate-500">
+              <tr>
+                <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">姓名</th>
+                <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">手机</th>
+                <th
+                  className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left"
+                  title="每名学员可有多门线上课；每门课有独立的进度百分比与完成状态。时间维度与全机构筛选见「学习进度」。"
+                >
+                  已选线上课程
+                </th>
+                <th className="px-5 py-3 font-medium whitespace-nowrap min-w-[14rem] align-middle text-left">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {classRosterRows.map((row) => (
+                <tr key={row.key} className="border-t border-slate-100 hover:bg-slate-50/80">
+                  <td className="px-5 py-3 align-middle text-left text-slate-900 whitespace-nowrap">
+                    <StudentNameWithRemark
+                      studentId={row.studentId}
+                      name={row.name}
+                      remark={row.remark}
+                      session={session}
+                      refresh={refresh}
+                    />
+                  </td>
+                  <td className="px-5 py-3 align-middle text-left text-slate-600 font-mono whitespace-nowrap">{row.phone}</td>
+                  <td className="px-5 py-3 align-middle text-left text-slate-700">
+                    <OnlineCoursesPerLessonCell enrollments={row.enrollments} />
+                  </td>
+                  <td className="px-5 py-3 align-middle text-left">
+                    <div className="flex flex-row flex-nowrap items-center gap-2">
+                      <Link
+                        to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}
+                        className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 hover:bg-slate-200 hover:border-slate-400 transition-colors"
+                      >
+                        充课
+                      </Link>
+                      <Link
+                        to={`/franchise-partner/progress?studentId=${encodeURIComponent(row.studentId)}`}
+                        className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      >
+                        学情
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteStudent(row.studentId, row.name)}
+                        className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-rose-50 text-rose-800 text-xs font-semibold border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-colors"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="overflow-x-auto card rounded-2xl border border-slate-200">
           <table className="w-full border-collapse text-sm text-left min-w-[1000px]">
@@ -501,7 +643,7 @@ export default function FranchisePartnerStudents() {
               </button>
             </div>
             <form onSubmit={handleAdd} className="space-y-4">
-              {tableClassFilter !== 'all' && ws.classes.some((c) => c.id === tableClassFilter) ? (
+              {effectiveTableClassFilter !== 'all' && ws.classes.some((c) => c.id === effectiveTableClassFilter) ? (
                 <p className="text-sm text-slate-600 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
                   将加入班级：<span className="font-semibold text-bingo-dark">{targetClassName}</span>
                 </p>

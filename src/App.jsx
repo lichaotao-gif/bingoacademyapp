@@ -58,6 +58,7 @@ import FranchisePartnerPromote from './pages/franchise-portal/FranchisePartnerPr
 import FranchisePartnerOrders from './pages/franchise-portal/FranchisePartnerOrders'
 import FranchisePartnerFinance from './pages/franchise-portal/FranchisePartnerFinance'
 import FranchisePartnerClasses from './pages/franchise-portal/FranchisePartnerClasses'
+import FranchisePartnerClassDetail from './pages/franchise-portal/FranchisePartnerClassDetail'
 import FranchisePartnerStudents from './pages/franchise-portal/FranchisePartnerStudents'
 import FranchisePartnerProgress from './pages/franchise-portal/FranchisePartnerProgress'
 import FranchisePartnerRecharge from './pages/franchise-portal/FranchisePartnerRecharge'
@@ -120,6 +121,7 @@ export default function App() {
           <Route path="discounts" element={<FranchisePartnerDiscounts />} />
           <Route path="balance" element={<FranchisePartnerBalance />} />
           <Route path="settings" element={<FranchisePartnerSettings />} />
+          <Route path="classes/:classId" element={<FranchisePartnerClassDetail />} />
           <Route path="classes" element={<FranchisePartnerClasses />} />
           <Route path="students" element={<FranchisePartnerStudents />} />
           <Route path="progress" element={<FranchisePartnerProgress />} />

@@ -479,7 +479,7 @@ function BSection({ onLead }) {
         <div className="space-y-6">
           <div className="card p-5 bg-gradient-to-r from-sky-50 to-indigo-50 border-sky-200/60">
             <p className="text-xs text-sky-600 font-bold mb-1">痛点</p>
-            <p className="text-sm text-slate-700 mb-3">新课标要求开设AI课程，学校缺体系、缺师资、缺赛事资源，如何快速落地高质量AI教育？</p>
+            <p className="text-sm text-slate-700 mb-3">学校开设人工智能相关课程时，常面临缺体系、缺师资、缺赛事资源，如何快速落地高质量AI教育？</p>
             <p className="text-xs font-bold text-slate-700 mb-1">解决方案</p>
             <p className="text-sm text-slate-700">缤果AI课程体系入校 + 师训赋能 + 赛事落地一站式服务，打造学校AI教育特色标杆</p>
           </div>

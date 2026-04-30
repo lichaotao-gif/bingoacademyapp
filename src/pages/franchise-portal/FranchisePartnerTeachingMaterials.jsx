@@ -197,14 +197,7 @@ export default function FranchisePartnerTeachingMaterials() {
                 >
                   <img src={coverSrc} alt={`${p.name} 封面`} className="w-full h-40 rounded-xl border border-slate-100 object-cover" />
                   <div className="mt-3 min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold text-slate-900 text-[15px] leading-snug">{p.name}</h3>
-                      {p.tag ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 font-medium shrink-0">
-                          {p.tag}
-                        </span>
-                      ) : null}
-                    </div>
+                    <h3 className="font-semibold text-slate-900 text-[15px] leading-snug">{p.name}</h3>
                     <p className="text-xs text-slate-600 mt-2 leading-relaxed">{p.desc}</p>
                     <p className="text-lg font-bold text-[#3B66FF] mt-3 tabular-nums">¥{p.price.toLocaleString('zh-CN')}</p>
                   </div>

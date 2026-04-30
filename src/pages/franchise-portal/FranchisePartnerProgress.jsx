@@ -7,6 +7,12 @@ function courseLabel(id) {
   return FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === id)?.name || id
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return '—'
+  const dt = new Date(iso)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`
+}
+
 export default function FranchisePartnerProgress() {
   const { ws } = useFranchiseWorkspace()
   const [searchParams] = useSearchParams()
@@ -39,7 +45,8 @@ export default function FranchisePartnerProgress() {
           courseName: courseLabel(e.courseId),
           progressPct: e.progressPct,
           status: e.status,
-          lastStudyAt: e.lastStudyAt,
+          purchasedAt: e.purchasedAt || null,
+          lastStudyAt: e.lastStudyAt || null,
         })
       }
     }
@@ -89,22 +96,28 @@ export default function FranchisePartnerProgress() {
         </div>
       </div>
 
+      <p className="text-xs text-slate-500 leading-relaxed">
+        下列为每名学员、每门线上课程的学情明细（含开通时间、学习进度与完成状态）；一名学员多门课会对应多行。
+      </p>
+
       <div className="overflow-x-auto card rounded-2xl border border-slate-200">
-        <table className="w-full text-sm text-left min-w-[800px]">
+        <table className="w-full text-sm text-left min-w-[960px]">
           <thead className="bg-slate-50 text-xs text-slate-500">
             <tr>
               <th className="px-5 py-3 font-medium">学员</th>
               <th className="px-5 py-3 font-medium">手机</th>
               <th className="px-5 py-3 font-medium">班级</th>
-              <th className="px-5 py-3 font-medium">课程</th>
+              <th className="px-5 py-3 font-medium min-w-[10rem]">线上课程</th>
+              <th className="px-5 py-3 font-medium whitespace-nowrap">购买/开通时间</th>
+              <th className="px-5 py-3 font-medium whitespace-nowrap">最近学习</th>
               <th className="px-5 py-3 font-medium whitespace-nowrap">学习进度</th>
-              <th className="px-5 py-3 font-medium">状态</th>
+              <th className="px-5 py-3 font-medium">完成状态</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-8 text-center text-slate-500">暂无学习记录</td>
+                <td colSpan={8} className="px-5 py-8 text-center text-slate-500">暂无学习记录</td>
               </tr>
             ) : (
               rows.map((r) => (
@@ -112,7 +125,9 @@ export default function FranchisePartnerProgress() {
                   <td className="px-5 py-3 font-semibold text-slate-900">{r.studentName}</td>
                   <td className="px-5 py-3 text-slate-600 font-mono whitespace-nowrap">{r.phone}</td>
                   <td className="px-5 py-3 text-slate-700">{r.className}</td>
-                  <td className="px-5 py-3 text-slate-700 max-w-[14rem] truncate">{r.courseName}</td>
+                  <td className="px-5 py-3 text-slate-700 max-w-[14rem] leading-snug">{r.courseName}</td>
+                  <td className="px-5 py-3 text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(r.purchasedAt)}</td>
+                  <td className="px-5 py-3 text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(r.lastStudyAt)}</td>
                   <td className="px-5 py-3 text-slate-700 tabular-nums whitespace-nowrap">
                     {r.progressPct == null ? '—' : `${Math.min(100, Number(r.progressPct))}%`}
                   </td>

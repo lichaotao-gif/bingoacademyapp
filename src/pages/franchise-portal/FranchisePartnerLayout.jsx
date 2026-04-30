@@ -83,7 +83,9 @@ export default function FranchisePartnerLayout() {
   }, [navigate])
 
   const pageTitle = useMemo(() => {
-    const seg = (location.pathname.split('/').pop() || 'dashboard').split('?')[0]
+    const path = location.pathname
+    if (/^\/franchise-partner\/classes\/.+/.test(path)) return '班级详情'
+    const seg = (path.split('/').pop() || 'dashboard').split('?')[0]
     return TITLE_MAP[seg] || '加盟商后台'
   }, [location.pathname])
 
@@ -92,13 +94,17 @@ export default function FranchisePartnerLayout() {
     const path = location.pathname
     const q = new URLSearchParams(location.search)
     if (q.get('studentId') && (path.includes('/recharge') || path.includes('/progress'))) return true
+    if (/^\/franchise-partner\/classes\/.+/.test(path)) return true
     return false
   }, [location.pathname, location.search])
 
   /** 班级/学生页在子路由内自行渲染「标题 + 主操作」同一行，避免与 Layout 拆成两行 */
   const hideLayoutTitle = useMemo(() => {
     const p = location.pathname
-    return p.includes('/franchise-partner/classes') || p.includes('/franchise-partner/students')
+    return (
+      p.includes('/franchise-partner/classes') ||
+      p.includes('/franchise-partner/students')
+    )
   }, [location.pathname])
 
   if (!session) {
@@ -125,6 +131,11 @@ export default function FranchisePartnerLayout() {
 
     if (q.get('studentId') && (pathname.includes('/recharge') || pathname.includes('/progress'))) {
       navigate('/franchise-partner/students')
+      return
+    }
+
+    if (/^\/franchise-partner\/classes\/.+/.test(pathname)) {
+      navigate('/franchise-partner/classes')
       return
     }
 

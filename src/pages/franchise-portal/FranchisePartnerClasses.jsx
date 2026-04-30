@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { addStudentToClass, createClass, deleteClass } from '../../utils/franchisePartnerStorage'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  createClass,
+  FRANCHISE_OFFLINE_LESSON_CATALOG,
+  FRANCHISE_PROMOTABLE_COURSES,
+} from '../../utils/franchisePartnerStorage'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
 function fmtDate(iso) {
@@ -9,49 +13,42 @@ function fmtDate(iso) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function defaultOfflineCourseIds() {
+  const id = FRANCHISE_PROMOTABLE_COURSES[0]?.id
+  return id ? [id] : []
+}
+
 export default function FranchisePartnerClasses() {
+  const navigate = useNavigate()
   const { session, ws, refresh } = useFranchiseWorkspace()
   const [classModalOpen, setClassModalOpen] = useState(false)
   const [name, setName] = useState('')
   const [courseType, setCourseType] = useState('')
   const [startDate, setStartDate] = useState('')
+  const [offlineCourseIds, setOfflineCourseIds] = useState(defaultOfflineCourseIds)
   const [classErr, setClassErr] = useState('')
 
-  const [studentModalClassId, setStudentModalClassId] = useState(null)
-  const [stuName, setStuName] = useState('')
-  const [stuPhone, setStuPhone] = useState('')
-  const [stuRemark, setStuRemark] = useState('')
-  const [stuErr, setStuErr] = useState('')
-
-  useEffect(() => {
-    if (!classModalOpen && !studentModalClassId) return
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        closeClassModal()
-        closeStudentModal()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [classModalOpen, studentModalClassId])
-
-  if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
-
-  const closeClassModal = () => {
+  const closeClassModal = useCallback(() => {
     setClassModalOpen(false)
     setClassErr('')
     setName('')
     setCourseType('')
     setStartDate('')
-  }
+    setOfflineCourseIds(defaultOfflineCourseIds())
+  }, [])
 
-  const closeStudentModal = () => {
-    setStudentModalClassId(null)
-    setStuName('')
-    setStuPhone('')
-    setStuRemark('')
-    setStuErr('')
-  }
+  useEffect(() => {
+    if (!classModalOpen) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeClassModal()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [classModalOpen, closeClassModal])
+
+  if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
+
+  const classes = Array.isArray(ws.classes) ? ws.classes : []
 
   const handleCreateClass = (e) => {
     e.preventDefault()
@@ -61,55 +58,35 @@ export default function FranchisePartnerClasses() {
       setClassErr('请输入班级名称')
       return
     }
-    createClass(session.partnerId, session.refCode, n, { courseType, startDate })
+    const r = createClass(session.partnerId, session.refCode, n, {
+      courseType,
+      startDate,
+      offlineCourseIds,
+    })
+    if (!r.ok) {
+      setClassErr(r.msg || '创建失败')
+      return
+    }
     closeClassModal()
     refresh()
-  }
-
-  const handleDelete = (cls) => {
-    const tip =
-      `确定删除班级「${cls.name}」？\n` +
-      (cls.studentIds?.length
-        ? `班内 ${cls.studentIds.length} 名学员将变为「未分班」，学员与学习记录仍会保留。`
-        : '删除后可在学员管理中为学员重新指定班级。')
-    if (!window.confirm(tip)) return
-    const r = deleteClass(session.partnerId, session.refCode, cls.id)
-    if (!r.ok) {
-      window.alert(r.msg || '删除失败')
-      return
-    }
-    refresh()
-  }
-
-  const openAddStudent = (classId) => {
-    setStuErr('')
-    setStuName('')
-    setStuPhone('')
-    setStuRemark('')
-    setStudentModalClassId(classId)
-  }
-
-  const handleAddStudent = (e) => {
-    e.preventDefault()
-    setStuErr('')
-    if (!studentModalClassId) return
-    const r = addStudentToClass(session.partnerId, session.refCode, studentModalClassId, stuPhone, stuName, stuRemark)
-    if (!r.ok) {
-      setStuErr(r.msg)
-      return
-    }
-    closeStudentModal()
-    refresh()
+    const newId = r.newClassId
+    if (newId) queueMicrotask(() => navigate(`/franchise-partner/classes/${encodeURIComponent(newId)}`, { replace: true }))
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 min-w-0">
-        <h1 className="text-xl font-bold text-slate-900 truncate min-w-0">班级管理</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-slate-900 truncate">班级管理</h1>
+          <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
+            每个班级为一块卡片；点名称或「班级详情」进入详情，维护线下课并管理本班学员。
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => {
             setClassErr('')
+            setOfflineCourseIds(defaultOfflineCourseIds())
             setClassModalOpen(true)
           }}
           className="shrink-0 px-4 py-2.5 rounded-lg bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold whitespace-nowrap"
@@ -118,104 +95,82 @@ export default function FranchisePartnerClasses() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="text-[15px] font-semibold text-slate-900">班级列表</h2>
-          <span className="text-xs text-slate-400">共 {ws.classes.length} 个班</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left min-w-[720px]">
-            <thead className="bg-slate-50 text-xs text-slate-500">
-              <tr>
-                <th className="px-5 py-3 font-medium">班级名称</th>
-                <th className="px-5 py-3 font-medium">学员数量</th>
-                <th className="px-5 py-3 font-medium">课程类型</th>
-                <th className="px-5 py-3 font-medium">开课日期</th>
-                <th className="px-5 py-3 font-medium">创建时间</th>
-                <th className="px-5 py-3 font-medium">状态</th>
-                <th className="px-5 py-3 font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ws.classes.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-slate-500">
-                    暂无班级，点击「创建班级」添加。
-                  </td>
-                </tr>
-              ) : (
-                ws.classes.map((cls) => {
-                  const n = cls.studentIds?.length || 0
-                  const active = n > 0
-                  return (
-                    <tr key={cls.id} className="border-t border-slate-100 hover:bg-slate-50/80">
-                      <td className="px-5 py-3 font-semibold text-slate-900">{cls.name}</td>
-                      <td className="px-5 py-3 text-slate-700">
-                        {n > 0 ? (
-                          <Link
-                            to={`/franchise-partner/students?classId=${encodeURIComponent(cls.id)}`}
-                            className="font-medium text-[#3B66FF] hover:text-[#2f56e6] hover:underline tabular-nums"
-                            title="查看该班成员列表"
-                          >
-                            {n}
-                          </Link>
-                        ) : (
-                          <span className="tabular-nums text-slate-500">0</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3 text-slate-600">{cls.courseType || '—'}</td>
-                      <td className="px-5 py-3 text-slate-600">{cls.startDate || '—'}</td>
-                      <td className="px-5 py-3 text-slate-500">{fmtDate(cls.createdAt)}</td>
-                      <td className="px-5 py-3">
-                        <span
-                          className={
-                            'text-xs px-2.5 py-0.5 rounded-full font-medium ' +
-                            (active ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800')
-                          }
-                        >
-                          {active ? '进行中' : '招生中'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openAddStudent(cls.id)}
-                            className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 hover:bg-slate-200 hover:border-slate-400 transition-colors"
-                          >
-                            添加学员
-                          </button>
-                          <Link
-                            to={`/franchise-partner/students?classId=${encodeURIComponent(cls.id)}`}
-                            className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                            aria-label={`查看「${cls.name}」班级成员`}
-                            title="查看该班全部学员及学习记录"
-                          >
-                            查看成员
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(cls)}
-                            className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-rose-50 text-rose-800 text-xs font-semibold border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-colors"
-                          >
-                            删除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-[15px] font-semibold text-slate-900">班级列表</h2>
+        <span className="text-xs text-slate-400">共 {classes.length} 个班</span>
       </div>
+
+      {classes.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center text-sm text-slate-500 shadow-sm">
+          暂无班级，点击右上角「创建班级」添加。
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {classes.map((cls) => {
+            const n = cls.studentIds?.length || 0
+            const active = n > 0
+            const detailTo = `/franchise-partner/classes/${encodeURIComponent(cls.id)}`
+            return (
+              <article
+                key={cls.id}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-4 min-h-[12rem] hover:border-[#3B66FF]/35 hover:shadow-md transition-all"
+              >
+                <div className="flex items-start justify-between gap-3 min-w-0">
+                  <Link
+                    to={detailTo}
+                    className="text-base font-semibold text-slate-900 leading-snug hover:text-[#3B66FF] line-clamp-2"
+                    title="进入班级详情"
+                  >
+                    {cls.name}
+                  </Link>
+                  <span
+                    className={
+                      'shrink-0 text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap ' +
+                      (active ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800')
+                    }
+                  >
+                    {active ? '进行中' : '招生中'}
+                  </span>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-sm flex-1">
+                  <div className="min-w-0">
+                    <dt className="text-xs text-slate-500">学员</dt>
+                    <dd className="mt-0.5 font-medium text-slate-800 tabular-nums">{n} 人</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-slate-500">创建时间</dt>
+                    <dd className="mt-0.5 text-slate-700 tabular-nums">{fmtDate(cls.createdAt)}</dd>
+                  </div>
+                  <div className="min-w-0 col-span-2">
+                    <dt className="text-xs text-slate-500">课程类型</dt>
+                    <dd className="mt-0.5 text-slate-700 truncate" title={cls.courseType || ''}>
+                      {cls.courseType || '—'}
+                    </dd>
+                  </div>
+                  <div className="min-w-0 col-span-2">
+                    <dt className="text-xs text-slate-500">开课日期</dt>
+                    <dd className="mt-0.5 text-slate-700 tabular-nums">{cls.startDate || '—'}</dd>
+                  </div>
+                </dl>
+                <div className="pt-3 border-t border-slate-100 mt-auto">
+                  <Link
+                    to={detailTo}
+                    className="inline-flex w-full justify-center items-center px-3 py-2.5 rounded-xl bg-[#3B66FF] text-white text-xs font-semibold hover:bg-[#2f56e6] transition-colors"
+                  >
+                    班级详情
+                  </Link>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
 
       {classModalOpen ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={closeClassModal} role="presentation" />
           <div
-            className="relative w-full max-w-[460px] rounded-xl bg-white shadow-xl border border-slate-200"
+            className="relative w-full max-w-[520px] rounded-xl bg-white shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
@@ -242,12 +197,56 @@ export default function FranchisePartnerClasses() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">课程类型</label>
+                <span className="block text-sm font-medium text-slate-600 mb-2">
+                  线下课程包 <span className="text-rose-600">*</span>
+                  <span className="font-normal text-slate-400">（可多选）</span>
+                </span>
+                <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 bg-white overflow-hidden">
+                  {FRANCHISE_PROMOTABLE_COURSES.map((c) => {
+                    const nLess = (FRANCHISE_OFFLINE_LESSON_CATALOG[c.id] || []).length
+                    const checked = offlineCourseIds.includes(c.id)
+                    return (
+                      <label
+                        key={c.id}
+                        className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50/80"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const on = e.target.checked
+                            setOfflineCourseIds((prev) => {
+                              if (on) return prev.includes(c.id) ? prev : [...prev, c.id]
+                              return prev.filter((x) => x !== c.id)
+                            })
+                            if (on) {
+                              const p = FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === c.id)
+                              if (p && !courseType.trim()) {
+                                setCourseType(p.name.replace(/^《|》$/g, '').slice(0, 40))
+                              }
+                            }
+                          }}
+                          className="mt-1 h-4 w-4 rounded border-slate-300 text-[#3B66FF] focus:ring-[#3B66FF]/30"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="text-sm font-medium text-slate-800">{c.name}</span>
+                          <span className="block text-xs text-slate-500 mt-0.5">线下共 {nLess} 课时</span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  可多选多个课程包，课时按列表顺序合并；创建后由管理员逐节勾选，与线上学习进度独立。
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">课程类型（备注）</label>
                 <input
                   value={courseType}
                   onChange={(e) => setCourseType(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
-                  placeholder="如：AI启蒙、Python入门"
+                  placeholder="如：周末班、暑期集训（可选）"
                 />
               </div>
               <div>
@@ -273,74 +272,6 @@ export default function FranchisePartnerClasses() {
                   className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#3B66FF] text-white text-sm font-semibold hover:bg-[#2f56e6]"
                 >
                   确认创建
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      {studentModalClassId ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={closeStudentModal} role="presentation" />
-          <div
-            className="relative w-full max-w-[460px] rounded-xl bg-white shadow-xl border border-slate-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">添加学员</h2>
-              <button
-                type="button"
-                onClick={closeStudentModal}
-                className="w-8 h-8 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-xl leading-none"
-                aria-label="关闭"
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleAddStudent} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">学员姓名</label>
-                <input
-                  value={stuName}
-                  onChange={(e) => setStuName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
-                  placeholder="输入学员姓名"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">手机号</label>
-                <input
-                  value={stuPhone}
-                  onChange={(e) => setStuPhone(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
-                  placeholder="11位家长联系电话"
-                  inputMode="numeric"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">备注</label>
-                <input
-                  value={stuRemark}
-                  onChange={(e) => setStuRemark(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
-                  placeholder="可选备注信息"
-                />
-              </div>
-              {stuErr ? <p className="text-sm text-red-600">{stuErr}</p> : null}
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={closeStudentModal}
-                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-slate-100 text-slate-800 text-sm font-semibold border border-slate-200 hover:bg-slate-200"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#3B66FF] text-white text-sm font-semibold hover:bg-[#2f56e6]"
-                >
-                  确认添加
                 </button>
               </div>
             </form>
