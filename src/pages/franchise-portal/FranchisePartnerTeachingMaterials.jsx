@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  FRANCHISE_TEACHING_PRODUCTS,
+  FRANCHISE_TEACHING_CATALOG_LS_KEY,
+  getFranchiseTeachingProductsCatalog,
   purchaseTeachingMaterials,
 } from '../../utils/franchisePartnerStorage'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
@@ -23,8 +24,19 @@ const COVER_THEME = {
   'drone-ai-lite': { from: '#2563eb', to: '#4338ca', dot: '#dbeafe' },
 }
 
+function themeForProduct(product) {
+  if (product.coverGradientFrom && product.coverGradientTo) {
+    return {
+      from: product.coverGradientFrom,
+      to: product.coverGradientTo,
+      dot: product.coverDot || '#ffffff',
+    }
+  }
+  return COVER_THEME[product.id] || { from: '#334155', to: '#64748b', dot: '#e2e8f0' }
+}
+
 function makeCoverDataUrl(product) {
-  const theme = COVER_THEME[product.id] || { from: '#334155', to: '#64748b', dot: '#e2e8f0' }
+  const theme = themeForProduct(product)
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="720" height="404" viewBox="0 0 720 404">
     <defs>
@@ -53,6 +65,17 @@ function orderStatusStyle(status) {
 
 export default function FranchisePartnerTeachingMaterials() {
   const { session, ws, refresh } = useFranchiseWorkspace()
+  const [catalogTick, setCatalogTick] = useState(0)
+  const teachingProducts = useMemo(() => getFranchiseTeachingProductsCatalog(), [catalogTick])
+
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === FRANCHISE_TEACHING_CATALOG_LS_KEY) setCatalogTick((t) => t + 1)
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
   const [tab, setTab] = useState('shop')
   const [cart, setCart] = useState({})
   const [checkoutOpen, setCheckoutOpen] = useState(false)
@@ -71,11 +94,11 @@ export default function FranchisePartnerTeachingMaterials() {
   const cartTotal = useMemo(() => {
     let t = 0
     for (const line of cartLines) {
-      const p = FRANCHISE_TEACHING_PRODUCTS.find((x) => x.id === line.productId)
+      const p = teachingProducts.find((x) => x.id === line.productId)
       if (p) t += p.price * line.qty
     }
     return Math.round(t * 100) / 100
-  }, [cartLines])
+  }, [cartLines, teachingProducts])
 
   /** 购物车内商品总件数（各 SKU 数量之和） */
   const cartTotalQty = useMemo(() => cartLines.reduce((sum, line) => sum + line.qty, 0), [cartLines])
@@ -112,7 +135,7 @@ export default function FranchisePartnerTeachingMaterials() {
   const buyNow = (productId) => {
     setSubmitErr('')
     setCart((prev) => ({ ...prev, [productId]: Math.max(1, parseInt(String(prev[productId]), 10) || 1) }))
-    const p = FRANCHISE_TEACHING_PRODUCTS.find((x) => x.id === productId)
+    const p = teachingProducts.find((x) => x.id === productId)
     const projected = (p?.price || 0) * (Math.max(1, parseInt(String(cart[productId]), 10) || 1))
     setPayMethod(ws.balance >= projected ? 'balance' : 'wechat')
     setCheckoutOpen(true)
@@ -160,7 +183,8 @@ export default function FranchisePartnerTeachingMaterials() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-600 leading-relaxed">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-slate-600 leading-relaxed flex-1 min-w-[200px]">
         学具商城面向加盟校区提供人工智能相关教具采购服务；每款商品可先
         <strong className="font-medium text-slate-800 mx-0.5">加入购物车</strong>
         后统一结算。支付支持
@@ -170,7 +194,15 @@ export default function FranchisePartnerTeachingMaterials() {
         或
         <strong className="font-medium text-slate-800 mx-0.5">微信支付</strong>
         （演示环境即时模拟成功）。
-      </p>
+        </p>
+        <button
+          type="button"
+          className="shrink-0 text-xs font-medium text-[#3B66FF] border border-[#3B66FF]/30 rounded-lg px-3 py-1.5 hover:bg-sky-50"
+          onClick={() => setCatalogTick((t) => t + 1)}
+        >
+          刷新商品目录
+        </button>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <button type="button" className={tabCls(tab === 'shop')} onClick={() => setTab('shop')}>
@@ -187,15 +219,27 @@ export default function FranchisePartnerTeachingMaterials() {
       {tab === 'shop' ? (
         <>
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {FRANCHISE_TEACHING_PRODUCTS.map((p) => {
+            {teachingProducts.map((p) => {
               const q = cart[p.id] || 0
-              const coverSrc = makeCoverDataUrl(p)
+              const coverSrc = p.coverImageUrl ? p.coverImageUrl : makeCoverDataUrl(p)
               return (
                 <div
                   key={p.id}
                   className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col hover:border-[#3B66FF]/35 transition-colors"
                 >
-                  <img src={coverSrc} alt={`${p.name} 封面`} className="w-full h-40 rounded-xl border border-slate-100 object-cover" />
+                  <div className="relative w-full h-40 rounded-xl border border-slate-100 overflow-hidden bg-slate-100">
+                    <img src={coverSrc} alt={`${p.name} 封面`} className="w-full h-full object-cover" />
+                    {p.emoji ? (
+                      <span className="absolute top-2 left-2 text-2xl drop-shadow-sm bg-white/90 rounded-lg px-1.5 py-0.5" aria-hidden>
+                        {p.emoji}
+                      </span>
+                    ) : null}
+                    {p.tag ? (
+                      <span className="absolute top-2 right-2 text-[11px] font-semibold text-white bg-[#3B66FF] rounded-full px-2 py-0.5 shadow-sm">
+                        {p.tag}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="mt-3 min-w-0 flex-1">
                     <h3 className="font-semibold text-slate-900 text-[15px] leading-snug">{p.name}</h3>
                     <p className="text-xs text-slate-600 mt-2 leading-relaxed">{p.desc}</p>
@@ -322,7 +366,7 @@ export default function FranchisePartnerTeachingMaterials() {
             </div>
             <ul className="space-y-2 max-h-56 overflow-y-auto border border-slate-100 rounded-xl p-3 bg-slate-50/80 mb-4">
               {cartLines.map((line) => {
-                const p = FRANCHISE_TEACHING_PRODUCTS.find((x) => x.id === line.productId)
+                const p = teachingProducts.find((x) => x.id === line.productId)
                 if (!p) return null
                 return (
                   <li key={line.productId} className="rounded-lg bg-white border border-slate-100 px-3 py-2.5">

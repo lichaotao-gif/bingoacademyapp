@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
+  buildPartnerSessionPayloadForLogin,
+  getResolvedPartnerIdForPhoneLogin,
+  isPartnerAccountFrozen,
   sendPartnerLoginSmsCode,
   setPartnerSession,
   verifyOrRegisterPartnerLogin,
@@ -29,23 +32,9 @@ function LoginFeedback({ message }) {
   )
 }
 
-function buildSessionPayload(phoneDigits) {
-  const refCode = `FJ-${phoneDigits.slice(-4)}-${Date.now().toString(36).slice(-4).toUpperCase()}`
-  const partnerId = `p_${phoneDigits}`
-  const masked = `${phoneDigits.slice(0, 3)}****${phoneDigits.slice(-4)}`
-  return {
-    partnerId,
-    refCode,
-    phone: phoneDigits,
-    /** 登录页不再采集；侧栏/资质等使用默认或工作台内维护 */
-    orgName: `缤果AI学院·加盟商（${masked}）`,
-    contactName: '管理员',
-    loginAt: new Date().toISOString(),
-  }
-}
-
 export default function FranchisePartnerLogin() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [mode, setMode] = useState('password')
   const [phone, setPhone] = useState(DEFAULT_LOGIN_PHONE)
   const [password, setPassword] = useState(DEFAULT_LOGIN_PASSWORD)
@@ -74,12 +63,25 @@ export default function FranchisePartnerLogin() {
     feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [err])
 
+  useEffect(() => {
+    const msg = location.state?.frozenMsg
+    if (msg && typeof msg === 'string' && msg.trim()) {
+      setErr(msg.trim())
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.pathname, location.state, navigate])
+
   const normalizePhone = useCallback(() => phone.replace(/\D/g, ''), [phone])
 
   const finishLogin = useCallback(
     (digits) => {
+      const pid = getResolvedPartnerIdForPhoneLogin(digits)
+      if (isPartnerAccountFrozen(pid)) {
+        setErr('账号已被总部冻结，无法登录。请联系总部处理。')
+        return
+      }
       try {
-        setPartnerSession(buildSessionPayload(digits))
+        setPartnerSession(buildPartnerSessionPayloadForLogin(digits))
         /** 使用路由跳转，由 BrowserRouter basename 统一处理子路径部署，避免手写 URL 与 BASE_URL 不一致 */
         navigate('/franchise-partner/dashboard', { replace: true })
       } catch (e) {

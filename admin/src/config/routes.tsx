@@ -102,12 +102,14 @@ export const routes: RouteConfig[] = [
     ],
   },
   {
-    path: '/cooperation',
-    name: '机构合作',
+    path: '/franchise',
+    name: '加盟商管理',
     icon: <BankOutlined />,
     children: [
-      { path: '/cooperation/list', name: '合作方管理' },
-      { path: '/cooperation/settlement', name: '合作结算' },
+      { path: '/franchise/list', name: '加盟商列表' },
+      { path: '/franchise/qualification', name: '资质审核' },
+      { path: '/franchise/teaching-products', name: '学具商品配置' },
+      { path: '/franchise/detail', name: '加盟商详情', hideInMenu: true },
     ],
   },
   {

@@ -118,7 +118,53 @@ function normalizeOfflineCourseIdsFromMeta(meta) {
   return []
 }
 
-/** 教具商城：人工智能相关教具（演示价格，正式环境由总部商品中心维护） */
+/**
+ * 总部配置的学具目录落盘 Key（与 admin/src/mock/franchiseTeachingCatalog.ts 保持一致）。
+ * 未配置或解析失败时，使用下方 FRANCHISE_TEACHING_PRODUCTS 默认列表。
+ */
+export const FRANCHISE_TEACHING_CATALOG_LS_KEY = 'bingo_franchise_teaching_products_catalog_v1'
+
+function normalizeTeachingProductFromLs(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const id = String(raw.id || '').trim()
+  if (!id) return null
+  const price = Number(raw.price)
+  return {
+    id,
+    name: String(raw.name || '未命名').trim() || '未命名',
+    price: Number.isFinite(price) && price >= 0 ? Math.round(price * 100) / 100 : 0,
+    tag: raw.tag != null ? String(raw.tag) : '',
+    desc: raw.desc != null ? String(raw.desc) : '',
+    emoji: raw.emoji != null ? String(raw.emoji).trim() : '',
+    coverImageUrl: raw.coverImageUrl ? String(raw.coverImageUrl).trim() : '',
+    coverGradientFrom: raw.coverGradientFrom ? String(raw.coverGradientFrom).trim() : '',
+    coverGradientTo: raw.coverGradientTo ? String(raw.coverGradientTo).trim() : '',
+    coverDot: raw.coverDot ? String(raw.coverDot).trim() : '',
+    enabled: raw.enabled !== false,
+  }
+}
+
+/**
+ * 加盟商学具商城可见商品列表（含总部 localStorage 覆盖；仅返回上架项）。
+ */
+export function getFranchiseTeachingProductsCatalog() {
+  try {
+    const ls = localStorage.getItem(FRANCHISE_TEACHING_CATALOG_LS_KEY)
+    if (!ls) return FRANCHISE_TEACHING_PRODUCTS.map((p) => ({ ...p }))
+    const data = JSON.parse(ls)
+    const arr = data?.products
+    if (!Array.isArray(arr) || arr.length === 0) return FRANCHISE_TEACHING_PRODUCTS.map((p) => ({ ...p }))
+    const mapped = arr.map(normalizeTeachingProductFromLs).filter(Boolean)
+    const active = mapped.filter((p) => p.enabled)
+    if (!active.length) return FRANCHISE_TEACHING_PRODUCTS.map((p) => ({ ...p }))
+    /** 保持总部配置的数组顺序（不再使用 sortOrder） */
+    return active
+  } catch {
+    return FRANCHISE_TEACHING_PRODUCTS.map((p) => ({ ...p }))
+  }
+}
+
+/** 教具商城：人工智能相关教具（演示价格；可被总部「学具商品配置」覆盖） */
 export const FRANCHISE_TEACHING_PRODUCTS = [
   {
     id: 'kit-ai-starter',
@@ -321,6 +367,131 @@ export function clearFranchisePartnerDemoStorage() {
 
 /** 演示：本地保存登录密码（正式环境由服务端鉴权） */
 const PARTNER_CREDS_KEY = 'bingo_franchise_partner_creds_v1'
+
+/**
+ * 总部手动开户档案（演示）：手机号 → { partnerId, refCode, orgName, contactName }
+ * 与后台写入的 Key 一致；须同源 localStorage 加盟商前台才可读取。
+ */
+const PARTNER_PROVISION_KEY = 'bingo_franchise_partner_provision_v1'
+
+function loadPartnerProvisionMap() {
+  if (typeof window === 'undefined') return {}
+  try {
+    const o = safeParse(localStorage.getItem(PARTNER_PROVISION_KEY), {})
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {}
+  } catch {
+    return {}
+  }
+}
+
+/** 构建登录后写入 SESSION 的档案（优先用手动开户信息） */
+export function buildPartnerSessionPayloadForLogin(phoneDigits) {
+  const p = String(phoneDigits || '').replace(/\D/g, '')
+  const row = loadPartnerProvisionMap()[p]
+  if (row?.partnerId && row?.refCode) {
+    const masked = `${p.slice(0, 3)}****${p.slice(-4)}`
+    return {
+      partnerId: String(row.partnerId),
+      refCode: String(row.refCode),
+      phone: p,
+      orgName:
+        row.orgName?.trim() ||
+        `缤果AI学院·加盟商（${masked}）`,
+      contactName: row.contactName?.trim() || '管理员',
+      loginAt: new Date().toISOString(),
+    }
+  }
+  const refCode = `FJ-${p.slice(-4)}-${Date.now().toString(36).slice(-4).toUpperCase()}`
+  const partnerId = `p_${p}`
+  const masked = `${p.slice(0, 3)}****${p.slice(-4)}`
+  return {
+    partnerId,
+    refCode,
+    phone: p,
+    orgName: `缤果AI学院·加盟商（${masked}）`,
+    contactName: '管理员',
+    loginAt: new Date().toISOString(),
+  }
+}
+
+/** 与即将写入会话的 partnerId 一致，用于登录前冻结校验 */
+export function getResolvedPartnerIdForPhoneLogin(phoneDigits) {
+  const p = String(phoneDigits || '').replace(/\D/g, '')
+  const row = loadPartnerProvisionMap()[p]
+  if (row?.partnerId && row?.refCode) return String(row.partnerId)
+  return `p_${p}`
+}
+
+/**
+ * 总部对加盟商账户状态（演示 localStorage，须与 admin 同步 Key）
+ * { [partnerId]: { accountStatus: 'normal' | 'pending_qualification' | 'frozen' } }
+ */
+const FRANCHISE_HQ_PARTNER_ACCOUNT_LS_KEY = 'bingo_franchise_hq_partner_account_v1'
+
+function loadHqPartnerAccountMap() {
+  if (typeof window === 'undefined') return {}
+  try {
+    const o = safeParse(localStorage.getItem(FRANCHISE_HQ_PARTNER_ACCOUNT_LS_KEY), {})
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {}
+  } catch {
+    return {}
+  }
+}
+
+let demoHqPartnerAccountSeedApplied = false
+
+/** 与 admin INITIAL 保持一致：仅当 LS 尚无该 partnerId 时补种，便于未打开后台也能演示冻结 */
+function ensureDemoHqPartnerAccountSeed() {
+  if (demoHqPartnerAccountSeedApplied || typeof window === 'undefined') return
+  demoHqPartnerAccountSeedApplied = true
+  try {
+    const all = loadHqPartnerAccountMap()
+    /** 后台建档为 fp-bj-003；无开户档案时登录 partnerId 为 p_13700137003，两处均种子冻结以便演示 */
+    const ids = ['fp-bj-003', 'p_13700137003']
+    let changed = false
+    for (const id of ids) {
+      if (!all[id]) {
+        all[id] = { accountStatus: 'frozen' }
+        changed = true
+      }
+    }
+    if (changed) localStorage.setItem(FRANCHISE_HQ_PARTNER_ACCOUNT_LS_KEY, JSON.stringify(all))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isPartnerAccountFrozen(partnerId) {
+  ensureDemoHqPartnerAccountSeed()
+  const pid = String(partnerId || '').trim()
+  if (!pid) return false
+  const row = loadHqPartnerAccountMap()[pid]
+  return row?.accountStatus === 'frozen'
+}
+
+/** 总部演示：写入账户状态；冻结后加盟前台禁止登录与业务写操作 */
+export function setHqPartnerAccountStatus(partnerId, accountStatus) {
+  const pid = String(partnerId || '').trim()
+  if (!pid) return { ok: false, msg: '无效加盟商' }
+  const allowed = ['normal', 'pending_qualification', 'frozen']
+  if (!allowed.includes(accountStatus)) return { ok: false, msg: '无效状态' }
+  try {
+    const all = loadHqPartnerAccountMap()
+    all[pid] = { accountStatus }
+    localStorage.setItem(FRANCHISE_HQ_PARTNER_ACCOUNT_LS_KEY, JSON.stringify(all))
+    window.dispatchEvent(new Event('franchise-partner-session-changed'))
+    return { ok: true }
+  } catch {
+    return { ok: false, msg: '写入失败' }
+  }
+}
+
+function assertPartnerNotFrozen(partnerId) {
+  if (isPartnerAccountFrozen(partnerId)) {
+    return { ok: false, msg: '账号已被总部冻结，暂时无法使用该功能。请联系总部。' }
+  }
+  return null
+}
 
 /** 防止 localStorage 里曾是 `null`、数组等非法形状导致 creds[p] 抛错 */
 function normalizePartnerCreds(parsed) {
@@ -547,6 +718,8 @@ function normalizeLicenseAttachment(raw) {
  * 提交机构资质（首次或变更）。已通过加盟审核后再次提交进入 pending_update，总部复审期间不影响售课与开班。
  */
 export function submitInstitutionQualificationUpdate(partnerId, refCode, snapshot) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   const iq = ws.institutionQualification
   if (!iq) return { ok: false, msg: '机构数据未就绪，请刷新页面重试' }
@@ -636,13 +809,64 @@ export function simulateInstitutionQualificationReject(partnerId, refCode, reaso
   return { ok: true, ws }
 }
 
+/**
+ * 总部按加盟商配置的充课折扣（演示 localStorage；须与 admin/src/mock/franchiseHqCourseDiscounts.ts Key 一致）
+ * 形状：{ [partnerId]: { [courseId]: rate } }，rate 为 0～1 的系数（如 0.85 即 8.5 折）
+ */
+const FRANCHISE_HQ_COURSE_DISCOUNTS_LS_KEY = 'bingo_franchise_hq_course_discounts_v1'
+
+function loadHqCourseDiscountMap() {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(FRANCHISE_HQ_COURSE_DISCOUNTS_LS_KEY)
+    if (!raw) return {}
+    const o = JSON.parse(raw)
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {}
+  } catch {
+    return {}
+  }
+}
+
+/** 将折扣系数转为展示文案（如 0.8 → 8折，0.75 → 7.5折） */
+function rateToDiscountLabel(rate) {
+  if (!Number.isFinite(rate) || rate >= 0.9995) return '原价'
+  if (rate <= 0) return '原价'
+  const zhe = Math.round(rate * 100) / 10
+  if (Math.abs(zhe - Math.round(zhe)) < 1e-6) return `${Math.round(zhe)}折`
+  return `${zhe}折`
+}
+
+/** 工作台默认 + 总部覆盖后的生效折扣行（用于充课、推广页、折扣查看） */
+function getEffectiveDiscountRows(ws) {
+  const partnerId = ws?.partnerId
+  const base = ws?.courseDiscounts || []
+  const baseMap = new Map(base.map((d) => [d.courseId, d]))
+  const hqAll = loadHqCourseDiscountMap()
+  const hq = partnerId && hqAll[partnerId] && typeof hqAll[partnerId] === 'object' ? hqAll[partnerId] : null
+
+  return FRANCHISE_PROMOTABLE_COURSES.map((c) => {
+    const baseRow = baseMap.get(c.id)
+    let rate = baseRow?.rate ?? 1
+    let label = baseRow?.label
+    if (hq && Object.prototype.hasOwnProperty.call(hq, c.id)) {
+      const r = Number(hq[c.id])
+      if (Number.isFinite(r) && r > 0 && r <= 1) {
+        rate = Math.round(r * 1000) / 1000
+        label = rateToDiscountLabel(rate)
+      }
+    }
+    if (!label) label = rateToDiscountLabel(rate)
+    return { courseId: c.id, rate, label }
+  })
+}
+
 export function getDiscountRate(ws, courseId) {
-  const row = ws?.courseDiscounts?.find((d) => d.courseId === courseId)
+  const row = getEffectiveDiscountRows(ws).find((d) => d.courseId === courseId)
   return row?.rate ?? 1
 }
 
 export function getDiscountLabel(ws, courseId) {
-  const row = ws?.courseDiscounts?.find((d) => d.courseId === courseId)
+  const row = getEffectiveDiscountRows(ws).find((d) => d.courseId === courseId)
   return row?.label || '原价'
 }
 
@@ -970,6 +1194,8 @@ export function buildPromoteLink(origin, courseId, refCode) {
  * 充课：按总部配置的专属折扣从加盟商余额扣款，并记录订单、开通/更新学员选课。
  */
 export function rechargeCourse(partnerId, refCode, { studentId, courseId }) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   const course = FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === courseId)
   if (!course) return { ok: false, msg: '课程不存在' }
@@ -1018,6 +1244,8 @@ export function rechargeCourse(partnerId, refCode, { studentId, courseId }) {
 }
 
 export function createClass(partnerId, refCode, name, meta = {}) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   const n = name.trim()
   if (!n) return { ok: false, msg: '请输入班级名称' }
@@ -1049,6 +1277,8 @@ export function createClass(partnerId, refCode, name, meta = {}) {
 
 /** 管理员勾选/取消某节线下课是否已上完 */
 export function setClassOfflineLessonDone(partnerId, refCode, classId, lessonId, done) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   const cls = ws.classes.find((c) => c.id === classId)
   if (!cls) return { ok: false, msg: '班级不存在' }
@@ -1061,6 +1291,8 @@ export function setClassOfflineLessonDone(partnerId, refCode, classId, lessonId,
 }
 
 export function deleteClass(partnerId, refCode, classId) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   const idx = ws.classes.findIndex((c) => c.id === classId)
   if (idx === -1) return { ok: false, msg: '班级不存在' }
@@ -1073,6 +1305,8 @@ export function deleteClass(partnerId, refCode, classId) {
 }
 
 export function addStudentToClass(partnerId, refCode, classId, phone, name, remark) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   const phoneNorm = String(phone).replace(/\D/g, '').slice(-11)
   if (phoneNorm.length < 11) return { ok: false, msg: '请输入11位手机号' }
@@ -1101,6 +1335,8 @@ export function addStudentToClass(partnerId, refCode, classId, phone, name, rema
 
 /** 更新学员备注（本地工作台）。空字符串则清除备注字段。 */
 export function updateStudentRemark(partnerId, refCode, studentId, remark) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   const stu = ws.students.find((s) => s.id === studentId)
   if (!stu) return { ok: false, msg: '学员不存在' }
@@ -1113,6 +1349,8 @@ export function updateStudentRemark(partnerId, refCode, studentId, remark) {
 
 /** 删除学员：从班级名单中移除，并删除学员及其选课记录（订单流水保留）。 */
 export function deleteStudent(partnerId, refCode, studentId) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   const idx = ws.students.findIndex((s) => s.id === studentId)
   if (idx === -1) return { ok: false, msg: '学员不存在' }
@@ -1124,16 +1362,27 @@ export function deleteStudent(partnerId, refCode, studentId) {
   return { ok: true, ws }
 }
 
-/** 演示：总部向加盟商账户充值（正式环境由总部后台完成） */
-export function demoTopUpBalance(partnerId, refCode, amount) {
+/**
+ * 演示：总部向加盟商账户充值（正式环境由总部后台完成）
+ * @param {string} [remark] 可选备注，写入流水标题后缀，便于区分后台手动入账
+ */
+/**
+ * @param {{ skipFrozenGuard?: boolean }} [opts] 总部后台手动充值同步工作台时传 skipFrozenGuard: true
+ */
+export function demoTopUpBalance(partnerId, refCode, amount, remark, opts = {}) {
+  if (!opts.skipFrozenGuard) {
+    const fr = assertPartnerNotFrozen(partnerId)
+    if (fr) return fr
+  }
   const ws = getWorkspace(partnerId, refCode)
   const amt = Number(amount)
   if (!(amt > 0)) return { ok: false, msg: '请输入大于 0 的金额' }
   ws.balance = Math.round((ws.balance + amt) * 100) / 100
+  const note = remark && String(remark).trim() ? ` · ${String(remark).trim()}` : ''
   ws.ledger.unshift({
     id: `l-top-${Date.now()}`,
     type: 'topup',
-    title: '总部账户充值（演示）',
+    title: `总部账户充值（演示）${note}`,
     amount: amt,
     balanceAfter: ws.balance,
     createdAt: new Date().toISOString(),
@@ -1147,6 +1396,8 @@ export function demoTopUpBalance(partnerId, refCode, amount) {
  * 余额支付扣减余额并记流水；微信支付仅模拟成功，不扣余额。
  */
 export function purchaseTeachingMaterials(partnerId, refCode, cartLines, payMethod) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
   if (!['balance', 'wechat'].includes(payMethod)) return { ok: false, msg: '请选择支付方式' }
   if (!Array.isArray(cartLines) || cartLines.length === 0) return { ok: false, msg: '请先选择商品数量' }
@@ -1155,7 +1406,8 @@ export function purchaseTeachingMaterials(partnerId, refCode, cartLines, payMeth
   let total = 0
   for (const row of cartLines) {
     const qty = Math.max(1, parseInt(String(row.qty), 10) || 1)
-    const p = FRANCHISE_TEACHING_PRODUCTS.find((x) => x.id === row.productId)
+    const catalog = getFranchiseTeachingProductsCatalog()
+    const p = catalog.find((x) => x.id === row.productId)
     if (!p) return { ok: false, msg: '商品不存在或已下架' }
     const lineTotal = Math.round(p.price * qty * 100) / 100
     total += lineTotal

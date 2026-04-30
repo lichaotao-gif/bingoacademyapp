@@ -2,6 +2,14 @@
 html, body, #root { height: 100%; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
 
+/* 管理后台侧栏：让 ant 内部容器撑满高度，菜单区可滚动、底部账户固定可见 */
+.bingo-admin-sider > .ant-layout-sider-children {
+  height: 100% !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
 /* 数据看板卡片 */
 .dashboard-card {
   border-radius: 8px;

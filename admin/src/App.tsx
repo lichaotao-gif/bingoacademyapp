@@ -27,6 +27,10 @@ import ContentBannerList from '@/pages/Content/Banner'
 import FinanceSettlement from '@/pages/Finance/Settlement'
 import SystemLog from '@/pages/System/Log'
 import StatisticsReport from '@/pages/Statistics/Report'
+import FranchisePartnerList from '@/pages/Franchise/List'
+import FranchiseQualification from '@/pages/Franchise/Qualification'
+import FranchisePartnerDetailPage from '@/pages/Franchise/Detail'
+import FranchiseTeachingProducts from '@/pages/Franchise/TeachingProducts'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (!getToken()) return <Navigate to="/login" replace />
@@ -72,6 +76,12 @@ export default function App() {
           <Route path="content/page" element={<ContentPageList />} />
           <Route path="content/banner" element={<ContentBannerList />} />
           <Route path="finance/settlement" element={<FinanceSettlement />} />
+          <Route path="franchise/list" element={<FranchisePartnerList />} />
+          <Route path="franchise/qualification" element={<FranchiseQualification />} />
+          <Route path="franchise/detail" element={<FranchisePartnerDetailPage />} />
+          <Route path="franchise/teaching-products" element={<FranchiseTeachingProducts />} />
+          <Route path="cooperation/list" element={<Navigate to="/franchise/list" replace />} />
+          <Route path="cooperation/settlement" element={<Navigate to="/finance/settlement" replace />} />
           <Route path="*" element={<div style={{ padding: 24 }}>功能开发中</div>} />
         </Route>
       </Routes>

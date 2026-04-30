@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { clearPartnerSession, getPartnerSession } from '../../utils/franchisePartnerStorage'
+import { clearPartnerSession, getPartnerSession, isPartnerAccountFrozen } from '../../utils/franchisePartnerStorage'
 import { FRANCHISE_NAV_ICONS, FlatIconHeadset, FlatIconMenu } from './FranchiseFlatIcons'
 
 const NAV = [
@@ -66,6 +66,15 @@ export default function FranchisePartnerLayout() {
       navigate('/franchise-partner/login', { replace: true })
       return
     }
+    if (isPartnerAccountFrozen(s.partnerId)) {
+      clearPartnerSession()
+      setSession(null)
+      navigate('/franchise-partner/login', {
+        replace: true,
+        state: { frozenMsg: '账号已被总部冻结，无法继续使用工作台。请联系总部。' },
+      })
+      return
+    }
     setSession(s)
   }, [navigate, location.pathname])
 
@@ -74,6 +83,15 @@ export default function FranchisePartnerLayout() {
       const s = getPartnerSession()
       if (!s) {
         navigate('/franchise-partner/login', { replace: true })
+        return
+      }
+      if (isPartnerAccountFrozen(s.partnerId)) {
+        clearPartnerSession()
+        setSession(null)
+        navigate('/franchise-partner/login', {
+          replace: true,
+          state: { frozenMsg: '账号已被总部冻结，无法继续使用工作台。请联系总部。' },
+        })
         return
       }
       setSession(s)

@@ -4,6 +4,7 @@ import {
   computeTotalSales,
   FRANCHISE_PROMOTABLE_COURSES,
   getDiscountLabel,
+  getDiscountRate,
 } from '../../utils/franchisePartnerStorage'
 import {
   FlatIconBolt,
@@ -220,7 +221,7 @@ export default function FranchisePartnerDashboard() {
             <ul className="space-y-2.5">
               {FRANCHISE_PROMOTABLE_COURSES.slice(0, 4).map((c) => {
                 const label = getDiscountLabel(ws, c.id)
-                const rate = ws.courseDiscounts?.find((d) => d.courseId === c.id)?.rate ?? 1
+                const rate = getDiscountRate(ws, c.id)
                 const sale = Math.round(c.price * rate * 100) / 100
                 return (
                   <li key={c.id} className="flex items-center justify-between gap-2 text-xs">
