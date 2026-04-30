@@ -174,8 +174,17 @@ export default function Layout({ children }) {
             </div>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 mt-6 pt-6 border-t border-gray-700 text-center">
-          专家团队 · 合作赛事授权 · 正品保障
+        <div className="max-w-7xl mx-auto px-4 mt-6 pt-6 border-t border-gray-700">
+          <p className="text-center text-slate-500 text-sm">专家团队 · 合作赛事授权 · 正品保障</p>
+          <p className="text-center mt-3">
+            <Link
+              to="/admin"
+              className="text-slate-500 hover:text-cyan-400 text-sm transition-colors underline-offset-4 hover:underline"
+              title="总部后台管理（需管理员账号）"
+            >
+              后台管理
+            </Link>
+          </p>
         </div>
       </footer>
       ) : null}
