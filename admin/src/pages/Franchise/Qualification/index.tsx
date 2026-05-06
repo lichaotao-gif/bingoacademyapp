@@ -1,14 +1,54 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Button, Input, Modal, Space, Table, Tag, message } from 'antd'
+import { Button, Descriptions, Input, Modal, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import {
+  QUALIFICATION_FIELD_LABELS,
   approveQualification,
   listPartners,
   rejectQualification,
   type FranchisePartnerDetail,
+  type QualificationSnapshot,
+  type ReviewAttachment,
 } from '@/mock/franchisePartners'
 import { fmtTime, maskPhone } from '@/utils/format'
+
+function yesNoText(value: unknown) {
+  if (value === 'yes') return '是'
+  if (value === 'no') return '否'
+  return '-'
+}
+
+function isAttachment(value: unknown): value is ReviewAttachment {
+  return Boolean(value && typeof value === 'object' && 'dataUrl' in value && 'fileName' in value)
+}
+
+function renderQualificationValue(snap: QualificationSnapshot, key: keyof QualificationSnapshot, type?: 'yesno' | 'attachment') {
+  const value = snap[key]
+  if (type === 'yesno') return yesNoText(value)
+  if (type === 'attachment') {
+    if (!isAttachment(value) || !value.dataUrl) return <Typography.Text type="secondary">未上传</Typography.Text>
+    return (
+      <Typography.Link href={value.dataUrl} download={value.fileName || '审核附件'}>
+        {value.fileName || '下载附件'}
+      </Typography.Link>
+    )
+  }
+  if (value == null || value === '') return '-'
+  return String(value)
+}
+
+function QualificationSnapshotDescriptions({ snap }: { snap: QualificationSnapshot }) {
+  return (
+    <Descriptions bordered size="small" column={1}>
+      {QUALIFICATION_FIELD_LABELS.map((field) => (
+        <Descriptions.Item key={field.key} label={field.label}>
+          {renderQualificationValue(snap, field.key, field.type)}
+        </Descriptions.Item>
+      ))}
+    </Descriptions>
+  )
+}
 
 export default function FranchiseQualification() {
   const navigate = useNavigate()
@@ -118,6 +158,13 @@ export default function FranchiseQualification() {
         pagination={false}
         locale={{ emptyText: '暂无待审核提交' }}
         scroll={{ x: 900 }}
+        expandable={{
+          expandedRowRender: (row) =>
+            row.qualification.pendingReview ? (
+              <QualificationSnapshotDescriptions snap={row.qualification.pendingReview.snapshot} />
+            ) : null,
+          rowExpandable: (row) => Boolean(row.qualification.pendingReview),
+        }}
       />
       <Modal
         title="驳回资质"

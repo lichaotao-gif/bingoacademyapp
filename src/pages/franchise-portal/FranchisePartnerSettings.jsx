@@ -40,9 +40,9 @@ function guessDownloadName(dataUrl) {
   return '营业执照.jpg'
 }
 
-function downloadLicenseAttachment(att) {
+function downloadReviewAttachment(att, fallbackName = '审核附件') {
   if (!att?.dataUrl) return
-  const name = String(att.fileName || '').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 180) || guessDownloadName(att.dataUrl)
+  const name = String(att.fileName || '').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 180) || fallbackName || guessDownloadName(att.dataUrl)
   const a = document.createElement('a')
   a.href = att.dataUrl
   a.download = name
@@ -51,6 +51,8 @@ function downloadLicenseAttachment(att) {
   a.click()
   a.remove()
 }
+
+const downloadLicenseAttachment = (att) => downloadReviewAttachment(att, guessDownloadName(att?.dataUrl))
 
 function isImageDataUrl(dataUrl) {
   return /^data:image\//i.test(dataUrl || '')
@@ -89,6 +91,144 @@ const emptyForm = {
   businessLicenseCopy: '',
   businessScope: '',
   businessLicenseAttachment: null,
+  principalName: '',
+  principalPhone: '',
+  principalIdNumber: '',
+  venueFrontPhotoAttachment: null,
+  venueClassroomPhotoAttachment: null,
+  isAiTechTrack: '',
+  existingProjects: '',
+  studentCount: '',
+  studentAgeRange: '',
+  hasDedicatedClassroom: '',
+  schoolPermitAttachment: null,
+}
+
+const REVIEW_ATTACHMENT_FIELDS = {
+  businessLicenseAttachment: { label: '营业执照', accept: LICENSE_INPUT_ACCEPT, imageOnly: false },
+  venueFrontPhotoAttachment: { label: '门头照片', accept: 'image/jpeg,image/jpg,image/png,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif', imageOnly: true },
+  venueClassroomPhotoAttachment: { label: '教室照片', accept: 'image/jpeg,image/jpg,image/png,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif', imageOnly: true },
+  schoolPermitAttachment: { label: '办学许可证', accept: LICENSE_INPUT_ACCEPT, imageOnly: false },
+}
+
+function yesNoLabel(value) {
+  if (value === 'yes') return '是'
+  if (value === 'no') return '否'
+  return '—'
+}
+
+function AttachmentPreview({ attachment, label, imageOnly = false }) {
+  if (!attachment?.dataUrl) return <p className="text-xs text-slate-500">未上传</p>
+  return (
+    <div className="space-y-2 font-normal">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => downloadReviewAttachment(attachment, `${label}.pdf`)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#3B66FF]/40 bg-[#3B66FF]/5 text-[#3B66FF] text-xs font-semibold hover:bg-[#3B66FF]/10"
+        >
+          下载附件
+        </button>
+        <span className="text-xs text-slate-500 break-all">{attachment.fileName || label}</span>
+      </div>
+      {isImageDataUrl(attachment.dataUrl) ? (
+        <img
+          src={attachment.dataUrl}
+          alt={`${label}预览`}
+          className="max-h-28 rounded-lg border border-slate-200 object-contain bg-white"
+        />
+      ) : imageOnly ? (
+        <p className="text-xs text-rose-600">请上传图片格式文件。</p>
+      ) : null}
+    </div>
+  )
+}
+
+function ReviewFileInput({ field, form, setForm, required = false }) {
+  const config = REVIEW_ATTACHMENT_FIELDS[field]
+  const attachment = form[field]
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        {config.label}{required ? <span className="text-rose-500"> *</span> : null}
+      </label>
+      <p className="text-xs text-slate-500 mb-2">
+        {config.imageOnly ? '支持 JPG / PNG / WebP / GIF 图片' : '支持 PDF 或 JPG / PNG / WebP / GIF'}，单文件不超过 4MB。
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50 cursor-pointer shrink-0">
+          选择文件
+          <input
+            type="file"
+            accept={config.accept}
+            className="sr-only"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (!file) return
+              if (file.size > MAX_LICENSE_FILE_BYTES) {
+                window.alert('文件过大，请上传不超过 4MB 的文件。')
+                return
+              }
+              const okImageMime = /^image\/(jpeg|jpg|png|gif|webp)$/i.test(file.type)
+              const okImageExt = /\.(jpe?g|png|gif|webp)$/i.test(file.name)
+              const okPdfMime = /^application\/pdf$/i.test(file.type)
+              const okPdfExt = /\.pdf$/i.test(file.name)
+              const ok = config.imageOnly ? okImageMime || okImageExt : okImageMime || okImageExt || okPdfMime || okPdfExt
+              if (!ok) {
+                window.alert(config.imageOnly ? '仅支持图片格式。' : '仅支持 PDF 或图片格式。')
+                return
+              }
+              try {
+                const dataUrl = await new Promise((resolve, reject) => {
+                  const r = new FileReader()
+                  r.onload = () => resolve(String(r.result || ''))
+                  r.onerror = () => reject(new Error('read'))
+                  r.readAsDataURL(file)
+                })
+                if (!dataUrl.startsWith('data:')) throw new Error('invalid')
+                setForm((f) => ({ ...f, [field]: { fileName: file.name, dataUrl } }))
+              } catch {
+                window.alert('读取文件失败，请重试。')
+              }
+            }}
+          />
+        </label>
+        {attachment?.dataUrl ? (
+          <>
+            <button
+              type="button"
+              onClick={() => downloadReviewAttachment(attachment, config.label)}
+              className="inline-flex items-center px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              下载当前文件
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, [field]: null }))}
+              className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-medium text-rose-700 hover:bg-rose-50"
+            >
+              移除文件
+            </button>
+          </>
+        ) : null}
+      </div>
+      {attachment?.dataUrl ? (
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-2">
+          <p className="text-xs text-slate-600 break-all font-medium">{attachment.fileName || '已选文件'}</p>
+          {isImageDataUrl(attachment.dataUrl) ? (
+            <img
+              src={attachment.dataUrl}
+              alt={`${config.label}预览`}
+              className="max-h-40 rounded-lg border border-slate-200 object-contain bg-white"
+            />
+          ) : (
+            <p className="text-xs text-slate-500">已选择 PDF，保存后可在详情中下载查看。</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 export default function FranchisePartnerSettings() {
@@ -123,6 +263,32 @@ export default function FranchisePartnerSettings() {
         ? {
             fileName: base.businessLicenseAttachment.fileName,
             dataUrl: base.businessLicenseAttachment.dataUrl,
+          }
+        : null,
+      principalName: base.principalName ?? '',
+      principalPhone: base.principalPhone ?? '',
+      principalIdNumber: base.principalIdNumber ?? '',
+      venueFrontPhotoAttachment: base.venueFrontPhotoAttachment?.dataUrl
+        ? {
+            fileName: base.venueFrontPhotoAttachment.fileName,
+            dataUrl: base.venueFrontPhotoAttachment.dataUrl,
+          }
+        : null,
+      venueClassroomPhotoAttachment: base.venueClassroomPhotoAttachment?.dataUrl
+        ? {
+            fileName: base.venueClassroomPhotoAttachment.fileName,
+            dataUrl: base.venueClassroomPhotoAttachment.dataUrl,
+          }
+        : null,
+      isAiTechTrack: base.isAiTechTrack ?? '',
+      existingProjects: base.existingProjects ?? '',
+      studentCount: base.studentCount ?? '',
+      studentAgeRange: base.studentAgeRange ?? '',
+      hasDedicatedClassroom: base.hasDedicatedClassroom ?? '',
+      schoolPermitAttachment: base.schoolPermitAttachment?.dataUrl
+        ? {
+            fileName: base.schoolPermitAttachment.fileName,
+            dataUrl: base.schoolPermitAttachment.dataUrl,
           }
         : null,
     })
@@ -317,6 +483,23 @@ export default function FranchisePartnerSettings() {
                 </div>
               </FieldRow>
               <FieldRow label="经营范围">{snap.businessScope || '—'}</FieldRow>
+              <FieldRow label="负责人姓名">{snap.principalName || '—'}</FieldRow>
+              <FieldRow label="负责人电话">{snap.principalPhone ? maskPhone(snap.principalPhone) : '—'}</FieldRow>
+              <FieldRow label="负责人身份证">{snap.principalIdNumber || '—'}</FieldRow>
+              <FieldRow label="场地门头照片">
+                <AttachmentPreview attachment={snap.venueFrontPhotoAttachment} label="门头照片" imageOnly />
+              </FieldRow>
+              <FieldRow label="教室照片">
+                <AttachmentPreview attachment={snap.venueClassroomPhotoAttachment} label="教室照片" imageOnly />
+              </FieldRow>
+              <FieldRow label="AI / 科技赛道">{yesNoLabel(snap.isAiTechTrack)}</FieldRow>
+              <FieldRow label="已开办项目">{snap.existingProjects || '—'}</FieldRow>
+              <FieldRow label="现有生源">{snap.studentCount || '—'}{snap.studentAgeRange ? ` · ${snap.studentAgeRange}` : ''}</FieldRow>
+              <FieldRow label="加盟专用教室">{yesNoLabel(snap.hasDedicatedClassroom)}</FieldRow>
+              <FieldRow label="办学许可证">
+                <AttachmentPreview attachment={snap.schoolPermitAttachment} label="办学许可证" />
+                <p className="mt-1 text-xs text-slate-500 font-normal">非必录项，仅作资料留存，不作为强制审核项。</p>
+              </FieldRow>
               <FieldRow label="最近通过审核时间">{fmtTime(iq.lastApprovedAt)}</FieldRow>
             </dl>
           ) : (
@@ -332,6 +515,9 @@ export default function FranchisePartnerSettings() {
               <FieldRow label="机构名称">{iq.pendingReview.snapshot.orgName}</FieldRow>
               <FieldRow label="法定代表人">{iq.pendingReview.snapshot.legalRepresentative}</FieldRow>
               <FieldRow label="营业执照号">{iq.pendingReview.snapshot.businessLicenseNumber}</FieldRow>
+              <FieldRow label="负责人">{iq.pendingReview.snapshot.principalName || '—'} · {iq.pendingReview.snapshot.principalPhone ? maskPhone(iq.pendingReview.snapshot.principalPhone) : '—'}</FieldRow>
+              <FieldRow label="AI / 科技赛道">{yesNoLabel(iq.pendingReview.snapshot.isAiTechTrack)}</FieldRow>
+              <FieldRow label="现有生源">{iq.pendingReview.snapshot.studentCount || '—'}{iq.pendingReview.snapshot.studentAgeRange ? ` · ${iq.pendingReview.snapshot.studentAgeRange}` : ''}</FieldRow>
               {iq.pendingReview.snapshot.businessLicenseAttachment?.dataUrl ? (
                 <FieldRow label="营业执照电子版（待审）">
                   <button
@@ -568,6 +754,42 @@ export default function FranchisePartnerSettings() {
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
                 />
               </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">负责人信息</h4>
+                  <p className="text-xs text-slate-500 mt-1">以下为总部审核必录项。</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">负责人姓名 <span className="text-rose-500">*</span></label>
+                    <input
+                      required
+                      value={form.principalName}
+                      onChange={(e) => setForm((f) => ({ ...f, principalName: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">负责人电话 <span className="text-rose-500">*</span></label>
+                    <input
+                      required
+                      type="tel"
+                      value={form.principalPhone}
+                      onChange={(e) => setForm((f) => ({ ...f, principalPhone: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">负责人身份证号 <span className="text-rose-500">*</span></label>
+                  <input
+                    required
+                    value={form.principalIdNumber}
+                    onChange={(e) => setForm((f) => ({ ...f, principalIdNumber: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">营业执照注册号 / 统一社会信用代码</label>
                 <input
@@ -578,7 +800,7 @@ export default function FranchisePartnerSettings() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">营业执照电子版</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">营业执照电子版 <span className="text-rose-500">*</span></label>
                 <p className="text-xs text-slate-500 mb-2">支持 PDF 或 JPG / PNG / WebP / GIF，单文件不超过 4MB（本地演示存入浏览器，正式环境将上传至总部服务器）。</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <label className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50 cursor-pointer shrink-0">
@@ -655,6 +877,14 @@ export default function FranchisePartnerSettings() {
                   </div>
                 ) : null}
               </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">场地照片</h4>
+                  <p className="text-xs text-slate-500 mt-1">门头照片和教室照片均为必录项。</p>
+                </div>
+                <ReviewFileInput field="venueFrontPhotoAttachment" form={form} setForm={setForm} required />
+                <ReviewFileInput field="venueClassroomPhotoAttachment" form={form} setForm={setForm} required />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">营业执照复印件说明（选填）</label>
                 <textarea
@@ -674,6 +904,108 @@ export default function FranchisePartnerSettings() {
                   onChange={(e) => setForm((f) => ({ ...f, businessScope: e.target.value }))}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15 resize-y min-h-[5rem]"
                 />
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">经营与生源情况</h4>
+                  <p className="text-xs text-slate-500 mt-1">用于判断加盟适配度，均为必录项。</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">是否属于 AI / 科技赛道 <span className="text-rose-500">*</span></label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      ['yes', '是'],
+                      ['no', '否'],
+                    ].map(([value, label]) => (
+                      <label
+                        key={value}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer ${
+                          form.isAiTechTrack === value
+                            ? 'border-[#3B66FF] bg-[#3B66FF]/5 text-[#244bd6]'
+                            : 'border-slate-200 bg-white text-slate-700'
+                        }`}
+                      >
+                        <input
+                          required
+                          type="radio"
+                          name="isAiTechTrack"
+                          value={value}
+                          checked={form.isAiTechTrack === value}
+                          onChange={(e) => setForm((f) => ({ ...f, isAiTechTrack: e.target.value }))}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">已开办项目 <span className="text-rose-500">*</span></label>
+                  <textarea
+                    required
+                    rows={2}
+                    value={form.existingProjects}
+                    onChange={(e) => setForm((f) => ({ ...f, existingProjects: e.target.value }))}
+                    placeholder="例如：少儿编程、机器人、科学实验、AI体验营"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15 resize-y min-h-[4rem]"
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">现有生源数量 <span className="text-rose-500">*</span></label>
+                    <input
+                      required
+                      value={form.studentCount}
+                      onChange={(e) => setForm((f) => ({ ...f, studentCount: e.target.value }))}
+                      placeholder="例如：80 人"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">现有生源年龄段 <span className="text-rose-500">*</span></label>
+                    <input
+                      required
+                      value={form.studentAgeRange}
+                      onChange={(e) => setForm((f) => ({ ...f, studentAgeRange: e.target.value }))}
+                      placeholder="例如：6-14 岁"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">是否设立加盟专用教室 <span className="text-rose-500">*</span></label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      ['yes', '是'],
+                      ['no', '否'],
+                    ].map(([value, label]) => (
+                      <label
+                        key={value}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer ${
+                          form.hasDedicatedClassroom === value
+                            ? 'border-[#3B66FF] bg-[#3B66FF]/5 text-[#244bd6]'
+                            : 'border-slate-200 bg-white text-slate-700'
+                        }`}
+                      >
+                        <input
+                          required
+                          type="radio"
+                          name="hasDedicatedClassroom"
+                          value={value}
+                          checked={form.hasDedicatedClassroom === value}
+                          onChange={(e) => setForm((f) => ({ ...f, hasDedicatedClassroom: e.target.value }))}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 space-y-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">办学许可证（非必录）</h4>
+                  <p className="text-xs text-slate-500 mt-1">可上传留存，不作为强制审核项。</p>
+                </div>
+                <ReviewFileInput field="schoolPermitAttachment" form={form} setForm={setForm} />
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
                 提交后总部将尽快审核。若您此前已通过加盟审核，本次为资质变更复审，复审期间不影响售课与开班。

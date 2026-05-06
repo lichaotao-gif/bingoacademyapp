@@ -7,11 +7,11 @@ const NAV = [
   { to: '/franchise-partner/dashboard', label: '首页概览', end: false },
   { to: '/franchise-partner/classes', label: '班级管理' },
   { to: '/franchise-partner/students', label: '学生管理' },
-  { to: '/franchise-partner/recharge', label: '充课中心' },
+  { to: '/franchise-partner/recharge', label: '充课中心', badge: '后续版本开发' },
   { to: '/franchise-partner/teaching-materials', label: '学具商城' },
   { to: '/franchise-partner/orders', label: '订单管理' },
   { to: '/franchise-partner/finance', label: '财务统计' },
-  { to: '/franchise-partner/discounts', label: '折扣查看' },
+  { to: '/franchise-partner/discounts', label: '折扣查看', badge: '后续版本开发' },
   { to: '/franchise-partner/balance', label: '余额中心' },
   { to: '/franchise-partner/settings', label: '账号设置' },
 ]

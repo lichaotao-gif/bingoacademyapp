@@ -244,12 +244,6 @@ export default function FranchiseTeachingProducts() {
   return (
     <div>
       <h2 style={{ marginBottom: 8 }}>学具商品配置</h2>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-        配置字段：<Typography.Text code>id</Typography.Text>（下单关联）、<Typography.Text code>name</Typography.Text>、
-        <Typography.Text code>price</Typography.Text>、<Typography.Text code>desc</Typography.Text>；封面支持<strong>本地上传</strong>（Base64 写入演示存储，建议≤1MB）、图片 URL 或渐变占位。列表「封面 / 售价」列同步展示缩略图与价格。
-        列表顺序即为加盟商端展示顺序，可通过左侧把手<strong>拖拽排序</strong>。
-        本地存储 Key：<Typography.Text code copyable>{FRANCHISE_TEACHING_CATALOG_LS_KEY}</Typography.Text>
-      </Typography.Paragraph>
       <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           新建商品

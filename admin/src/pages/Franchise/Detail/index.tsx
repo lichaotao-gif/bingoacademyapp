@@ -27,12 +27,15 @@ import {
 } from '@/mock/franchiseHqCourseDiscounts'
 import {
   getPartner,
+  QUALIFICATION_FIELD_LABELS,
   setPartnerAccountStatus,
   syncAllPartnerAccountStatusToLocalStorage,
   updatePartnerConclusion,
   type ClassBrief,
   type FranchisePartnerDetail,
   type LedgerRow,
+  type QualificationSnapshot,
+  type ReviewAttachment,
 } from '@/mock/franchisePartners'
 import { fmtMoney, fmtTime, maskPhone } from '@/utils/format'
 
@@ -45,22 +48,52 @@ const ACCOUNT_TAG: Record<string, { text: string; color: string }> = {
 const QUAL_TAG: Record<string, { text: string; color: string }> = {
   approved: { text: '资质已通过', color: 'green' },
   pending: { text: '待审核', color: 'blue' },
+  incomplete: { text: '资料待补充', color: 'default' },
   rejected: { text: '已驳回', color: 'red' },
   pending_update: { text: '变更待审', color: 'gold' },
 }
 
+function yesNoText(value: unknown) {
+  if (value === 'yes') return '是'
+  if (value === 'no') return '否'
+  return '-'
+}
+
+function isAttachment(value: unknown): value is ReviewAttachment {
+  return Boolean(value && typeof value === 'object' && 'dataUrl' in value && 'fileName' in value)
+}
+
+function AttachmentValue({ value }: { value: unknown }) {
+  if (!isAttachment(value) || !value.dataUrl) return <Typography.Text type="secondary">未上传</Typography.Text>
+  const isImage = /^data:image\//i.test(value.dataUrl)
+  return (
+    <Space direction="vertical" size={4}>
+      <Typography.Link href={value.dataUrl} download={value.fileName || '审核附件'}>
+        {value.fileName || '下载附件'}
+      </Typography.Link>
+      {isImage ? (
+        <img src={value.dataUrl} alt={value.fileName || '审核附件'} style={{ maxWidth: 180, maxHeight: 96, objectFit: 'contain', border: '1px solid #f0f0f0', borderRadius: 6 }} />
+      ) : null}
+    </Space>
+  )
+}
+
+function renderQualificationValue(snap: QualificationSnapshot, key: keyof QualificationSnapshot, type?: 'yesno' | 'attachment') {
+  const value = snap[key]
+  if (type === 'yesno') return yesNoText(value)
+  if (type === 'attachment') return <AttachmentValue value={value} />
+  if (value == null || value === '') return '-'
+  return String(value)
+}
+
 function QualificationPanel({ p, onGoReview }: { p: FranchisePartnerDetail; onGoReview: () => void }) {
   const q = p.qualification
-  const labelMap: Record<string, string> = {
-    orgName: '机构名称',
-    legalRepresentative: '法定代表人',
-    address: '地址',
-    contactPhone: '联系电话',
-    businessLicenseNumber: '统一社会信用代码',
-    businessScope: '经营范围',
-  }
-  const rows = (snap: Record<string, string>) =>
-    Object.entries(snap).map(([k, v]) => ({ key: k, label: labelMap[k] ?? k, value: v || '-' }))
+  const rows = (snap: QualificationSnapshot) =>
+    QUALIFICATION_FIELD_LABELS.map((field) => ({
+      key: field.key,
+      label: field.label,
+      value: renderQualificationValue(snap, field.key, field.type),
+    }))
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -225,6 +258,7 @@ export default function FranchisePartnerDetailPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const id = searchParams.get('id')
+  const tabFromQuery = searchParams.get('tab')
   const [tick, setTick] = useState(0)
   const partner = useMemo(() => {
     void tick
@@ -311,6 +345,9 @@ export default function FranchisePartnerDetailPage() {
   }
 
   const p = partner
+  const activeTab = ['overview', 'discounts', 'qualification', 'ledger', 'classes'].includes(tabFromQuery || '')
+    ? String(tabFromQuery)
+    : 'overview'
 
   return (
     <div>
@@ -328,6 +365,8 @@ export default function FranchisePartnerDetailPage() {
       </Space>
 
       <Tabs
+        activeKey={activeTab}
+        onChange={(key) => navigate(`/franchise/detail?id=${encodeURIComponent(p.partnerId)}&tab=${encodeURIComponent(key)}`, { replace: true })}
         items={[
           {
             key: 'overview',

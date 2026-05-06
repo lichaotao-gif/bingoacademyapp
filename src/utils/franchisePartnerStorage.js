@@ -216,6 +216,27 @@ export const FRANCHISE_TEACHING_PRODUCTS = [
   },
 ]
 
+export function getTeachingMaterialBulkDiscount(totalQty) {
+  const qty = Math.max(0, parseInt(String(totalQty), 10) || 0)
+  if (qty >= 30) return { rate: 0.5, label: '30件以上5折', threshold: 30 }
+  if (qty >= 20) return { rate: 0.8, label: '20件8折', threshold: 20 }
+  if (qty >= 10) return { rate: 0.9, label: '10件9折', threshold: 10 }
+  return { rate: 1, label: '未达优惠门槛', threshold: 0 }
+}
+
+export function calculateTeachingMaterialBulkPricing(originalAmount, totalQty) {
+  const original = Math.round((Number(originalAmount) || 0) * 100) / 100
+  const discount = getTeachingMaterialBulkDiscount(totalQty)
+  const payable = Math.round(original * discount.rate * 100) / 100
+  return {
+    originalAmount: original,
+    payAmount: payable,
+    discountRate: discount.rate,
+    discountLabel: discount.label,
+    discountAmount: Math.round((original - payable) * 100) / 100,
+  }
+}
+
 function seedMaterialOrders(t0) {
   return [
     {
@@ -398,6 +419,11 @@ export function buildPartnerSessionPayloadForLogin(phoneDigits) {
         row.orgName?.trim() ||
         `缤果AI学院·加盟商（${masked}）`,
       contactName: row.contactName?.trim() || '管理员',
+      qualificationSnapshot:
+        row.qualificationSnapshot && typeof row.qualificationSnapshot === 'object' && !Array.isArray(row.qualificationSnapshot)
+          ? row.qualificationSnapshot
+          : null,
+      qualificationStatus: row.qualificationStatus ? String(row.qualificationStatus) : '',
       loginAt: new Date().toISOString(),
     }
   }
@@ -642,6 +668,31 @@ export function buildDefaultInstitutionQualification(partnerId, refCode) {
       ? session.orgName.trim()
       : `缤果AI学院·合作机构（${refCode || partnerId}）`
   const contactPhone = same && session?.phone ? String(session.phone) : '13800138000'
+  const provisionSnapshot =
+    same &&
+    session?.qualificationSnapshot &&
+    typeof session.qualificationSnapshot === 'object' &&
+    !Array.isArray(session.qualificationSnapshot)
+      ? session.qualificationSnapshot
+      : null
+  if (provisionSnapshot) {
+    const complete = session?.qualificationStatus === 'approved'
+    return {
+      reviewStatus: complete ? 'approved' : 'pending_initial',
+      lastApprovedAt: complete ? new Date().toISOString() : undefined,
+      rejectReason: null,
+      approvedSnapshot: {
+        businessLicenseAttachment: null,
+        venueFrontPhotoAttachment: null,
+        venueClassroomPhotoAttachment: null,
+        schoolPermitAttachment: null,
+        ...provisionSnapshot,
+        orgName: provisionSnapshot.orgName || orgName,
+        contactPhone: provisionSnapshot.contactPhone || contactPhone,
+      },
+      pendingReview: null,
+    }
+  }
   return {
     reviewStatus: 'approved',
     lastApprovedAt: new Date().toISOString(),
@@ -655,6 +706,17 @@ export function buildDefaultInstitutionQualification(partnerId, refCode) {
       businessLicenseCopy: '（示例）扫描件已存档：营业执照_正副本合订.pdf',
       businessScope: '科技类培训、教育信息咨询、非学历文化知识辅导、教育软件开发。',
       businessLicenseAttachment: null,
+      principalName: '王小明',
+      principalPhone: contactPhone,
+      principalIdNumber: '310101********1234',
+      venueFrontPhotoAttachment: null,
+      venueClassroomPhotoAttachment: null,
+      isAiTechTrack: 'yes',
+      existingProjects: '少儿编程、机器人搭建、AI 通识体验课。',
+      studentCount: '120',
+      studentAgeRange: '6-14 岁',
+      hasDedicatedClassroom: 'yes',
+      schoolPermitAttachment: null,
     },
     pendingReview: null,
   }
@@ -674,23 +736,39 @@ const INSTITUTION_FIELD_LABELS = {
   contactPhone: '联系人电话',
   businessLicenseNumber: '营业执照注册号/统一社会信用代码',
   businessScope: '经营范围',
+  principalName: '负责人姓名',
+  principalPhone: '负责人电话',
+  principalIdNumber: '负责人身份证号',
+  isAiTechTrack: '是否属于 AI / 科技赛道',
+  existingProjects: '已开办项目',
+  studentCount: '现有生源数量',
+  studentAgeRange: '现有生源年龄段',
+  hasDedicatedClassroom: '是否设立加盟专用教室',
 }
 
 /** 营业执照附件（演示存 localStorage；正式环境应为 OSS URL） */
 const MAX_LICENSE_DATA_URL_CHARS = 5 * 1024 * 1024
 
-/** 防止超大营业执照 base64 拖垮页面：超限则移除附件仅保留文字字段 */
+const ATTACHMENT_KEYS = [
+  'businessLicenseAttachment',
+  'venueFrontPhotoAttachment',
+  'venueClassroomPhotoAttachment',
+  'schoolPermitAttachment',
+]
+
+/** 防止超大 base64 拖垮页面：超限则移除附件仅保留文字字段 */
 function stripOversizedLicenseAttachments(ws) {
   let changed = false
   const iq = ws.institutionQualification
   if (!iq) return false
   const stripSnap = (snap) => {
     if (!snap || typeof snap !== 'object') return
-    const att = snap.businessLicenseAttachment
-    const du = att?.dataUrl
-    if (typeof du === 'string' && du.length > MAX_LICENSE_DATA_URL_CHARS) {
-      snap.businessLicenseAttachment = null
-      changed = true
+    for (const key of ATTACHMENT_KEYS) {
+      const du = snap[key]?.dataUrl
+      if (typeof du === 'string' && du.length > MAX_LICENSE_DATA_URL_CHARS) {
+        snap[key] = null
+        changed = true
+      }
     }
   }
   stripSnap(iq.approvedSnapshot)
@@ -698,18 +776,18 @@ function stripOversizedLicenseAttachments(ws) {
   return changed
 }
 
-function sanitizeLicenseFileName(name) {
-  const s = String(name || '营业执照').replace(/[/\\?%*:|"<>]/g, '_').trim()
-  return (s || '营业执照').slice(0, 180)
+function sanitizeAttachmentFileName(name, fallback = '审核附件') {
+  const s = String(name || fallback).replace(/[/\\?%*:|"<>]/g, '_').trim()
+  return (s || fallback).slice(0, 180)
 }
 
-function normalizeLicenseAttachment(raw) {
+function normalizeReviewAttachment(raw, label = '审核附件') {
   if (!raw || typeof raw !== 'object') return null
   const dataUrl = raw.dataUrl
   if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null
-  if (dataUrl.length > MAX_LICENSE_DATA_URL_CHARS) return { error: '营业执照文件过大，请使用 4MB 以内的 PDF 或图片' }
+  if (dataUrl.length > MAX_LICENSE_DATA_URL_CHARS) return { error: `${label}文件过大，请使用 4MB 以内的 PDF 或图片` }
   return {
-    fileName: sanitizeLicenseFileName(raw.fileName),
+    fileName: sanitizeAttachmentFileName(raw.fileName, label),
     dataUrl,
   }
 }
@@ -724,24 +802,46 @@ export function submitInstitutionQualificationUpdate(partnerId, refCode, snapsho
   const iq = ws.institutionQualification
   if (!iq) return { ok: false, msg: '机构数据未就绪，请刷新页面重试' }
 
-  const required = ['orgName', 'legalRepresentative', 'address', 'contactPhone', 'businessLicenseNumber', 'businessScope']
+  const required = [
+    'orgName',
+    'legalRepresentative',
+    'address',
+    'contactPhone',
+    'businessLicenseNumber',
+    'businessScope',
+    'principalName',
+    'principalPhone',
+    'principalIdNumber',
+    'isAiTechTrack',
+    'existingProjects',
+    'studentCount',
+    'studentAgeRange',
+    'hasDedicatedClassroom',
+  ]
   for (const key of required) {
     if (!String(snapshot[key] ?? '').trim()) {
       return { ok: false, msg: `请填写「${INSTITUTION_FIELD_LABELS[key] || key}」` }
     }
   }
 
-  const attachment = normalizeLicenseAttachment(snapshot.businessLicenseAttachment)
+  const attachment = normalizeReviewAttachment(snapshot.businessLicenseAttachment, '营业执照')
   if (attachment?.error) return { ok: false, msg: attachment.error }
+  const venueFrontPhotoAttachment = normalizeReviewAttachment(snapshot.venueFrontPhotoAttachment, '门头照片')
+  if (venueFrontPhotoAttachment?.error) return { ok: false, msg: venueFrontPhotoAttachment.error }
+  const venueClassroomPhotoAttachment = normalizeReviewAttachment(snapshot.venueClassroomPhotoAttachment, '教室照片')
+  if (venueClassroomPhotoAttachment?.error) return { ok: false, msg: venueClassroomPhotoAttachment.error }
+  const schoolPermitAttachment = normalizeReviewAttachment(snapshot.schoolPermitAttachment, '办学许可证')
+  if (schoolPermitAttachment?.error) return { ok: false, msg: schoolPermitAttachment.error }
 
   const copyTrim = String(snapshot.businessLicenseCopy ?? '').trim()
-  const hasLegacyCopy = copyTrim.length >= 4
-  if (!attachment && !hasLegacyCopy) {
+  if (!attachment) {
     return {
       ok: false,
-      msg: '请上传营业执照电子版（PDF 或图片），或填写复印件/扫描件说明（至少 4 个字）',
+      msg: '请上传营业执照电子版（PDF 或图片）',
     }
   }
+  if (!venueFrontPhotoAttachment) return { ok: false, msg: '请上传场地门头照片' }
+  if (!venueClassroomPhotoAttachment) return { ok: false, msg: '请上传教室照片' }
 
   const clean = {
     orgName: String(snapshot.orgName).trim(),
@@ -752,6 +852,17 @@ export function submitInstitutionQualificationUpdate(partnerId, refCode, snapsho
     businessLicenseCopy: copyTrim,
     businessScope: String(snapshot.businessScope).trim(),
     businessLicenseAttachment: attachment || null,
+    principalName: String(snapshot.principalName).trim(),
+    principalPhone: String(snapshot.principalPhone).replace(/\s/g, '').trim(),
+    principalIdNumber: String(snapshot.principalIdNumber).trim(),
+    venueFrontPhotoAttachment,
+    venueClassroomPhotoAttachment,
+    isAiTechTrack: snapshot.isAiTechTrack === 'yes' ? 'yes' : 'no',
+    existingProjects: String(snapshot.existingProjects).trim(),
+    studentCount: String(snapshot.studentCount).trim(),
+    studentAgeRange: String(snapshot.studentAgeRange).trim(),
+    hasDedicatedClassroom: snapshot.hasDedicatedClassroom === 'yes' ? 'yes' : 'no',
+    schoolPermitAttachment: schoolPermitAttachment || null,
   }
 
   iq.pendingReview = {
@@ -1403,14 +1514,16 @@ export function purchaseTeachingMaterials(partnerId, refCode, cartLines, payMeth
   if (!Array.isArray(cartLines) || cartLines.length === 0) return { ok: false, msg: '请先选择商品数量' }
 
   const lines = []
-  let total = 0
+  let originalTotal = 0
+  let totalQty = 0
   for (const row of cartLines) {
     const qty = Math.max(1, parseInt(String(row.qty), 10) || 1)
     const catalog = getFranchiseTeachingProductsCatalog()
     const p = catalog.find((x) => x.id === row.productId)
     if (!p) return { ok: false, msg: '商品不存在或已下架' }
     const lineTotal = Math.round(p.price * qty * 100) / 100
-    total += lineTotal
+    originalTotal += lineTotal
+    totalQty += qty
     lines.push({
       productId: p.id,
       name: p.name,
@@ -1419,7 +1532,9 @@ export function purchaseTeachingMaterials(partnerId, refCode, cartLines, payMeth
       lineTotal,
     })
   }
-  total = Math.round(total * 100) / 100
+  originalTotal = Math.round(originalTotal * 100) / 100
+  const pricing = calculateTeachingMaterialBulkPricing(originalTotal, totalQty)
+  const total = pricing.payAmount
   if (!(total > 0)) return { ok: false, msg: '订单金额无效' }
 
   if (payMethod === 'balance') {
@@ -1444,6 +1559,11 @@ export function purchaseTeachingMaterials(partnerId, refCode, cartLines, payMeth
     id,
     items: lines,
     payAmount: total,
+    originalAmount: pricing.originalAmount,
+    discountAmount: pricing.discountAmount,
+    discountRate: pricing.discountRate,
+    discountLabel: pricing.discountLabel,
+    totalQty,
     payMethod,
     status: '待发货',
     createdAt: now,

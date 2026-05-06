@@ -1,18 +1,67 @@
 /** 总部「加盟商管理」演示数据（正式环境对接 API） */
 
 export type AccountStatus = 'normal' | 'pending_qualification' | 'frozen'
-export type QualificationReviewStatus = 'approved' | 'pending' | 'rejected' | 'pending_update'
+export type QualificationReviewStatus = 'approved' | 'pending' | 'rejected' | 'pending_update' | 'incomplete'
+
+export interface ReviewAttachment {
+  fileName: string
+  dataUrl: string
+}
+
+export interface QualificationSnapshot {
+  orgName?: string
+  legalRepresentative?: string
+  address?: string
+  contactPhone?: string
+  businessLicenseNumber?: string
+  businessLicenseCopy?: string
+  businessScope?: string
+  businessLicenseAttachment?: ReviewAttachment | null
+  principalName?: string
+  principalPhone?: string
+  principalIdNumber?: string
+  venueFrontPhotoAttachment?: ReviewAttachment | null
+  venueClassroomPhotoAttachment?: ReviewAttachment | null
+  isAiTechTrack?: 'yes' | 'no' | ''
+  existingProjects?: string
+  studentCount?: string
+  studentAgeRange?: string
+  hasDedicatedClassroom?: 'yes' | 'no' | ''
+  schoolPermitAttachment?: ReviewAttachment | null
+}
 
 export interface QualificationBlock {
   reviewStatus: QualificationReviewStatus
   lastApprovedAt?: string
   rejectReason?: string | null
-  approvedSnapshot: Record<string, string>
+  approvedSnapshot: QualificationSnapshot
   pendingReview?: {
     submittedAt: string
-    snapshot: Record<string, string>
+    snapshot: QualificationSnapshot
   } | null
 }
+
+export const QUALIFICATION_FIELD_LABELS: Array<{ key: keyof QualificationSnapshot; label: string; type?: 'yesno' | 'attachment' }> = [
+  { key: 'orgName', label: '机构名称' },
+  { key: 'legalRepresentative', label: '法定代表人' },
+  { key: 'address', label: '机构地址' },
+  { key: 'contactPhone', label: '联系人电话' },
+  { key: 'businessLicenseNumber', label: '营业执照注册号/统一社会信用代码' },
+  { key: 'businessLicenseAttachment', label: '营业执照电子版', type: 'attachment' },
+  { key: 'businessLicenseCopy', label: '营业执照复印件说明' },
+  { key: 'businessScope', label: '经营范围' },
+  { key: 'principalName', label: '负责人姓名' },
+  { key: 'principalPhone', label: '负责人电话' },
+  { key: 'principalIdNumber', label: '负责人身份证号' },
+  { key: 'venueFrontPhotoAttachment', label: '场地门头照片', type: 'attachment' },
+  { key: 'venueClassroomPhotoAttachment', label: '教室照片', type: 'attachment' },
+  { key: 'isAiTechTrack', label: '是否属于 AI / 科技赛道', type: 'yesno' },
+  { key: 'existingProjects', label: '已开办项目' },
+  { key: 'studentCount', label: '现有生源数量' },
+  { key: 'studentAgeRange', label: '现有生源年龄段' },
+  { key: 'hasDedicatedClassroom', label: '是否设立加盟专用教室', type: 'yesno' },
+  { key: 'schoolPermitAttachment', label: '办学许可证（非必录）', type: 'attachment' },
+]
 
 export interface LedgerRow {
   id: string
@@ -73,7 +122,20 @@ const INITIAL: FranchisePartnerDetail[] = [
         address: '上海市浦东新区张江高科技园区科苑路 88 号',
         contactPhone: '13800138001',
         businessLicenseNumber: '91310000MA1FL0XXXX',
+        businessLicenseCopy: '后台存档：营业执照_上海启智STEM.pdf',
         businessScope: '科技类培训、教育信息咨询。',
+        businessLicenseAttachment: null,
+        principalName: '王小明',
+        principalPhone: '13800138001',
+        principalIdNumber: '310101********1234',
+        venueFrontPhotoAttachment: null,
+        venueClassroomPhotoAttachment: null,
+        isAiTechTrack: 'yes',
+        existingProjects: '少儿编程、机器人搭建、AI 通识体验课',
+        studentCount: '120',
+        studentAgeRange: '6-14 岁',
+        hasDedicatedClassroom: 'yes',
+        schoolPermitAttachment: null,
       },
       pendingReview: null,
     },
@@ -133,7 +195,20 @@ const INITIAL: FranchisePartnerDetail[] = [
           address: '广州市天河区天河路 385 号太古汇写字楼',
           contactPhone: '13900139002',
           businessLicenseNumber: '91440101MA5CYXXXX',
+          businessLicenseCopy: '待提交清晰扫描件',
           businessScope: '软件与信息技术培训、创客教育服务。',
+          businessLicenseAttachment: null,
+          principalName: '陈颖',
+          principalPhone: '13900139002',
+          principalIdNumber: '440106********2233',
+          venueFrontPhotoAttachment: null,
+          venueClassroomPhotoAttachment: null,
+          isAiTechTrack: 'yes',
+          existingProjects: '创客课程、机器人竞赛集训',
+          studentCount: '68',
+          studentAgeRange: '7-15 岁',
+          hasDedicatedClassroom: 'no',
+          schoolPermitAttachment: null,
         },
       },
     },
@@ -173,7 +248,20 @@ const INITIAL: FranchisePartnerDetail[] = [
         address: '北京市海淀区中关村大街 1 号',
         contactPhone: '13700137003',
         businessLicenseNumber: '91110108MA01XXXXXX',
+        businessLicenseCopy: '后台存档：原营业执照扫描件',
         businessScope: '中小学生校外托管服务、教育咨询。',
+        businessLicenseAttachment: null,
+        principalName: '刘洋',
+        principalPhone: '13700137003',
+        principalIdNumber: '110108********7788',
+        venueFrontPhotoAttachment: null,
+        venueClassroomPhotoAttachment: null,
+        isAiTechTrack: 'no',
+        existingProjects: '课后托管、少儿编程体验课',
+        studentCount: '95',
+        studentAgeRange: '6-12 岁',
+        hasDedicatedClassroom: 'yes',
+        schoolPermitAttachment: null,
       },
       pendingReview: {
         submittedAt: '2026-04-25T11:20:00.000Z',
@@ -183,7 +271,20 @@ const INITIAL: FranchisePartnerDetail[] = [
           address: '北京市海淀区中关村大街 10 号海龙大厦',
           contactPhone: '13700137003',
           businessLicenseNumber: '91110108MA01XXXXXX',
+          businessLicenseCopy: '变更后营业执照待复核',
           businessScope: '科技培训、教育软件销售。',
+          businessLicenseAttachment: null,
+          principalName: '刘洋',
+          principalPhone: '13700137003',
+          principalIdNumber: '110108********7788',
+          venueFrontPhotoAttachment: null,
+          venueClassroomPhotoAttachment: null,
+          isAiTechTrack: 'yes',
+          existingProjects: '少儿编程、AI 通识、机器人搭建',
+          studentCount: '118',
+          studentAgeRange: '6-14 岁',
+          hasDedicatedClassroom: 'yes',
+          schoolPermitAttachment: null,
         },
       },
     },
@@ -323,6 +424,7 @@ export function manualTopUpPartner(partnerId: string, amount: number, remark?: s
     ledger: [ledgerRow, ...p.ledger],
   }
 
+  // @ts-expect-error 主站演示模块是 JS 文件，后台这里只做同源 localStorage 同步。
   void import('../../../src/utils/franchisePartnerStorage.js')
     .then((m: {
       demoTopUpBalance?: (
@@ -413,7 +515,20 @@ export interface CreatePartnerManualInput {
   legalRepresentative?: string
   address?: string
   businessLicenseNumber?: string
+  businessLicenseCopy?: string
   businessScope?: string
+  businessLicenseAttachment?: ReviewAttachment | null
+  principalName?: string
+  principalPhone?: string
+  principalIdNumber?: string
+  venueFrontPhotoAttachment?: ReviewAttachment | null
+  venueClassroomPhotoAttachment?: ReviewAttachment | null
+  isAiTechTrack?: 'yes' | 'no' | ''
+  existingProjects?: string
+  studentCount?: string
+  studentAgeRange?: string
+  hasDedicatedClassroom?: 'yes' | 'no' | ''
+  schoolPermitAttachment?: ReviewAttachment | null
   openingBalance?: number
 }
 
@@ -424,6 +539,8 @@ function syncProvisionLocalStorage(
   refCode: string,
   orgName: string,
   contactName: string,
+  qualificationSnapshot: QualificationSnapshot,
+  qualificationStatus: QualificationReviewStatus,
 ): { ok: boolean; msg?: string } {
   if (typeof localStorage === 'undefined') return { ok: false, msg: '当前环境无 localStorage' }
   try {
@@ -436,7 +553,7 @@ function syncProvisionLocalStorage(
     const rawProv = localStorage.getItem(PARTNER_PROVISION_KEY)
     const map = rawProv ? (JSON.parse(rawProv) as Record<string, unknown>) : {}
     if (typeof map !== 'object' || map === null || Array.isArray(map)) throw new Error('prov')
-    map[phoneDigits] = { partnerId, refCode, orgName, contactName }
+    map[phoneDigits] = { partnerId, refCode, orgName, contactName, qualificationSnapshot, qualificationStatus }
     localStorage.setItem(PARTNER_PROVISION_KEY, JSON.stringify(map))
     return { ok: true }
   } catch {
@@ -445,6 +562,35 @@ function syncProvisionLocalStorage(
       msg: '写入开户信息失败：后台与加盟商前台须为同源（同一域名）方可共享登录数据；或为浏览器存储受限',
     }
   }
+}
+
+function syncWorkspaceQualificationSnapshot(
+  partnerId: string,
+  refCode: string,
+  qualificationSnapshot: QualificationSnapshot,
+  approvedAt: string,
+  qualificationComplete: boolean,
+): void {
+  // @ts-expect-error 主站演示模块是 JS 文件，后台这里只做同源 localStorage 同步。
+  void import('../../../src/utils/franchisePartnerStorage.js')
+    .then((m: {
+      getWorkspace?: (partnerId: string, refCode: string) => Record<string, unknown>
+      saveWorkspace?: (partnerId: string, data: Record<string, unknown>) => void
+    }) => {
+      const ws = m.getWorkspace?.(partnerId, refCode)
+      if (!ws || !m.saveWorkspace) return
+      ws.institutionQualification = {
+        reviewStatus: qualificationComplete ? 'approved' : 'pending_initial',
+        lastApprovedAt: qualificationComplete ? approvedAt : undefined,
+        rejectReason: null,
+        approvedSnapshot: qualificationSnapshot,
+        pendingReview: null,
+      }
+      m.saveWorkspace(partnerId, ws)
+    })
+    .catch(() => {
+      /* 独立打包或未解析主站模块时，仅写入开户档案；加盟端首次登录仍会读取 provision 中的资质快照 */
+    })
 }
 
 /** 总部手动添加加盟商：写入后台列表，并（演示）写入本地密码表与开户档案供前台登录 */
@@ -477,9 +623,6 @@ export function createPartnerManual(input: CreatePartnerManualInput): { ok: bool
 
   const orgName = input.orgName.trim()
   const contactName = input.contactName?.trim() || '管理员'
-  const sync = syncProvisionLocalStorage(phone, pwd, partnerId, refCode, orgName, contactName)
-  if (!sync.ok) return sync
-
   const openingBalance = Math.max(0, Number(input.openingBalance) || 0)
   const now = new Date().toISOString()
   const ledger: LedgerRow[] = []
@@ -494,14 +637,74 @@ export function createPartnerManual(input: CreatePartnerManualInput): { ok: bool
     })
   }
 
-  const snap = {
+  const snap: QualificationSnapshot = {
     orgName,
     legalRepresentative: input.legalRepresentative?.trim() || '待补充',
     address: input.address?.trim() || '待补充',
     contactPhone: phone,
     businessLicenseNumber: input.businessLicenseNumber?.trim() || '待补充',
+    businessLicenseCopy: input.businessLicenseCopy?.trim() || '',
     businessScope: input.businessScope?.trim() || '教育培训',
+    businessLicenseAttachment: input.businessLicenseAttachment || null,
+    principalName: input.principalName?.trim() || contactName,
+    principalPhone: String(input.principalPhone || phone).replace(/\D/g, '') || phone,
+    principalIdNumber: input.principalIdNumber?.trim() || '待补充',
+    venueFrontPhotoAttachment: input.venueFrontPhotoAttachment || null,
+    venueClassroomPhotoAttachment: input.venueClassroomPhotoAttachment || null,
+    isAiTechTrack: input.isAiTechTrack === 'no' ? 'no' : 'yes',
+    existingProjects: input.existingProjects?.trim() || '待补充',
+    studentCount: input.studentCount?.trim() || '待补充',
+    studentAgeRange: input.studentAgeRange?.trim() || '待补充',
+    hasDedicatedClassroom: input.hasDedicatedClassroom === 'no' ? 'no' : 'yes',
+    schoolPermitAttachment: input.schoolPermitAttachment || null,
   }
+  const hasQualificationDraft = [
+    snap.legalRepresentative,
+    snap.address,
+    snap.businessLicenseNumber,
+    snap.businessLicenseCopy,
+    snap.businessScope,
+    snap.principalName,
+    snap.principalPhone,
+    snap.principalIdNumber,
+    snap.existingProjects,
+    snap.studentCount,
+    snap.studentAgeRange,
+  ].some((v) => String(v || '').trim() && String(v || '').trim() !== '待补充') ||
+    Boolean(
+      snap.businessLicenseAttachment?.dataUrl ||
+        snap.venueFrontPhotoAttachment?.dataUrl ||
+        snap.venueClassroomPhotoAttachment?.dataUrl ||
+        snap.schoolPermitAttachment?.dataUrl,
+    )
+  const qualificationComplete = Boolean(
+    snap.legalRepresentative &&
+      snap.legalRepresentative !== '待补充' &&
+      snap.address &&
+      snap.address !== '待补充' &&
+      snap.businessLicenseNumber &&
+      snap.businessLicenseNumber !== '待补充' &&
+      snap.businessLicenseAttachment?.dataUrl &&
+      snap.businessScope &&
+      snap.principalName &&
+      snap.principalPhone &&
+      String(snap.principalPhone).replace(/\D/g, '').length === 11 &&
+      snap.principalIdNumber &&
+      snap.principalIdNumber !== '待补充' &&
+      snap.venueFrontPhotoAttachment?.dataUrl &&
+      snap.venueClassroomPhotoAttachment?.dataUrl &&
+      snap.isAiTechTrack &&
+      snap.existingProjects &&
+      snap.existingProjects !== '待补充' &&
+      snap.studentCount &&
+      snap.studentCount !== '待补充' &&
+      snap.studentAgeRange &&
+      snap.studentAgeRange !== '待补充' &&
+      snap.hasDedicatedClassroom,
+  )
+
+  const sync = syncProvisionLocalStorage(phone, pwd, partnerId, refCode, orgName, contactName, hasQualificationDraft ? snap : {}, qualificationComplete ? 'approved' : 'incomplete')
+  if (!sync.ok) return sync
 
   const partner: FranchisePartnerDetail = {
     partnerId,
@@ -509,16 +712,18 @@ export function createPartnerManual(input: CreatePartnerManualInput): { ok: bool
     orgName,
     contactPhone: phone,
     region: input.region.trim(),
-    accountStatus: 'normal',
+    accountStatus: qualificationComplete ? 'normal' : 'pending_qualification',
     balance: Math.round(openingBalance * 100) / 100,
     frozen: 0,
-    qualificationStatus: 'approved',
-    conclusion: '总部手动开户：快速开通，请关注资质材料后续补齐。',
+    qualificationStatus: qualificationComplete ? 'approved' : 'incomplete',
+    conclusion: qualificationComplete
+      ? '总部手动开户：账号与资质资料已录入。'
+      : '总部手动开户：账号已创建，资质资料待加盟商或管理员后续补齐。',
     qualification: {
-      reviewStatus: 'approved',
-      lastApprovedAt: now,
+      reviewStatus: qualificationComplete ? 'approved' : 'incomplete',
+      lastApprovedAt: qualificationComplete ? now : undefined,
       rejectReason: null,
-      approvedSnapshot: { ...snap },
+      approvedSnapshot: hasQualificationDraft ? { ...snap } : {},
       pendingReview: null,
     },
     ledger,
@@ -530,5 +735,6 @@ export function createPartnerManual(input: CreatePartnerManualInput): { ok: bool
 
   cache = [partner, ...cache]
   mergeWriteHqPartnerAccount(partnerId, partner.accountStatus)
+  syncWorkspaceQualificationSnapshot(partnerId, refCode, hasQualificationDraft ? snap : {}, now, qualificationComplete)
   return { ok: true, partner }
 }
