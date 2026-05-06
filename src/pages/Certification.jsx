@@ -189,7 +189,7 @@ function InstitutionCert({ onNav }) {
           <div className="card p-6">
             <h3 className="font-semibold text-bingo-dark mb-4">课程认证清单</h3>
             <ul className="space-y-2">
-              {stage.key === 'zhichuang' ? [
+              {(stage.key === 'zhichuang' ? [
                 '必开：AI图像识别（五步流程图）', '必开：人脸识别与AI伦理应用',
                 '必开：生成式AI全栈开发', '必开：AI商业应用案例设计',
                 '选开：跨学科AI科创课题', '标准：每课时含成果作品提交',
@@ -203,7 +203,7 @@ function InstitutionCert({ onNav }) {
               ] : [
                 '必开：AI启蒙通识课', '必开：不插电实验课',
                 '必开：简单机器人搭建', '标准：学员满意度4.5分以上',
-              ]}.map((item, i) => (
+              ]).map((item, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm text-slate-700">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />{item}
                 </li>
