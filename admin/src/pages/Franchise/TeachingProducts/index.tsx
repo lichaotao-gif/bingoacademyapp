@@ -5,15 +5,14 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities'
 import { Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import type { UploadFile, UploadProps } from 'antd/es/upload/interface'
-import { HolderOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
+import type { UploadProps } from 'antd/es/upload/interface'
+import { HolderOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
 import {
-  FRANCHISE_TEACHING_CATALOG_LS_KEY,
+  DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
   type TeachingProduct,
   deleteTeachingProduct,
   listTeachingProductsAdmin,
   reorderTeachingProducts,
-  resetTeachingProductsToSeed,
   upsertTeachingProduct,
 } from '@/mock/franchiseTeachingCatalog'
 
@@ -78,12 +77,10 @@ export default function FranchiseTeachingProducts() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form] = Form.useForm<TeachingProduct & { id: string }>()
   const coverImageUrlWatch = Form.useWatch('coverImageUrl', form)
-
-  const coverUploadFileList: UploadFile[] = useMemo(() => {
-    const u = typeof coverImageUrlWatch === 'string' ? coverImageUrlWatch.trim() : ''
-    if (!u.startsWith('data:image')) return []
-    return [{ uid: '-cover', name: '封面图', status: 'done', url: u, thumbUrl: u }]
-  }, [coverImageUrlWatch])
+  const coverPreviewSrc =
+    typeof coverImageUrlWatch === 'string' && coverImageUrlWatch.trim()
+      ? coverImageUrlWatch.trim()
+      : DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL
 
   const refresh = () => setTick((t) => t + 1)
 
@@ -102,14 +99,11 @@ export default function FranchiseTeachingProducts() {
     setEditingId(null)
     form.resetFields()
     form.setFieldsValue({
-      id: '',
+      id: `kit-${Date.now().toString(36)}`,
       name: '',
       price: 0,
       desc: '',
-      coverImageUrl: '',
-      coverGradientFrom: '#6366f1',
-      coverGradientTo: '#22d3ee',
-      coverDot: '#ffffff',
+      coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
       enabled: true,
     })
     setOpen(true)
@@ -119,10 +113,7 @@ export default function FranchiseTeachingProducts() {
     setEditingId(row.id)
     form.setFieldsValue({
       ...row,
-      coverImageUrl: row.coverImageUrl ?? '',
-      coverGradientFrom: row.coverGradientFrom ?? '',
-      coverGradientTo: row.coverGradientTo ?? '',
-      coverDot: row.coverDot ?? '',
+      coverImageUrl: row.coverImageUrl ?? DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
     })
     setOpen(true)
   }
@@ -156,6 +147,7 @@ export default function FranchiseTeachingProducts() {
         ...v,
         id: editingId ?? v.id.trim(),
         price: Number(v.price),
+        coverImageUrl: v.coverImageUrl?.trim() || DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
       })
       if (!r.ok) {
         message.error(r.msg || '保存失败')
@@ -177,35 +169,18 @@ export default function FranchiseTeachingProducts() {
       render: () => <HolderOutlined style={{ color: '#ccc' }} />,
     },
     {
-      title: '封面 / 售价',
+      title: '封面',
       key: 'cover',
       width: 118,
       render: (_, row) => {
-        const src =
-          row.coverImageUrl?.trim() ||
-          `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="54"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${row.coverGradientFrom || '#64748b'}"/><stop offset="100%" stop-color="${row.coverGradientTo || '#334155'}"/></linearGradient></defs><rect width="96" height="54" fill="url(#g)" rx="6"/></svg>`,
-          )}`
-        const hasImg = Boolean(row.coverImageUrl?.trim())
+        const src = row.coverImageUrl?.trim() || DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL
         return (
           <div style={{ width: 96 }}>
-            <Image src={src} alt="" width={96} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} preview={hasImg} />
-            <div
-              style={{
-                marginTop: 6,
-                fontWeight: 700,
-                fontSize: 14,
-                fontVariantNumeric: 'tabular-nums',
-                color: '#1677ff',
-              }}
-            >
-              ¥{Number(row.price).toFixed(2)}
-            </div>
+            <Image src={src} alt="" width={96} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} />
           </div>
         )
       },
     },
-    { title: '商品 ID', dataIndex: 'id', key: 'id', width: 150, ellipsis: true },
     { title: '标题', dataIndex: 'name', key: 'name', ellipsis: true },
     {
       title: '价格',
@@ -243,26 +218,12 @@ export default function FranchiseTeachingProducts() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 8 }}>学具商品配置</h2>
-      <Space style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>学具商品配置</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           新建商品
         </Button>
-        <Button icon={<ReloadOutlined />} onClick={refresh}>
-          刷新
-        </Button>
-        <Popconfirm
-          title="恢复为内置演示 6 条商品？"
-          description="将覆盖当前本地配置。"
-          onConfirm={() => {
-            resetTeachingProductsToSeed()
-            message.success('已恢复默认')
-            refresh()
-          }}
-        >
-          <Button>恢复默认目录</Button>
-        </Popconfirm>
-      </Space>
+      </div>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <SortableContext items={data.map((d) => d.id)} strategy={verticalListSortingStrategy}>
           <Table<TeachingProduct>
@@ -285,12 +246,12 @@ export default function FranchiseTeachingProducts() {
       >
         <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
           {!editingId ? (
-            <Form.Item name="id" label="商品 ID（英文小写、数字、连字符，创建后勿随意改）" rules={[{ required: true, message: '必填' }]}>
-              <Input placeholder="例如 ai-tool-kit-01" />
+            <Form.Item name="id" hidden>
+              <Input />
             </Form.Item>
           ) : (
-            <Form.Item label="商品 ID">
-              <Typography.Text strong>{editingId}</Typography.Text>
+            <Form.Item name="id" hidden>
+              <Input />
             </Form.Item>
           )}
           <Form.Item name="name" label="标题" rules={[{ required: true }]}>
@@ -304,46 +265,23 @@ export default function FranchiseTeachingProducts() {
           </Form.Item>
           <Form.Item label="封面图片">
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Image src={coverPreviewSrc} alt="封面预览" width={180} height={102} style={{ objectFit: 'cover', borderRadius: 8 }} />
               <Upload
                 accept="image/*"
-                listType="picture-card"
                 maxCount={1}
-                fileList={coverUploadFileList}
                 beforeUpload={beforeCoverUpload}
-                onRemove={() => {
-                  form.setFieldValue('coverImageUrl', '')
-                  return true
-                }}
+                showUploadList={false}
               >
-                {coverUploadFileList.length >= 1 ? null : (
-                  <button type="button" style={{ border: 0, background: 'none', cursor: 'pointer' }}>
-                    <UploadOutlined />
-                    <div style={{ marginTop: 8 }}>上传</div>
-                  </button>
-                )}
+                <Button icon={<UploadOutlined />}>上传封面</Button>
               </Upload>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 演示环境将图片转为 Base64 写入本地配置（≤1MB）；保存商品后加盟商端可见。
               </Typography.Text>
-              <Form.Item name="coverImageUrl" label="或填写图片 URL / 外链" style={{ marginBottom: 0 }}>
-                <Input placeholder="https://... 或清空以上传改用渐变" allowClear />
+              <Form.Item name="coverImageUrl" hidden>
+                <Input />
               </Form.Item>
             </Space>
           </Form.Item>
-          <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-            无封面 URL 时使用渐变（十六进制色）：
-          </Typography.Text>
-          <Space wrap style={{ width: '100%' }}>
-            <Form.Item name="coverGradientFrom" label="渐变起" style={{ minWidth: 140 }}>
-              <Input placeholder="#6366f1" />
-            </Form.Item>
-            <Form.Item name="coverGradientTo" label="渐变止" style={{ minWidth: 140 }}>
-              <Input placeholder="#22d3ee" />
-            </Form.Item>
-            <Form.Item name="coverDot" label="点缀色" style={{ minWidth: 140 }}>
-              <Input placeholder="#ffffff" />
-            </Form.Item>
-          </Space>
           <Form.Item name="enabled" label="上架" valuePropName="checked">
             <Switch checkedChildren="上架" unCheckedChildren="下架" />
           </Form.Item>

@@ -11,11 +11,12 @@ export interface TeachingProduct {
   price: number
   desc: string
   coverImageUrl?: string
-  coverGradientFrom?: string
-  coverGradientTo?: string
-  coverDot?: string
   enabled?: boolean
 }
+
+export const DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="404" viewBox="0 0 720 404"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#dc2626"/><stop offset="52%" stop-color="#f97316"/><stop offset="100%" stop-color="#2563eb"/></linearGradient><pattern id="p" width="36" height="36" patternUnits="userSpaceOnUse"><circle cx="8" cy="8" r="3" fill="#fff" opacity=".2"/><path d="M28 6h4v4h-4zM8 26h4v4H8z" fill="#fff" opacity=".18"/></pattern></defs><rect width="720" height="404" rx="24" fill="url(#g)"/><rect width="720" height="404" fill="url(#p)"/><g fill="#fff"><text x="48" y="92" font-family="Arial, sans-serif" font-size="28" font-weight="700" opacity=".92">BINGO AI ACADEMY</text><text x="48" y="224" font-family="Arial, sans-serif" font-size="58" font-weight="800">AI EDU KIT</text><text x="52" y="278" font-family="Arial, sans-serif" font-size="24" font-weight="600" opacity=".84">Teaching Materials</text></g><g opacity=".78" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M522 122h74l42 72-42 72h-74l-42-72z"/><path d="M522 122l37 72-37 72M596 122l-37 72 37 72"/></g></svg>`,
+)}`
 
 export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
   {
@@ -24,9 +25,7 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     price: 680,
     desc: '适合低龄段课堂演示：灯光、声音等传感器与简易逻辑编程。',
     enabled: true,
-    coverGradientFrom: '#6366f1',
-    coverGradientTo: '#22d3ee',
-    coverDot: '#ffffff',
+    coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
   },
   {
     id: 'robot-microbit',
@@ -34,9 +33,7 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     price: 298,
     desc: '图形化编程对接实物硬件，含教案导读与班级管理建议。',
     enabled: true,
-    coverGradientFrom: '#0ea5e9',
-    coverGradientTo: '#14b8a6',
-    coverDot: '#dcfce7',
+    coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
   },
   {
     id: 'sensor-ai-kit',
@@ -44,9 +41,7 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     price: 1280,
     desc: '视觉 / 距离 / 声音多模态实验，配套实验报告模板。',
     enabled: true,
-    coverGradientFrom: '#f97316',
-    coverGradientTo: '#facc15',
-    coverDot: '#fff7ed',
+    coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
   },
   {
     id: 'jetson-nano-edu',
@@ -54,9 +49,7 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     price: 3299,
     desc: '轻量深度学习推理演示，含散热与电源适配器。',
     enabled: true,
-    coverGradientFrom: '#7c3aed',
-    coverGradientTo: '#f43f5e',
-    coverDot: '#f5d0fe',
+    coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
   },
   {
     id: 'ai-xlab-pack',
@@ -64,9 +57,7 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     price: 458,
     desc: '卡片、标签与数据集样板，约 30 人班课用量。',
     enabled: true,
-    coverGradientFrom: '#16a34a',
-    coverGradientTo: '#06b6d4',
-    coverDot: '#dcfce7',
+    coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
   },
   {
     id: 'drone-ai-lite',
@@ -74,14 +65,12 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     price: 1899,
     desc: '定点巡航与视觉循迹入门，含安全护桨与保险说明。',
     enabled: true,
-    coverGradientFrom: '#2563eb',
-    coverGradientTo: '#4338ca',
-    coverDot: '#dbeafe',
+    coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
   },
 ]
 
 function normalize(p: Partial<TeachingProduct> & { id?: string }): TeachingProduct | null {
-  const id = String(p.id ?? '').trim()
+  const id = String(p.id ?? `kit-${Date.now().toString(36)}`).trim()
   if (!id || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) return null
   const price = Number(p.price)
   return {
@@ -89,10 +78,7 @@ function normalize(p: Partial<TeachingProduct> & { id?: string }): TeachingProdu
     name: String(p.name ?? '').trim() || '未命名商品',
     price: Number.isFinite(price) && price >= 0 ? Math.round(price * 100) / 100 : 0,
     desc: p.desc != null ? String(p.desc) : '',
-    coverImageUrl: p.coverImageUrl?.trim() || undefined,
-    coverGradientFrom: p.coverGradientFrom?.trim() || undefined,
-    coverGradientTo: p.coverGradientTo?.trim() || undefined,
-    coverDot: p.coverDot?.trim() || undefined,
+    coverImageUrl: p.coverImageUrl?.trim() || DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
     enabled: p.enabled !== false,
   }
 }
@@ -124,7 +110,7 @@ export function listTeachingProductsAdmin(): TeachingProduct[] {
 }
 
 export function upsertTeachingProduct(input: TeachingProduct): { ok: boolean; msg?: string } {
-  const n = normalize(input)
+  const n = normalize({ ...input, id: input.id || `kit-${Date.now().toString(36)}` })
   if (!n) return { ok: false, msg: '商品 ID 须为小写字母、数字与连字符，且不以连字符开头' }
   const all = readRaw()
   const idx = all.findIndex((x) => x.id === n.id)
