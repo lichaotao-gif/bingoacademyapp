@@ -7,12 +7,12 @@ const NAV = [
   { to: '/franchise-partner/dashboard', label: '首页概览', end: false },
   { to: '/franchise-partner/classes', label: '班级管理' },
   { to: '/franchise-partner/students', label: '学生管理' },
-  { to: '/franchise-partner/recharge', label: '充课中心', badge: '后续版本开发' },
+  { to: '/franchise-partner/recharge', label: '充课中心', badge: '后续版本开发', visibleInMenu: false },
   { to: '/franchise-partner/teaching-materials', label: '学具商城' },
   { to: '/franchise-partner/orders', label: '订单管理' },
   { to: '/franchise-partner/finance', label: '财务统计' },
-  { to: '/franchise-partner/discounts', label: '折扣查看', badge: '后续版本开发' },
-  { to: '/franchise-partner/balance', label: '余额中心' },
+  { to: '/franchise-partner/discounts', label: '折扣查看', badge: '后续版本开发', visibleInMenu: false },
+  { to: '/franchise-partner/balance', label: '余额中心', visibleInMenu: false },
   { to: '/franchise-partner/settings', label: '账号设置' },
 ]
 
@@ -189,8 +189,10 @@ export default function FranchisePartnerLayout() {
           </Link>
         </div>
         <nav className="p-3 space-y-0.5 flex-1 overflow-y-auto">
-          {NAV.map((item, i) => {
-            const Icon = FRANCHISE_NAV_ICONS[i] || FRANCHISE_NAV_ICONS[0]
+          {NAV.map((item, i) => ({ ...item, Icon: FRANCHISE_NAV_ICONS[i] || FRANCHISE_NAV_ICONS[0] }))
+            .filter((item) => item.visibleInMenu !== false)
+            .map((item) => {
+            const Icon = item.Icon
             return (
               <NavLink
                 key={item.to}

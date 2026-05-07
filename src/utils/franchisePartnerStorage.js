@@ -168,50 +168,50 @@ export function getFranchiseTeachingProductsCatalog() {
 export const FRANCHISE_TEACHING_PRODUCTS = [
   {
     id: 'kit-ai-starter',
-    name: 'AI启蒙教具套装（主控+传感）',
+    name: 'AI启蒙传感学具套装',
     price: 680,
     tag: '',
-    desc: '适合低龄段课堂演示：灯光、声音等传感器与简易逻辑编程。',
+    desc: '适合人工智能启蒙课堂：主控板、灯光、声音传感器与简易 AI 逻辑编程。',
     emoji: '🧩',
   },
   {
     id: 'robot-microbit',
-    name: 'Micro:bit AI 编程扩展套件',
+    name: '人工智能 Micro:bit 编程学具',
     price: 298,
     tag: '',
-    desc: '图形化编程对接实物硬件，含教案导读与班级管理建议。',
+    desc: '面向 AI 编程入门课堂，支持图形化编程、传感器交互与智能作品搭建。',
     emoji: '🤖',
   },
   {
     id: 'sensor-ai-kit',
-    name: '人工智能感知传感器套装',
+    name: 'AI视觉与多模态传感器套装',
     price: 1280,
     tag: '',
-    desc: '视觉 / 距离 / 声音多模态实验，配套实验报告模板。',
+    desc: '支持视觉、距离、声音等多模态 AI 感知实验，配套课堂实验报告模板。',
     emoji: '📡',
   },
   {
     id: 'jetson-nano-edu',
-    name: '边缘 AI 实验主机（教育版）',
+    name: '边缘人工智能实验主机',
     price: 3299,
     tag: '',
-    desc: '轻量深度学习推理演示，含散热与电源适配器。',
+    desc: '用于边缘 AI 与轻量深度学习推理演示，含散热、电源与教育实验指引。',
     emoji: '🖥️',
   },
   {
     id: 'ai-xlab-pack',
-    name: '机器学习实验耗材包（班课装）',
+    name: 'AI机器学习实验耗材包（班课装）',
     price: 458,
     tag: '',
-    desc: '卡片、标签与数据集样板，约 30 人班课用量。',
+    desc: '围绕机器学习数据采集、标注与分类实验设计，适配约 30 人 AI 班课。',
     emoji: '📦',
   },
   {
     id: 'drone-ai-lite',
-    name: '可编程无人机（Lite 教育版）',
+    name: 'AI视觉循迹无人机（教育版）',
     price: 1899,
     tag: '',
-    desc: '定点巡航与视觉循迹入门，含安全护桨与保险说明。',
+    desc: '用于 AI 视觉循迹、定点巡航与智能控制入门，含安全护桨与课堂安全说明。',
     emoji: '🚁',
   },
 ]
@@ -244,7 +244,7 @@ function seedMaterialOrders(t0) {
       items: [
         {
           productId: 'robot-microbit',
-          name: 'Micro:bit AI 编程扩展套件',
+          name: '人工智能 Micro:bit 编程学具',
           qty: 5,
           unitPrice: 298,
           lineTotal: 1490,
@@ -284,7 +284,7 @@ function seedMaterialOrders(t0) {
       items: [
         {
           productId: 'sensor-ai-kit',
-          name: '人工智能感知传感器套装',
+          name: 'AI视觉与多模态传感器套装',
           qty: 1,
           unitPrice: 1280,
           lineTotal: 1280,
@@ -1087,7 +1087,7 @@ function defaultWorkspace(partnerId, refCode) {
     classes: [
       {
         id: 'cls-1',
-        name: '周六上午 · 幼儿英语启蒙班',
+        name: '周六上午 · AI启蒙体验班',
         studentIds: ['stu-1', 'stu-2'],
         createdAt: new Date(t0 - 86400000 * 30).toISOString(),
         courseType: '素养启蒙',
@@ -1101,7 +1101,7 @@ function defaultWorkspace(partnerId, refCode) {
       },
       {
         id: 'cls-2',
-        name: '暑期 · AI 竞赛冲刺班',
+        name: '暑期 · AI竞赛冲刺班',
         studentIds: ['stu-3'],
         createdAt: new Date(t0 - 86400000 * 7).toISOString(),
         courseType: '竞赛培优',
@@ -1115,7 +1115,7 @@ function defaultWorkspace(partnerId, refCode) {
       },
       {
         id: 'cls-3',
-        name: '周三晚 · 少儿编程基础班',
+        name: '周三晚 · AI编程基础班',
         studentIds: [],
         createdAt: new Date(t0 - 86400000 * 3).toISOString(),
         courseType: '编程入门',
@@ -1182,7 +1182,16 @@ function defaultWorkspace(partnerId, refCode) {
 /** 旧数据班级补全线下课时结构；已有课时的班级补全 offlineCourseIds / 展示名。 */
 function ensureClassOfflineFields(ws) {
   let changed = false
+  const legacyClassNameMap = {
+    '周六上午 · 幼儿英语启蒙班': '周六上午 · AI启蒙体验班',
+    '暑期 · AI 竞赛冲刺班': '暑期 · AI竞赛冲刺班',
+    '周三晚 · 少儿编程基础班': '周三晚 · AI编程基础班',
+  }
   for (const c of ws.classes || []) {
+    if (legacyClassNameMap[c.name]) {
+      c.name = legacyClassNameMap[c.name]
+      changed = true
+    }
     const hasLessons = Array.isArray(c.offlineLessons) && c.offlineLessons.length > 0
 
     if (hasLessons) {
@@ -1233,6 +1242,21 @@ function ensureClassOfflineFields(ws) {
     c.offlineCourseName = names.join('、')
     c.offlineLessons = merged
     changed = true
+  }
+  return changed
+}
+
+function ensureMaterialOrderProductNames(ws) {
+  let changed = false
+  const productNameMap = new Map(FRANCHISE_TEACHING_PRODUCTS.map((p) => [p.id, p.name]))
+  for (const order of ws.materialOrders || []) {
+    for (const item of order.items || []) {
+      const name = productNameMap.get(item.productId)
+      if (name && item.name !== name) {
+        item.name = name
+        changed = true
+      }
+    }
   }
   return changed
 }
@@ -1289,6 +1313,7 @@ export function getWorkspace(partnerId, refCode) {
     ws.materialOrders = seedMaterialOrders(Date.now())
     saveWorkspace(partnerId, ws)
   }
+  if (ensureMaterialOrderProductNames(ws)) saveWorkspace(partnerId, ws)
   return ws
 }
 
