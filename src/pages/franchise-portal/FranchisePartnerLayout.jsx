@@ -28,6 +28,7 @@ function sidebarPartnerInstitutionName(session) {
 
 /** 顶栏展示用管理员姓名（占位） */
 const VIRTUAL_PARTNER_ADMIN_NAME = '林若溪'
+const FRANCHISE_SUPPORT_WECHAT_URL = 'https://work.weixin.qq.com/kfid/kfc65e712f1de26573a'
 
 /** 顶栏展示：手机号脱敏 */
 function maskPhoneForDisplay(phone) {
@@ -224,8 +225,10 @@ export default function FranchisePartnerLayout() {
             </div>
             <p className="text-[11px] text-slate-500 mt-1 leading-snug">工作日 9:00–18:00 在线支持</p>
             <a
-              href="tel:400-xxx-xxxx"
-              className="mt-2 block text-center text-xs py-2 rounded-lg bg-white/10 text-white hover:bg-white/15 transition"
+              href={FRANCHISE_SUPPORT_WECHAT_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15"
             >
               联系客服
             </a>

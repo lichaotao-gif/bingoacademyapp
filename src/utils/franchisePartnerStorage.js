@@ -1162,6 +1162,7 @@ function defaultWorkspace(partnerId, refCode) {
         phone: '13912345678',
         name: '王同学',
         classId: 'cls-2',
+        classIds: ['cls-2', 'cls-3'],
         enrollments: [
           {
             courseId: 'ai-advance-basic',
@@ -1287,6 +1288,20 @@ function ensureDemoMultiOfflineCourseSample(ws) {
   return changed
 }
 
+function ensureDemoMultiClassStudentSample(ws) {
+  let changed = false
+  const sampleStudent = (ws.students || []).find((s) => s.id === 'stu-3' || s.name === '王同学')
+  if (!sampleStudent) return changed
+  const expectedClassIds = ['cls-2', 'cls-3']
+  const currentIds = Array.isArray(sampleStudent.classIds) ? sampleStudent.classIds.filter(Boolean) : []
+  const merged = Array.from(new Set([sampleStudent.classId, ...currentIds, ...expectedClassIds].filter(Boolean)))
+  if (merged.length !== currentIds.length || merged.some((id, i) => currentIds[i] !== id)) {
+    sampleStudent.classIds = merged
+    changed = true
+  }
+  return changed
+}
+
 function normalizeEnrollments(ws) {
   let changed = false
   const fallbackPurchase = () => new Date(Date.now() - 86400000 * 7).toISOString()
@@ -1334,6 +1349,7 @@ export function getWorkspace(partnerId, refCode) {
   if (normalizeEnrollments(ws)) saveWorkspace(partnerId, ws)
   if (ensureClassOfflineFields(ws)) saveWorkspace(partnerId, ws)
   if (ensureDemoMultiOfflineCourseSample(ws)) saveWorkspace(partnerId, ws)
+  if (ensureDemoMultiClassStudentSample(ws)) saveWorkspace(partnerId, ws)
   if (ensureInstitutionQualification(ws, partnerId, refCode)) saveWorkspace(partnerId, ws)
   if (stripOversizedLicenseAttachments(ws)) saveWorkspace(partnerId, ws)
   if (!Array.isArray(ws.materialOrders)) {

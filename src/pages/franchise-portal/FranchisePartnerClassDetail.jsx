@@ -10,7 +10,7 @@ import {
   moveStudentToClass,
   setClassOfflineLessonDone,
 } from '../../utils/franchisePartnerStorage'
-import { OnlineCoursesPerLessonCell, StudentNameWithRemark } from './FranchisePartnerStudents'
+import { OfflineCoursesCell, OnlineCoursesPerLessonCell, StudentNameWithRemark } from './FranchisePartnerStudents'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
 function fmtDate(iso) {
@@ -103,6 +103,8 @@ export default function FranchisePartnerClassDetail() {
   /** 本班学员：每人一行；每门线上课单独一行展示各自进度与状态 */
   const studentRows = useMemo(() => {
     if (!ws || !classId) return []
+    const currentClass = (ws.classes || []).find((c) => c.id === classId)
+    if (!currentClass) return []
     const list = []
     for (const s of ws.students || []) {
       if (s.classId !== classId) continue
@@ -113,6 +115,8 @@ export default function FranchisePartnerClassDetail() {
         phone: s.phone,
         remark: s.remark || '',
         enrollments: Array.isArray(s.enrollments) ? s.enrollments : [],
+        offlineCourseIds: Array.isArray(currentClass.offlineCourseIds) ? currentClass.offlineCourseIds : [],
+        offlineCourseName: currentClass.offlineCourseName || '',
       })
     }
     list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN'))
@@ -420,23 +424,26 @@ export default function FranchisePartnerClassDetail() {
           {studentRows.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-slate-500">本班暂无学员，请在上方「班级信息」栏使用「添加学员」。</p>
           ) : (
-            <table className="w-full border-collapse text-sm text-left min-w-[760px]">
+            <table className="w-full border-collapse text-sm text-left min-w-[900px]">
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
                   <th className="px-5 py-3 font-medium whitespace-nowrap">姓名</th>
                   <th className="px-5 py-3 font-medium whitespace-nowrap">手机</th>
+                  <th className="px-5 py-3 font-medium min-w-[12rem]">线下课程</th>
                   <th
                     className="px-5 py-3 font-medium min-w-[14rem]"
                     title="每名学员可有多门线上课；每门课有独立的进度与完成状态。开通时间、最近学习等见「学习进度」或点「学情」。"
                   >
-                    已选线上课程
+                    线上课程
                   </th>
-                  <th className="px-5 py-3 font-medium whitespace-nowrap min-w-[18rem]">操作</th>
+                  <th className="sticky right-0 z-20 border-l border-slate-200 bg-slate-50 px-5 py-3 font-medium whitespace-nowrap min-w-[18rem] shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)]">
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {studentRows.map((row) => (
-                  <tr key={row.key} className="border-t border-slate-100 hover:bg-slate-50/80">
+                  <tr key={row.key} className="group border-t border-slate-100 hover:bg-slate-50/80">
                     <td className="px-5 py-3 align-middle text-slate-900 whitespace-nowrap">
                       <StudentNameWithRemark
                         studentId={row.studentId}
@@ -448,9 +455,12 @@ export default function FranchisePartnerClassDetail() {
                     </td>
                     <td className="px-5 py-3 align-middle text-slate-600 font-mono whitespace-nowrap">{row.phone}</td>
                     <td className="px-5 py-3 align-middle text-slate-700">
+                      <OfflineCoursesCell courseIds={row.offlineCourseIds} courseName={row.offlineCourseName} />
+                    </td>
+                    <td className="px-5 py-3 align-middle text-slate-700">
                       <OnlineCoursesPerLessonCell enrollments={row.enrollments} />
                     </td>
-                    <td className="px-5 py-3 align-middle">
+                    <td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-5 py-3 align-middle shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)] group-hover:bg-slate-50/80">
                       <div className="flex flex-row flex-nowrap items-center gap-2">
                         <Link
                           to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}

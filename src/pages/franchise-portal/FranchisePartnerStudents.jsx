@@ -218,6 +218,27 @@ export function OfflineCoursesCell({ courseIds, courseName }) {
   )
 }
 
+function StudentClassNamesCell({ classNames }) {
+  const list = Array.isArray(classNames) ? classNames.filter(Boolean) : []
+  if (!list.length) return <span className="text-slate-400">未分班</span>
+  const visible = list.slice(0, 2)
+  const extra = Math.max(0, list.length - visible.length)
+  return (
+    <ul className="space-y-1.5 text-xs leading-snug max-w-[16rem]">
+      {visible.map((name, i) => (
+        <li key={`${name}-${i}`} className="text-slate-800">
+          <span className="block truncate font-medium text-slate-900" title={name}>{name}</span>
+        </li>
+      ))}
+      {extra ? (
+        <li className="text-slate-500">
+          <span className="font-medium">+{extra}</span>
+        </li>
+      ) : null}
+    </ul>
+  )
+}
+
 function fmtDateTime(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -264,10 +285,14 @@ export default function FranchisePartnerStudents() {
   const allRows = useMemo(() => {
     if (!ws) return []
     const list = []
+    const classMap = new Map((ws.classes || []).map((c) => [c.id, c]))
     for (const s of ws.students || []) {
       if (effectiveTableClassFilter !== 'all' && s.classId !== effectiveTableClassFilter) continue
-      const cls = ws.classes.find((c) => c.id === s.classId)
+      const cls = classMap.get(s.classId)
       const className = cls?.name || '未分班'
+      const classIds = Array.isArray(s.classIds) ? s.classIds.filter(Boolean) : []
+      const mergedClassIds = Array.from(new Set([s.classId, ...classIds].filter(Boolean)))
+      const classNames = mergedClassIds.map((id) => classMap.get(id)?.name || id)
       const enrollments = Array.isArray(s.enrollments) ? s.enrollments.filter((e) => e && e.courseId) : []
       const latestPurchasedAt = enrollments.reduce((max, e) => {
         const t = e?.purchasedAt ? new Date(e.purchasedAt).getTime() : 0
@@ -280,6 +305,7 @@ export default function FranchisePartnerStudents() {
         phone: s.phone,
         remark: s.remark || '',
         className,
+        classNames,
         enrollments,
         offlineCourseIds: Array.isArray(cls?.offlineCourseIds) ? cls.offlineCourseIds : [],
         offlineCourseName: cls?.offlineCourseName || '',
@@ -483,14 +509,16 @@ export default function FranchisePartnerStudents() {
                   className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left"
                   title="每名学员可有多门线上课；每门课有独立的进度百分比与完成状态。时间维度与全机构筛选见「学习进度」。"
                 >
-                  已选线上课程
+                  线上课程
                 </th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap min-w-[14rem] align-middle text-left">操作</th>
+                <th className="sticky right-0 z-20 bg-slate-50 px-5 py-3 font-medium whitespace-nowrap min-w-[14rem] align-middle text-left border-l border-slate-200 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)]">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody>
               {classRosterRows.map((row) => (
-                <tr key={row.key} className="border-t border-slate-100 hover:bg-slate-50/80">
+                <tr key={row.key} className="group border-t border-slate-100 hover:bg-slate-50/80">
                   <td className="px-5 py-3 align-middle text-left text-slate-900 whitespace-nowrap">
                     <StudentNameWithRemark
                       studentId={row.studentId}
@@ -507,7 +535,7 @@ export default function FranchisePartnerStudents() {
                   <td className="px-5 py-3 align-middle text-left text-slate-700">
                     <OnlineCoursesPerLessonCell enrollments={row.enrollments} />
                   </td>
-                  <td className="px-5 py-3 align-middle text-left">
+                  <td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-5 py-3 align-middle text-left shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)] group-hover:bg-slate-50/80">
                     <div className="flex flex-row flex-nowrap items-center gap-2">
                       <Link
                         to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}
@@ -544,14 +572,16 @@ export default function FranchisePartnerStudents() {
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">手机</th>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">所在班级</th>
                 <th className="px-5 py-3 font-medium min-w-[12rem] align-middle text-left">线下课程</th>
-                <th className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left">已选线上课程</th>
+                <th className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left">线上课程</th>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">最近开通时间</th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap min-w-[17rem] align-middle text-left">操作</th>
+                <th className="sticky right-0 z-20 bg-slate-50 px-5 py-3 font-medium whitespace-nowrap min-w-[17rem] align-middle text-left border-l border-slate-200 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)]">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody>
               {allRows.map((row) => (
-                <tr key={row.key} className="border-t border-slate-100 hover:bg-slate-50/80">
+                <tr key={row.key} className="group border-t border-slate-100 hover:bg-slate-50/80">
                   <td className="px-5 py-3 align-middle text-left text-slate-900 whitespace-nowrap">
                     <StudentNameWithRemark
                       studentId={row.studentId}
@@ -562,7 +592,9 @@ export default function FranchisePartnerStudents() {
                     />
                   </td>
                   <td className="px-5 py-3 align-middle text-left text-slate-600 font-mono whitespace-nowrap">{row.phone}</td>
-                  <td className="px-5 py-3 align-middle text-left text-slate-700 whitespace-nowrap">{row.className}</td>
+                  <td className="px-5 py-3 align-middle text-left text-slate-700">
+                    <StudentClassNamesCell classNames={row.classNames || [row.className]} />
+                  </td>
                   <td className="px-5 py-3 align-middle text-left text-slate-700">
                     <OfflineCoursesCell courseIds={row.offlineCourseIds} courseName={row.offlineCourseName} />
                   </td>
@@ -570,7 +602,7 @@ export default function FranchisePartnerStudents() {
                     <OnlineCoursesPerLessonCell enrollments={row.enrollments} />
                   </td>
                   <td className="px-5 py-3 align-middle text-left text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(row.latestPurchasedAt)}</td>
-                  <td className="px-5 py-3 align-middle text-left">
+                  <td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-5 py-3 align-middle text-left shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)] group-hover:bg-slate-50/80">
                     <div className="flex flex-row flex-nowrap items-center gap-2">
                       <Link
                         to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}
