@@ -14,8 +14,7 @@ function fmtDate(iso) {
 }
 
 function defaultOfflineCourseIds() {
-  const id = FRANCHISE_PROMOTABLE_COURSES[0]?.id
-  return id ? [id] : []
+  return []
 }
 
 export default function FranchisePartnerClasses() {
@@ -198,8 +197,8 @@ export default function FranchisePartnerClasses() {
               </div>
               <div>
                 <span className="block text-sm font-medium text-slate-600 mb-2">
-                  线下课程包 <span className="text-rose-600">*</span>
-                  <span className="font-normal text-slate-400">（可多选）</span>
+                  线下课程包
+                  <span className="font-normal text-slate-400">（可选，可创建后在班级详情添加）</span>
                 </span>
                 <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 bg-white overflow-hidden">
                   {FRANCHISE_PROMOTABLE_COURSES.map((c) => {
@@ -237,7 +236,7 @@ export default function FranchisePartnerClasses() {
                   })}
                 </div>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                  可多选多个课程包，课时按列表顺序合并；创建后由管理员逐节勾选，与线上学习进度独立。
+                  可先不选，后续进入班级详情添加；多课程包课时按列表顺序合并，与线上学习进度独立。
                 </p>
               </div>
               <div>

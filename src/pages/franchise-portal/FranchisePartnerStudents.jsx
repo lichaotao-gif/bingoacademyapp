@@ -169,7 +169,7 @@ function enrollmentStatusTone(status) {
   return 'bg-sky-100 text-sky-800'
 }
 
-/** 班级名册 / 本班学员：每门线上课一行，各自进度与完成状态（与线下课无关） */
+/** 班级名册 / 学员列表：一个学生一行；若有多门线上课，则在单元格内逐门展示进度与状态。 */
 export function OnlineCoursesPerLessonCell({ enrollments }) {
   const list = Array.isArray(enrollments) ? enrollments.filter((e) => e && e.courseId) : []
   if (!list.length) return <span className="text-slate-400">—</span>
@@ -197,6 +197,23 @@ export function OnlineCoursesPerLessonCell({ enrollments }) {
           </li>
         )
       })}
+    </ul>
+  )
+}
+
+export function OfflineCoursesCell({ courseIds, courseName }) {
+  const ids = Array.isArray(courseIds) ? courseIds.filter(Boolean) : []
+  const labels = ids.length
+    ? ids.map((id) => courseLabel(id))
+    : (typeof courseName === 'string' && courseName.trim() ? courseName.split('、').map((s) => s.trim()).filter(Boolean) : [])
+  if (!labels.length) return <span className="text-slate-400">—</span>
+  return (
+    <ul className="space-y-1.5 text-xs leading-snug max-w-md">
+      {labels.map((label, i) => (
+        <li key={`${label}-${i}`} className="text-slate-800">
+          <span className="font-medium text-slate-900">{label}</span>
+        </li>
+      ))}
     </ul>
   )
 }
@@ -251,58 +268,36 @@ export default function FranchisePartnerStudents() {
       if (effectiveTableClassFilter !== 'all' && s.classId !== effectiveTableClassFilter) continue
       const cls = ws.classes.find((c) => c.id === s.classId)
       const className = cls?.name || '未分班'
-      const enrollments = s.enrollments?.length ? s.enrollments : []
-      if (enrollments.length === 0) {
-        list.push({
-          key: `${s.id}-empty`,
-          studentId: s.id,
-          name: s.name,
-          phone: s.phone,
-          remark: s.remark || '',
-          className,
-          courseName: '—',
-          purchasedAt: null,
-          progressPct: null,
-          status: '—',
-          lastStudyAt: null,
-        })
-        continue
-      }
-      for (const e of enrollments) {
-        list.push({
-          key: `${s.id}-${e.courseId}`,
-          studentId: s.id,
-          name: s.name,
-          phone: s.phone,
-          remark: s.remark || '',
-          className,
-          courseName: courseLabel(e.courseId),
-          purchasedAt: e.purchasedAt || null,
-          progressPct: e.progressPct ?? 0,
-          status: e.status || '—',
-          lastStudyAt: e.lastStudyAt || null,
-        })
-      }
+      const enrollments = Array.isArray(s.enrollments) ? s.enrollments.filter((e) => e && e.courseId) : []
+      const latestPurchasedAt = enrollments.reduce((max, e) => {
+        const t = e?.purchasedAt ? new Date(e.purchasedAt).getTime() : 0
+        return t > max ? t : max
+      }, 0)
+      list.push({
+        key: s.id,
+        studentId: s.id,
+        name: s.name,
+        phone: s.phone,
+        remark: s.remark || '',
+        className,
+        enrollments,
+        offlineCourseIds: Array.isArray(cls?.offlineCourseIds) ? cls.offlineCourseIds : [],
+        offlineCourseName: cls?.offlineCourseName || '',
+        latestPurchasedAt: latestPurchasedAt ? new Date(latestPurchasedAt).toISOString() : null,
+      })
     }
     list.sort((a, b) => {
-      const ta = a.purchasedAt ? new Date(a.purchasedAt).getTime() : 0
-      const tb = b.purchasedAt ? new Date(b.purchasedAt).getTime() : 0
+      const ta = a.latestPurchasedAt ? new Date(a.latestPurchasedAt).getTime() : 0
+      const tb = b.latestPurchasedAt ? new Date(b.latestPurchasedAt).getTime() : 0
       return tb - ta
     })
-    const seenStudent = new Set()
-    for (const row of list) {
-      if (seenStudent.has(row.studentId)) row.showActions = false
-      else {
-        row.showActions = true
-        seenStudent.add(row.studentId)
-      }
-    }
     return list
   }, [ws, effectiveTableClassFilter])
 
   const classRosterRows = useMemo(() => {
     if (!ws || !pinClassId) return []
     const list = []
+    const cls = ws.classes.find((c) => c.id === pinClassId)
     for (const s of ws.students || []) {
       if (s.classId !== pinClassId) continue
       list.push({
@@ -312,6 +307,8 @@ export default function FranchisePartnerStudents() {
         phone: s.phone,
         remark: s.remark || '',
         enrollments: Array.isArray(s.enrollments) ? s.enrollments : [],
+        offlineCourseIds: Array.isArray(cls?.offlineCourseIds) ? cls.offlineCourseIds : [],
+        offlineCourseName: cls?.offlineCourseName || '',
       })
     }
     list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN'))
@@ -427,7 +424,7 @@ export default function FranchisePartnerStudents() {
       {showPinnedClassRoster && viewedClassLabel ? (
         <p className="text-sm text-slate-600 -mt-2 leading-relaxed">
           「{viewedClassLabel}」本班名册：共 <span className="font-medium text-slate-800">{studentCount}</span>{' '}
-          人（每人一行；每门线上课单独显示进度与状态。开通时间、最近学习等完整学情表请点「学情」或前往「学习进度」。）
+          人（每人一行；同一学员的多门线上课、多个线下课包都在同一行展示。完整学情表请点「学情」或前往「学习进度」。）
         </p>
       ) : null}
 
@@ -464,7 +461,7 @@ export default function FranchisePartnerStudents() {
             </>
           )}
           <span className="text-xs text-slate-400">
-            {showPinnedClassRoster ? `共 ${studentCount} 人` : `共 ${studentCount} 名学员 · ${allRows.length} 条学习记录`}
+            {showPinnedClassRoster ? `共 ${studentCount} 人` : `共 ${studentCount} 名学员`}
           </span>
         </div>
       </div>
@@ -481,6 +478,7 @@ export default function FranchisePartnerStudents() {
               <tr>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">姓名</th>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">手机</th>
+                <th className="px-5 py-3 font-medium min-w-[12rem] align-middle text-left">线下课程</th>
                 <th
                   className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left"
                   title="每名学员可有多门线上课；每门课有独立的进度百分比与完成状态。时间维度与全机构筛选见「学习进度」。"
@@ -503,6 +501,9 @@ export default function FranchisePartnerStudents() {
                     />
                   </td>
                   <td className="px-5 py-3 align-middle text-left text-slate-600 font-mono whitespace-nowrap">{row.phone}</td>
+                  <td className="px-5 py-3 align-middle text-left text-slate-700">
+                    <OfflineCoursesCell courseIds={row.offlineCourseIds} courseName={row.offlineCourseName} />
+                  </td>
                   <td className="px-5 py-3 align-middle text-left text-slate-700">
                     <OnlineCoursesPerLessonCell enrollments={row.enrollments} />
                   </td>
@@ -536,16 +537,15 @@ export default function FranchisePartnerStudents() {
         </div>
       ) : (
         <div className="overflow-x-auto card rounded-2xl border border-slate-200">
-          <table className="w-full border-collapse text-sm text-left min-w-[1000px]">
+          <table className="w-full border-collapse text-sm text-left min-w-[1080px]">
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">姓名</th>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">手机</th>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">所在班级</th>
-                <th className="px-5 py-3 font-medium min-w-[10rem] align-middle text-left">课程</th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">购买/开通时间</th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-right tabular-nums">学习进度</th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-center">完成状态</th>
+                <th className="px-5 py-3 font-medium min-w-[12rem] align-middle text-left">线下课程</th>
+                <th className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left">已选线上课程</th>
+                <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">最近开通时间</th>
                 <th className="px-5 py-3 font-medium whitespace-nowrap min-w-[17rem] align-middle text-left">操作</th>
               </tr>
             </thead>
@@ -563,53 +563,35 @@ export default function FranchisePartnerStudents() {
                   </td>
                   <td className="px-5 py-3 align-middle text-left text-slate-600 font-mono whitespace-nowrap">{row.phone}</td>
                   <td className="px-5 py-3 align-middle text-left text-slate-700 whitespace-nowrap">{row.className}</td>
-                  <td className="px-5 py-3 align-middle text-left text-slate-700 leading-snug">{row.courseName}</td>
-                  <td className="px-5 py-3 align-middle text-left text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(row.purchasedAt)}</td>
-                  <td className="px-5 py-3 align-middle text-right text-slate-700 tabular-nums whitespace-nowrap">
-                    {row.progressPct == null ? '—' : `${Math.min(100, row.progressPct)}%`}
+                  <td className="px-5 py-3 align-middle text-left text-slate-700">
+                    <OfflineCoursesCell courseIds={row.offlineCourseIds} courseName={row.offlineCourseName} />
                   </td>
-                  <td className="px-5 py-3 align-middle text-center">
-                    {row.status === '—' ? (
-                      <span className="text-slate-400">—</span>
-                    ) : (
-                      <span
-                        className={
-                          'inline-flex items-center justify-center text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap ' +
-                          (row.status === '已完成'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : row.status === '未开始'
-                              ? 'bg-slate-100 text-slate-600'
-                              : 'bg-sky-100 text-sky-800')
-                        }
-                      >
-                        {row.status}
-                      </span>
-                    )}
+                  <td className="px-5 py-3 align-middle text-left text-slate-700">
+                    <OnlineCoursesPerLessonCell enrollments={row.enrollments} />
                   </td>
+                  <td className="px-5 py-3 align-middle text-left text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(row.latestPurchasedAt)}</td>
                   <td className="px-5 py-3 align-middle text-left">
-                    {row.showActions ? (
-                      <div className="flex flex-row flex-nowrap items-center gap-2">
-                        <Link
-                          to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}
-                          className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 hover:bg-slate-200 hover:border-slate-400 transition-colors"
-                        >
-                          充课
-                        </Link>
-                        <Link
-                          to={`/franchise-partner/progress?studentId=${encodeURIComponent(row.studentId)}`}
-                          className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                        >
-                          查看学情
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteStudent(row.studentId, row.name)}
-                          className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-rose-50 text-rose-800 text-xs font-semibold border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-colors"
-                        >
-                          删除
-                        </button>
-                      </div>
-                    ) : null}
+                    <div className="flex flex-row flex-nowrap items-center gap-2">
+                      <Link
+                        to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}
+                        className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 hover:bg-slate-200 hover:border-slate-400 transition-colors"
+                      >
+                        充课
+                      </Link>
+                      <Link
+                        to={`/franchise-partner/progress?studentId=${encodeURIComponent(row.studentId)}`}
+                        className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      >
+                        查看学情
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteStudent(row.studentId, row.name)}
+                        className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-rose-50 text-rose-800 text-xs font-semibold border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-colors"
+                      >
+                        删除
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

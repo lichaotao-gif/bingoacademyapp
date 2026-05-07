@@ -1106,11 +1106,11 @@ function defaultWorkspace(partnerId, refCode) {
         createdAt: new Date(t0 - 86400000 * 7).toISOString(),
         courseType: '竞赛培优',
         startDate: '',
-        offlineCourseId: 'ai-advance-ml',
-        offlineCourseIds: ['ai-advance-ml'],
-        offlineCourseName: '《机器学习入门与实战》',
-        offlineLessons: getOfflineLessonTemplate('ai-advance-ml').map((l, i) =>
-          i < 3 ? { ...l, done: true } : l,
+        offlineCourseId: 'ai-advance-basic',
+        offlineCourseIds: ['ai-advance-basic', 'ai-advance-ml'],
+        offlineCourseName: '《AI基础原理与应用》、《机器学习入门与实战》',
+        offlineLessons: getMergedOfflineLessonTemplates(['ai-advance-basic', 'ai-advance-ml']).map((l, i) =>
+          i < 4 ? { ...l, done: true } : l,
         ),
       },
       {
@@ -1228,6 +1228,8 @@ function ensureClassOfflineFields(ws) {
     }
 
     const idsFromMeta = Array.isArray(c.offlineCourseIds) ? c.offlineCourseIds : []
+    const hasCourseMeta = idsFromMeta.length || c.offlineCourseId || c.offlineCourseName
+    if (!hasCourseMeta) continue
     const cid =
       c.offlineCourseId && FRANCHISE_OFFLINE_LESSON_CATALOG[c.offlineCourseId]
         ? c.offlineCourseId
@@ -1258,6 +1260,30 @@ function ensureMaterialOrderProductNames(ws) {
       }
     }
   }
+  return changed
+}
+
+function ensureDemoMultiOfflineCourseSample(ws) {
+  let changed = false
+  const sampleClass = (ws.classes || []).find((c) => c.id === 'cls-2')
+  if (!sampleClass) return changed
+  const expectedIds = ['ai-advance-basic', 'ai-advance-ml']
+  const currentIds = Array.isArray(sampleClass.offlineCourseIds) ? sampleClass.offlineCourseIds.filter(Boolean) : []
+  const missingIds = expectedIds.filter((id) => !currentIds.includes(id))
+  if (!missingIds.length) return changed
+
+  const currentLessons = Array.isArray(sampleClass.offlineLessons) ? sampleClass.offlineLessons : []
+  const currentLessonIds = new Set(currentLessons.map((l) => l.id))
+  const addLessons = getMergedOfflineLessonTemplates(missingIds).filter((l) => !currentLessonIds.has(l.id))
+  sampleClass.offlineCourseIds = [...currentIds, ...missingIds]
+  sampleClass.offlineCourseId = sampleClass.offlineCourseIds[0]
+  sampleClass.offlineCourseName = sampleClass.offlineCourseIds
+    .map((id) => FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === id)?.name || id)
+    .join('、')
+  if (addLessons.length) {
+    sampleClass.offlineLessons = [...currentLessons, ...addLessons]
+  }
+  changed = true
   return changed
 }
 
@@ -1307,6 +1333,7 @@ export function getWorkspace(partnerId, refCode) {
   }
   if (normalizeEnrollments(ws)) saveWorkspace(partnerId, ws)
   if (ensureClassOfflineFields(ws)) saveWorkspace(partnerId, ws)
+  if (ensureDemoMultiOfflineCourseSample(ws)) saveWorkspace(partnerId, ws)
   if (ensureInstitutionQualification(ws, partnerId, refCode)) saveWorkspace(partnerId, ws)
   if (stripOversizedLicenseAttachments(ws)) saveWorkspace(partnerId, ws)
   if (!Array.isArray(ws.materialOrders)) {
@@ -1386,11 +1413,8 @@ export function createClass(partnerId, refCode, name, meta = {}) {
   const n = name.trim()
   if (!n) return { ok: false, msg: '请输入班级名称' }
   const offlineCourseIds = normalizeOfflineCourseIdsFromMeta(meta)
-  if (!offlineCourseIds.length) {
-    return { ok: false, msg: '请至少选择一个线下课程包（可多选，课时目录由总部课程包同步）' }
-  }
   const offlineLessons = getMergedOfflineLessonTemplates(offlineCourseIds)
-  if (!offlineLessons.length) {
+  if (offlineCourseIds.length && !offlineLessons.length) {
     return { ok: false, msg: '所选课程包暂无线下课时目录，请重新选择' }
   }
   const id = `cls-${Date.now()}`
@@ -1409,6 +1433,38 @@ export function createClass(partnerId, refCode, name, meta = {}) {
   })
   saveWorkspace(partnerId, ws)
   return { ok: true, ws, newClassId: id }
+}
+
+/** 班级创建后追加线下课程包；保留已勾选课时，仅追加新包课时。 */
+export function addOfflineCoursePacksToClass(partnerId, refCode, classId, courseIds) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
+  const ws = getWorkspace(partnerId, refCode)
+  const cls = ws.classes.find((c) => c.id === classId)
+  if (!cls) return { ok: false, msg: '班级不存在' }
+  const normalized = normalizeOfflineCourseIdsFromMeta({ offlineCourseIds: courseIds })
+  if (!normalized.length) return { ok: false, msg: '请选择要添加的线下课程包' }
+
+  const existingIds = Array.isArray(cls.offlineCourseIds) && cls.offlineCourseIds.length
+    ? cls.offlineCourseIds.filter((id) => FRANCHISE_OFFLINE_LESSON_CATALOG[id]?.length)
+    : normalizeOfflineCourseIdsFromMeta(cls)
+  const existingSet = new Set(existingIds)
+  const addIds = normalized.filter((id) => !existingSet.has(id))
+  if (!addIds.length) return { ok: false, msg: '所选课程包已在当前班级中' }
+
+  const currentLessons = Array.isArray(cls.offlineLessons) ? cls.offlineLessons : []
+  const currentLessonIds = new Set(currentLessons.map((l) => l.id))
+  const addLessons = getMergedOfflineLessonTemplates(addIds).filter((l) => !currentLessonIds.has(l.id))
+  if (!addLessons.length) return { ok: false, msg: '所选课程包暂无线下课时目录，请重新选择' }
+
+  const nextIds = [...existingIds, ...addIds]
+  const names = nextIds.map((cid) => FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === cid)?.name || cid)
+  cls.offlineCourseIds = nextIds
+  cls.offlineCourseId = nextIds[0]
+  cls.offlineCourseName = names.join('、')
+  cls.offlineLessons = [...currentLessons, ...addLessons]
+  saveWorkspace(partnerId, ws)
+  return { ok: true, ws, addedCourseIds: addIds }
 }
 
 /** 管理员勾选/取消某节线下课是否已上完 */
@@ -1444,6 +1500,8 @@ export function addStudentToClass(partnerId, refCode, classId, phone, name, rema
   const fr = assertPartnerNotFrozen(partnerId)
   if (fr) return fr
   const ws = getWorkspace(partnerId, refCode)
+  const cls = ws.classes.find((c) => c.id === classId)
+  if (!cls) return { ok: false, msg: '班级不存在' }
   const phoneNorm = String(phone).replace(/\D/g, '').slice(-11)
   if (phoneNorm.length < 11) return { ok: false, msg: '请输入11位手机号' }
   let stu = ws.students.find((s) => s.phone === phoneNorm)
@@ -1463,8 +1521,30 @@ export function addStudentToClass(partnerId, refCode, classId, phone, name, rema
     if (remark != null && String(remark).trim()) stu.remark = String(remark).trim()
     else if (remark === '') delete stu.remark
   }
-  const cls = ws.classes.find((c) => c.id === classId)
+  for (const c of ws.classes || []) {
+    if (c.id !== classId) c.studentIds = (c.studentIds || []).filter((id) => id !== stu.id)
+  }
   if (cls && !cls.studentIds.includes(stu.id)) cls.studentIds.push(stu.id)
+  saveWorkspace(partnerId, ws)
+  return { ok: true, ws }
+}
+
+/** 调配学员到其他班级：保留线上课、备注与学习记录，仅变更班级归属。 */
+export function moveStudentToClass(partnerId, refCode, studentId, targetClassId) {
+  const fr = assertPartnerNotFrozen(partnerId)
+  if (fr) return fr
+  const ws = getWorkspace(partnerId, refCode)
+  const stu = ws.students.find((s) => s.id === studentId)
+  if (!stu) return { ok: false, msg: '学员不存在' }
+  const target = ws.classes.find((c) => c.id === targetClassId)
+  if (!target) return { ok: false, msg: '目标班级不存在' }
+  if (stu.classId === targetClassId) return { ok: false, msg: '该学员已在目标班级中' }
+  for (const c of ws.classes || []) {
+    c.studentIds = (c.studentIds || []).filter((id) => id !== studentId)
+  }
+  stu.classId = targetClassId
+  if (!Array.isArray(target.studentIds)) target.studentIds = []
+  if (!target.studentIds.includes(studentId)) target.studentIds.push(studentId)
   saveWorkspace(partnerId, ws)
   return { ok: true, ws }
 }

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
+  addOfflineCoursePacksToClass,
   addStudentToClass,
   deleteClass,
   deleteStudent,
   FRANCHISE_OFFLINE_LESSON_CATALOG,
   FRANCHISE_PROMOTABLE_COURSES,
+  moveStudentToClass,
   setClassOfflineLessonDone,
 } from '../../utils/franchisePartnerStorage'
 import { OnlineCoursesPerLessonCell, StudentNameWithRemark } from './FranchisePartnerStudents'
@@ -43,6 +45,13 @@ export default function FranchisePartnerClassDetail() {
   /** 当前勾选弹窗对应的课程包 key（与 offlineProgressGroups[].packKey 一致），null 为关闭 */
   const [progressModalKey, setProgressModalKey] = useState(null)
   const [studentModalOpen, setStudentModalOpen] = useState(false)
+  const [courseModalOpen, setCourseModalOpen] = useState(false)
+  const [addOfflineCourseIds, setAddOfflineCourseIds] = useState([])
+  const [courseErr, setCourseErr] = useState('')
+  const [transferModalOpen, setTransferModalOpen] = useState(false)
+  const [transferStudent, setTransferStudent] = useState(null)
+  const [transferTargetClassId, setTransferTargetClassId] = useState('')
+  const [transferErr, setTransferErr] = useState('')
   const [stuName, setStuName] = useState('')
   const [stuPhone, setStuPhone] = useState('')
   const [stuRemark, setStuRemark] = useState('')
@@ -56,17 +65,32 @@ export default function FranchisePartnerClassDetail() {
     setStuErr('')
   }, [])
 
+  const closeCourseModal = useCallback(() => {
+    setCourseModalOpen(false)
+    setAddOfflineCourseIds([])
+    setCourseErr('')
+  }, [])
+
+  const closeTransferModal = useCallback(() => {
+    setTransferModalOpen(false)
+    setTransferStudent(null)
+    setTransferTargetClassId('')
+    setTransferErr('')
+  }, [])
+
   useEffect(() => {
-    if (progressModalKey == null && !studentModalOpen) return
+    if (progressModalKey == null && !studentModalOpen && !courseModalOpen && !transferModalOpen) return
     const onKey = (e) => {
       if (e.key === 'Escape') {
         setProgressModalKey(null)
         closeStudentModal()
+        closeCourseModal()
+        closeTransferModal()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [progressModalKey, studentModalOpen, closeStudentModal])
+  }, [progressModalKey, studentModalOpen, courseModalOpen, transferModalOpen, closeStudentModal, closeCourseModal, closeTransferModal])
 
   useEffect(() => {
     if (!ws || !classId) return
@@ -144,11 +168,42 @@ export default function FranchisePartnerClassDetail() {
 
   const nStu = fc.studentIds?.length || 0
   const active = nStu > 0
+  const transferTargetClasses = classes.filter((c) => c.id !== fc.id)
+  const boundOfflineCourseIds = new Set(
+    Array.isArray(fc.offlineCourseIds) && fc.offlineCourseIds.length
+      ? fc.offlineCourseIds
+      : offlineProgressGroups.map((g) => g.courseId).filter(Boolean),
+  )
+  const availableOfflineCourses = FRANCHISE_PROMOTABLE_COURSES.filter(
+    (c) => !boundOfflineCourseIds.has(c.id) && (FRANCHISE_OFFLINE_LESSON_CATALOG[c.id] || []).length,
+  )
+
+  const openCourseModal = () => {
+    setCourseErr('')
+    setAddOfflineCourseIds(availableOfflineCourses[0]?.id ? [availableOfflineCourses[0].id] : [])
+    setCourseModalOpen(true)
+  }
 
   const handleToggleOfflineLesson = (lessonId, checked) => {
     const r = setClassOfflineLessonDone(session.partnerId, session.refCode, classId, lessonId, checked)
     if (!r.ok) window.alert(r.msg || '保存失败')
     else refresh()
+  }
+
+  const handleAddOfflineCourses = (e) => {
+    e.preventDefault()
+    setCourseErr('')
+    if (!addOfflineCourseIds.length) {
+      setCourseErr('请选择要添加的线下课程包')
+      return
+    }
+    const r = addOfflineCoursePacksToClass(session.partnerId, session.refCode, classId, addOfflineCourseIds)
+    if (!r.ok) {
+      setCourseErr(r.msg || '添加失败')
+      return
+    }
+    closeCourseModal()
+    refresh()
   }
 
   const handleDeleteClass = () => {
@@ -180,6 +235,33 @@ export default function FranchisePartnerClassDetail() {
     const r = deleteStudent(session.partnerId, session.refCode, studentId)
     if (!r.ok) window.alert(r.msg || '删除失败')
     else refresh()
+  }
+
+  const openTransferModal = (row) => {
+    setTransferErr('')
+    setTransferStudent(row)
+    setTransferTargetClassId(transferTargetClasses[0]?.id || '')
+    setTransferModalOpen(true)
+  }
+
+  const handleTransferStudent = (e) => {
+    e.preventDefault()
+    setTransferErr('')
+    if (!transferStudent) return
+    if (!transferTargetClassId) {
+      setTransferErr('请选择目标班级')
+      return
+    }
+    const target = transferTargetClasses.find((c) => c.id === transferTargetClassId)
+    const ok = window.confirm(`确定将「${transferStudent.name}」调配到「${target?.name || '目标班级'}」？`)
+    if (!ok) return
+    const r = moveStudentToClass(session.partnerId, session.refCode, transferStudent.studentId, transferTargetClassId)
+    if (!r.ok) {
+      setTransferErr(r.msg || '调配失败')
+      return
+    }
+    closeTransferModal()
+    refresh()
   }
 
   return (
@@ -256,11 +338,26 @@ export default function FranchisePartnerClassDetail() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/40">
-          <h2 className="text-[15px] font-semibold text-slate-900">线下课进度</h2>
-          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-            多课程包时按包展示进度；每行「勾选课时」仅维护该包下的线下节次，全班共用同一勾选结果。
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/40">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-semibold text-slate-900">线下课进度</h2>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              多课程包时按包展示进度；每行「勾选课时」仅维护该包下的线下节次，全班共用同一勾选结果。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={openCourseModal}
+            disabled={!availableOfflineCourses.length}
+            className={
+              'shrink-0 inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ' +
+              (availableOfflineCourses.length
+                ? 'bg-[#3B66FF] text-white border-[#3B66FF] hover:bg-[#2f56e6]'
+                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed')
+            }
+          >
+            {availableOfflineCourses.length ? '添加线下课包' : '课包已全部添加'}
+          </button>
         </div>
         <div className="p-5 sm:p-6">
           {offlineProgressGroups.length === 0 ? (
@@ -323,7 +420,7 @@ export default function FranchisePartnerClassDetail() {
           {studentRows.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-slate-500">本班暂无学员，请在上方「班级信息」栏使用「添加学员」。</p>
           ) : (
-            <table className="w-full border-collapse text-sm text-left min-w-[640px]">
+            <table className="w-full border-collapse text-sm text-left min-w-[760px]">
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
                   <th className="px-5 py-3 font-medium whitespace-nowrap">姓名</th>
@@ -334,7 +431,7 @@ export default function FranchisePartnerClassDetail() {
                   >
                     已选线上课程
                   </th>
-                  <th className="px-5 py-3 font-medium whitespace-nowrap min-w-[14rem]">操作</th>
+                  <th className="px-5 py-3 font-medium whitespace-nowrap min-w-[18rem]">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -367,6 +464,20 @@ export default function FranchisePartnerClassDetail() {
                         >
                           学情
                         </Link>
+                        <button
+                          type="button"
+                          onClick={() => openTransferModal(row)}
+                          disabled={!transferTargetClasses.length}
+                          className={
+                            'inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ' +
+                            (transferTargetClasses.length
+                              ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                              : 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed')
+                          }
+                          title={transferTargetClasses.length ? '移动到其他班级' : '暂无其他班级可调配'}
+                        >
+                          调配班级
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteStudent(row.studentId, row.name)}
@@ -450,6 +561,171 @@ export default function FranchisePartnerClassDetail() {
                 关闭
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {courseModalOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={closeCourseModal} role="presentation" />
+          <div
+            className="relative w-full max-w-[520px] rounded-xl bg-white shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="min-w-0 pr-4">
+                <h2 className="text-base font-semibold text-slate-900">添加线下课包</h2>
+                <p className="text-xs text-slate-500 mt-1 truncate">班级：{fc.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCourseModal}
+                className="w-8 h-8 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-xl leading-none shrink-0"
+                aria-label="关闭"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleAddOfflineCourses} className="p-6 space-y-4">
+              <div>
+                <span className="block text-sm font-medium text-slate-600 mb-2">
+                  可添加课程包 <span className="text-rose-600">*</span>
+                </span>
+                {availableOfflineCourses.length ? (
+                  <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 bg-white overflow-hidden">
+                    {availableOfflineCourses.map((c) => {
+                      const nLess = (FRANCHISE_OFFLINE_LESSON_CATALOG[c.id] || []).length
+                      const checked = addOfflineCourseIds.includes(c.id)
+                      return (
+                        <label key={c.id} className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50/80">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const on = e.target.checked
+                              setAddOfflineCourseIds((prev) => {
+                                if (on) return prev.includes(c.id) ? prev : [...prev, c.id]
+                                return prev.filter((x) => x !== c.id)
+                              })
+                            }}
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-[#3B66FF] focus:ring-[#3B66FF]/30"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="text-sm font-medium text-slate-800">{c.name}</span>
+                            <span className="block text-xs text-slate-500 mt-0.5">将追加 {nLess} 节线下课时</span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-8 text-center text-sm text-slate-500">
+                    当前班级已添加全部可用线下课程包。
+                  </p>
+                )}
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  新增课包会追加到当前线下课进度末尾，已勾选完成的原课时不会被重置。
+                </p>
+              </div>
+              {courseErr ? <p className="text-sm text-red-600">{courseErr}</p> : null}
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={closeCourseModal}
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-slate-100 text-slate-800 text-sm font-semibold border border-slate-200 hover:bg-slate-200"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={!availableOfflineCourses.length}
+                  className={
+                    'inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold ' +
+                    (availableOfflineCourses.length
+                      ? 'bg-[#3B66FF] text-white hover:bg-[#2f56e6]'
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed')
+                  }
+                >
+                  确认添加
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {transferModalOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={closeTransferModal} role="presentation" />
+          <div
+            className="relative w-full max-w-[460px] rounded-xl bg-white shadow-xl border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="min-w-0 pr-4">
+                <h2 className="text-base font-semibold text-slate-900">调配班级</h2>
+                <p className="text-xs text-slate-500 mt-1 truncate">
+                  {transferStudent?.name || '学员'} · 当前班级：{fc.name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeTransferModal}
+                className="w-8 h-8 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-xl leading-none shrink-0"
+                aria-label="关闭"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleTransferStudent} className="p-6 space-y-4">
+              {transferTargetClasses.length ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    目标班级 <span className="text-rose-600">*</span>
+                  </label>
+                  <select
+                    value={transferTargetClassId}
+                    onChange={(e) => setTransferTargetClassId(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                  >
+                    {transferTargetClasses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                    调配后，学员的线上课、学习进度与备注会保留，只变更所在班级。
+                  </p>
+                </div>
+              ) : (
+                <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-8 text-center text-sm text-slate-500">
+                  暂无其他班级可调配，请先创建新班级。
+                </p>
+              )}
+              {transferErr ? <p className="text-sm text-red-600">{transferErr}</p> : null}
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={closeTransferModal}
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-slate-100 text-slate-800 text-sm font-semibold border border-slate-200 hover:bg-slate-200"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={!transferTargetClasses.length}
+                  className={
+                    'inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold ' +
+                    (transferTargetClasses.length
+                      ? 'bg-[#3B66FF] text-white hover:bg-[#2f56e6]'
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed')
+                  }
+                >
+                  确认调配
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}
