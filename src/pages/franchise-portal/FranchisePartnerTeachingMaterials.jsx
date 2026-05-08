@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FRANCHISE_TEACHING_CATALOG_LS_KEY,
-  calculateTeachingMaterialBulkPricing,
+  calculateTeachingMaterialOrderPricing,
+  formatTeachingDiscountTier,
   getFranchiseTeachingProductsCatalog,
-  getTeachingMaterialBulkDiscount,
+  getTeachingMaterialDiscountPolicy,
+  getTeachingMaterialOrderTierHint,
   purchaseTeachingMaterials,
 } from '../../utils/franchisePartnerStorage'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
@@ -73,6 +75,19 @@ export default function FranchisePartnerTeachingMaterials() {
     return getFranchiseTeachingProductsCatalog()
   }, [catalogTick])
 
+  const discountPolicy = useMemo(() => {
+    void catalogTick
+    return getTeachingMaterialDiscountPolicy()
+  }, [catalogTick])
+
+  const policySummaryText = useMemo(() => {
+    const lineParts = (discountPolicy.lineQuantityTiers || []).map(formatTeachingDiscountTier).filter(Boolean)
+    const orderParts = (discountPolicy.orderTotalQuantityTiers || []).map(formatTeachingDiscountTier).filter(Boolean)
+    const a = lineParts.length ? `单行：${lineParts.join('；')}` : ''
+    const b = orderParts.length ? `整单：${orderParts.join('；')}` : ''
+    return [a, b].filter(Boolean).join(' · ') || '暂无总部配置的件数优惠'
+  }, [discountPolicy])
+
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === FRANCHISE_TEACHING_CATALOG_LS_KEY) setCatalogTick((t) => t + 1)
@@ -107,15 +122,16 @@ export default function FranchisePartnerTeachingMaterials() {
 
   /** 购物车内商品总件数（各 SKU 数量之和） */
   const cartTotalQty = useMemo(() => cartLines.reduce((sum, line) => sum + line.qty, 0), [cartLines])
-  const bulkPricing = useMemo(() => calculateTeachingMaterialBulkPricing(cartTotal, cartTotalQty), [cartTotal, cartTotalQty])
+  const bulkPricing = useMemo(
+    () => calculateTeachingMaterialOrderPricing(cartLines, teachingProducts),
+    [cartLines, teachingProducts],
+  )
   const cartPayAmount = bulkPricing.payAmount
-  const activeBulkDiscount = useMemo(() => getTeachingMaterialBulkDiscount(cartTotalQty), [cartTotalQty])
-  const nextDiscountHint = useMemo(() => {
-    if (cartTotalQty >= 30) return '已享最高阶梯优惠'
-    if (cartTotalQty >= 20) return `再加 ${30 - cartTotalQty} 件升级为 30件以上5折`
-    if (cartTotalQty >= 10) return `再加 ${20 - cartTotalQty} 件升级为 20件8折`
-    return `再加 ${10 - cartTotalQty} 件可享 10件9折`
-  }, [cartTotalQty])
+  const nextDiscountHint = useMemo(() => getTeachingMaterialOrderTierHint(cartTotalQty), [cartTotalQty])
+  const cartStatusHint =
+    bulkPricing.discountAmount > 0
+      ? `已减 ¥${bulkPricing.discountAmount.toFixed(2)}（${bulkPricing.discountLabel}）`
+      : nextDiscountHint
 
   const shipmentRows = useMemo(() => {
     const rows = []
@@ -150,18 +166,13 @@ export default function FranchisePartnerTeachingMaterials() {
     setSubmitErr('')
     const nextCart = { ...cart, [productId]: Math.max(1, parseInt(String(cart[productId]), 10) || 1) }
     setCart(nextCart)
-    const p = teachingProducts.find((x) => x.id === productId)
-    let projectedOriginal = 0
-    let projectedQty = 0
+    const projectedLines = []
     for (const [id, qty] of Object.entries(nextCart)) {
       const q = Math.max(0, parseInt(String(qty), 10) || 0)
       if (!q) continue
-      const product = id === productId ? p : teachingProducts.find((x) => x.id === id)
-      if (!product) continue
-      projectedOriginal += product.price * q
-      projectedQty += q
+      projectedLines.push({ productId: id, qty: q })
     }
-    const projected = calculateTeachingMaterialBulkPricing(projectedOriginal, projectedQty).payAmount
+    const projected = calculateTeachingMaterialOrderPricing(projectedLines, teachingProducts).payAmount
     setPayMethod(ws.balance >= projected ? 'balance' : 'wechat')
     setCheckoutOpen(true)
   }
@@ -246,11 +257,11 @@ export default function FranchisePartnerTeachingMaterials() {
           <div className="rounded-2xl border border-rose-300 bg-gradient-to-r from-rose-50 via-red-50 to-orange-50 px-4 py-3 text-sm text-rose-950 shadow-sm ring-1 ring-rose-100">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-bold">
-                <span className="mr-2 inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold text-white align-middle">限时活动</span>
-                批量采购优惠：10件9折 · 20件8折 · 30件以上5折
+                <span className="mr-2 inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold text-white align-middle">采购优惠</span>
+                {policySummaryText}
               </p>
               <p className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
-                当前购物车 {cartTotalQty} 件，{activeBulkDiscount.rate < 1 ? `已享 ${activeBulkDiscount.label}` : nextDiscountHint}
+                当前购物车 {cartTotalQty} 件，{cartStatusHint}
               </p>
             </div>
           </div>
@@ -448,11 +459,11 @@ export default function FranchisePartnerTeachingMaterials() {
             <div className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2.5 mb-4 text-xs text-rose-900">
               <div className="flex justify-between gap-3">
                 <span className="font-semibold">活动优惠</span>
-                <span className="font-semibold">{activeBulkDiscount.rate < 1 ? bulkPricing.discountLabel : '未达优惠门槛'}</span>
+                <span className="font-semibold text-right leading-snug max-w-[14rem]">{bulkPricing.discountLabel}</span>
               </div>
               <div className="flex justify-between gap-3 mt-1">
-                <span>{nextDiscountHint}</span>
-                <span className="font-semibold tabular-nums">-¥{bulkPricing.discountAmount.toFixed(2)}</span>
+                <span className="text-rose-800/90">{nextDiscountHint}</span>
+                <span className="font-semibold tabular-nums shrink-0">-¥{bulkPricing.discountAmount.toFixed(2)}</span>
               </div>
             </div>
             <p className="flex justify-between text-sm mb-4">

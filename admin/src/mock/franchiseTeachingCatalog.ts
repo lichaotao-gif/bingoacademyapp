@@ -5,6 +5,28 @@
  */
 export const FRANCHISE_TEACHING_CATALOG_LS_KEY = 'bingo_franchise_teaching_products_catalog_v1'
 
+/** 按「件数门槛」匹配一条优惠（取最高满足门槛的阶梯） */
+export interface TeachingQtyTier {
+  /** 满多少件起 */
+  minQty: number
+  /**
+   * 折扣系数：0.9 表示 9 折；为 1 或不填表示本阶梯不打折（可仅用满减）
+   */
+  discountRate?: number
+  /**
+   * 满减金额（元）：在满足件数时，从该行小计或整单小计中扣减（与 discountRate 可叠加：先折后减）
+   */
+  reduceYuan?: number
+}
+
+/** 总部配置的学具采购优惠（加盟商端与下单计价共用 localStorage） */
+export interface TeachingDiscountPolicy {
+  /** 单行：某一 SKU 购买数量达到门槛时，仅对该行小计生效 */
+  lineQuantityTiers: TeachingQtyTier[]
+  /** 整单：购物车总件数达到门槛时，对「已应用单行优惠后的合计」再打折 / 满减 */
+  orderTotalQuantityTiers: TeachingQtyTier[]
+}
+
 export interface TeachingProduct {
   id: string
   name: string
@@ -12,6 +34,15 @@ export interface TeachingProduct {
   desc: string
   coverImageUrl?: string
   enabled?: boolean
+}
+
+export const DEFAULT_TEACHING_DISCOUNT_POLICY: TeachingDiscountPolicy = {
+  lineQuantityTiers: [],
+  orderTotalQuantityTiers: [
+    { minQty: 30, discountRate: 0.5 },
+    { minQty: 20, discountRate: 0.8 },
+    { minQty: 10, discountRate: 0.9 },
+  ],
 }
 
 export const DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
@@ -69,6 +100,47 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
   },
 ]
 
+function clampRate(r: unknown): number {
+  const x = Number(r)
+  if (!Number.isFinite(x)) return 1
+  if (x < 0.05) return 0.05
+  if (x > 1) return 1
+  return Math.round(x * 1000) / 1000
+}
+
+function normalizeTier(t: Partial<TeachingQtyTier> & Record<string, unknown>): TeachingQtyTier | null {
+  const minQty = Math.max(0, Math.floor(Number(t.minQty) || 0))
+  if (minQty <= 0) return null
+  const reduceYuan = Math.max(0, Math.round((Number(t.reduceYuan) || 0) * 100) / 100)
+  const rawRate = t.discountRate
+  const hasExplicitRate =
+    rawRate != null && String(rawRate).trim() !== '' && Number.isFinite(Number(rawRate))
+  let discountRate = hasExplicitRate ? clampRate(rawRate) : 1
+  if (reduceYuan > 0 && !hasExplicitRate) discountRate = 1
+  return { minQty, discountRate, reduceYuan }
+}
+
+export function normalizeTeachingDiscountPolicy(raw: unknown): TeachingDiscountPolicy {
+  const fallbackOrder = () => DEFAULT_TEACHING_DISCOUNT_POLICY.orderTotalQuantityTiers.map((x) => ({ ...x }))
+  const def = (): TeachingDiscountPolicy => ({
+    lineQuantityTiers: DEFAULT_TEACHING_DISCOUNT_POLICY.lineQuantityTiers.map((x) => ({ ...x })),
+    orderTotalQuantityTiers: fallbackOrder(),
+  })
+  if (!raw || typeof raw !== 'object') return def()
+  const o = raw as { lineQuantityTiers?: unknown; orderTotalQuantityTiers?: unknown }
+  const lineArr = Array.isArray(o.lineQuantityTiers) ? o.lineQuantityTiers : []
+  const lineQuantityTiers = lineArr.map((x) => normalizeTier(x as TeachingQtyTier)).filter(Boolean) as TeachingQtyTier[]
+  let orderTotalQuantityTiers: TeachingQtyTier[]
+  if (!Array.isArray(o.orderTotalQuantityTiers)) {
+    orderTotalQuantityTiers = fallbackOrder()
+  } else {
+    orderTotalQuantityTiers = o.orderTotalQuantityTiers
+      .map((x) => normalizeTier(x as TeachingQtyTier))
+      .filter(Boolean) as TeachingQtyTier[]
+  }
+  return { lineQuantityTiers, orderTotalQuantityTiers }
+}
+
 function normalize(p: Partial<TeachingProduct> & { id?: string }): TeachingProduct | null {
   const id = String(p.id ?? `kit-${Date.now().toString(36)}`).trim()
   if (!id || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) return null
@@ -83,25 +155,64 @@ function normalize(p: Partial<TeachingProduct> & { id?: string }): TeachingProdu
   }
 }
 
-function readRaw(): TeachingProduct[] {
+export interface TeachingCatalogBlob {
+  products: TeachingProduct[]
+  discountPolicy: TeachingDiscountPolicy
+  updatedAt: string
+}
+
+function readBlob(): TeachingCatalogBlob {
   try {
     const raw = localStorage.getItem(FRANCHISE_TEACHING_CATALOG_LS_KEY)
-    if (!raw) return DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x }))
-    const data = JSON.parse(raw) as { products?: unknown }
+    if (!raw) {
+      return {
+        products: DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x })),
+        discountPolicy: normalizeTeachingDiscountPolicy(DEFAULT_TEACHING_DISCOUNT_POLICY),
+        updatedAt: new Date().toISOString(),
+      }
+    }
+    const data = JSON.parse(raw) as { products?: unknown; discountPolicy?: unknown; updatedAt?: string }
     const arr = data?.products
-    if (!Array.isArray(arr)) return DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x }))
+    if (!Array.isArray(arr)) {
+      return {
+        products: DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x })),
+        discountPolicy: normalizeTeachingDiscountPolicy(data?.discountPolicy ?? DEFAULT_TEACHING_DISCOUNT_POLICY),
+        updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : new Date().toISOString(),
+      }
+    }
     const list = arr.map((x) => normalize(x as TeachingProduct)).filter(Boolean) as TeachingProduct[]
-    return list.length ? list : DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x }))
+    return {
+      products: list.length ? list : DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x })),
+      discountPolicy: normalizeTeachingDiscountPolicy(data?.discountPolicy ?? DEFAULT_TEACHING_DISCOUNT_POLICY),
+      updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : new Date().toISOString(),
+    }
   } catch {
-    return DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x }))
+    return {
+      products: DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x })),
+      discountPolicy: normalizeTeachingDiscountPolicy(DEFAULT_TEACHING_DISCOUNT_POLICY),
+      updatedAt: new Date().toISOString(),
+    }
   }
 }
 
-function writeRaw(products: TeachingProduct[]) {
+function writeBlob(products: TeachingProduct[], discountPolicy: TeachingDiscountPolicy) {
   localStorage.setItem(
     FRANCHISE_TEACHING_CATALOG_LS_KEY,
-    JSON.stringify({ products, updatedAt: new Date().toISOString() }),
+    JSON.stringify({
+      products,
+      discountPolicy: normalizeTeachingDiscountPolicy(discountPolicy),
+      updatedAt: new Date().toISOString(),
+    }),
   )
+}
+
+function readRaw(): TeachingProduct[] {
+  return readBlob().products
+}
+
+function writeRaw(products: TeachingProduct[], discountPolicy?: TeachingDiscountPolicy) {
+  const blob = readBlob()
+  writeBlob(products, discountPolicy ?? blob.discountPolicy)
 }
 
 /** 按本地存储中的数组顺序返回（拖拽排序即修改该顺序） */
@@ -131,7 +242,8 @@ export function deleteTeachingProduct(id: string): boolean {
 
 /** 按给定 id 顺序重写列表（用于拖拽排序） */
 export function reorderTeachingProducts(orderedIds: string[]): void {
-  const all = readRaw()
+  const blob = readBlob()
+  const all = blob.products
   const map = new Map(all.map((x) => [x.id, x]))
   const next: TeachingProduct[] = []
   for (const id of orderedIds) {
@@ -141,9 +253,24 @@ export function reorderTeachingProducts(orderedIds: string[]): void {
   for (const p of all) {
     if (!orderedIds.includes(p.id)) next.push(p)
   }
-  writeRaw(next)
+  writeBlob(next, blob.discountPolicy)
 }
 
 export function resetTeachingProductsToSeed(): void {
-  writeRaw(DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x })))
+  const blob = readBlob()
+  writeBlob(
+    DEFAULT_TEACHING_PRODUCTS_SEED.map((x) => ({ ...x })),
+    blob.discountPolicy,
+  )
+}
+
+/** 后台读取当前优惠配置（与商品共用同一 Key） */
+export function getTeachingDiscountPolicyAdmin(): TeachingDiscountPolicy {
+  return normalizeTeachingDiscountPolicy(readBlob().discountPolicy)
+}
+
+/** 保存优惠配置（保留商品列表不变） */
+export function saveTeachingDiscountPolicyAdmin(policy: TeachingDiscountPolicy): void {
+  const blob = readBlob()
+  writeBlob(blob.products, policy)
 }

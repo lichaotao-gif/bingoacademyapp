@@ -216,23 +216,185 @@ export const FRANCHISE_TEACHING_PRODUCTS = [
   },
 ]
 
-export function getTeachingMaterialBulkDiscount(totalQty) {
-  const qty = Math.max(0, parseInt(String(totalQty), 10) || 0)
-  if (qty >= 30) return { rate: 0.5, label: '30件以上5折', threshold: 30 }
-  if (qty >= 20) return { rate: 0.8, label: '20件8折', threshold: 20 }
-  if (qty >= 10) return { rate: 0.9, label: '10件9折', threshold: 10 }
-  return { rate: 1, label: '未达优惠门槛', threshold: 0 }
+const DEFAULT_TEACHING_ORDER_QTY_TIERS = [
+  { minQty: 30, discountRate: 0.5, reduceYuan: 0 },
+  { minQty: 20, discountRate: 0.8, reduceYuan: 0 },
+  { minQty: 10, discountRate: 0.9, reduceYuan: 0 },
+]
+
+function normalizeTeachingQtyTierJs(t) {
+  if (!t || typeof t !== 'object') return null
+  const minQty = Math.max(0, Math.floor(Number(t.minQty) || 0))
+  if (minQty <= 0) return null
+  let discountRate = Number(t.discountRate)
+  if (!Number.isFinite(discountRate) || discountRate > 1) discountRate = 1
+  if (discountRate < 0.05) discountRate = 0.05
+  const reduceYuan = Math.max(0, Math.round((Number(t.reduceYuan) || 0) * 100) / 100)
+  if (reduceYuan > 0 && (t.discountRate == null || t.discountRate === '')) discountRate = 1
+  return { minQty, discountRate, reduceYuan }
 }
 
+/**
+ * 总部「学具商品配置」中的采购优惠（与 admin franchiseTeachingCatalog 同 Key）
+ */
+export function getTeachingMaterialDiscountPolicy() {
+  try {
+    const ls = localStorage.getItem(FRANCHISE_TEACHING_CATALOG_LS_KEY)
+    if (!ls) {
+      return {
+        lineQuantityTiers: [],
+        orderTotalQuantityTiers: DEFAULT_TEACHING_ORDER_QTY_TIERS.map((x) => ({ ...x })),
+      }
+    }
+    const data = JSON.parse(ls)
+    const raw = data?.discountPolicy
+    const lineArr = Array.isArray(raw?.lineQuantityTiers) ? raw.lineQuantityTiers : []
+    const lineQuantityTiers = lineArr.map(normalizeTeachingQtyTierJs).filter(Boolean)
+    let orderTotalQuantityTiers
+    if (!Array.isArray(raw?.orderTotalQuantityTiers)) {
+      orderTotalQuantityTiers = DEFAULT_TEACHING_ORDER_QTY_TIERS.map((x) => ({ ...x }))
+    } else {
+      orderTotalQuantityTiers = raw.orderTotalQuantityTiers.map(normalizeTeachingQtyTierJs).filter(Boolean)
+    }
+    return { lineQuantityTiers, orderTotalQuantityTiers }
+  } catch {
+    return {
+      lineQuantityTiers: [],
+      orderTotalQuantityTiers: DEFAULT_TEACHING_ORDER_QTY_TIERS.map((x) => ({ ...x })),
+    }
+  }
+}
+
+function pickTeachingQtyTier(qty, tiers) {
+  const q = Math.max(0, parseInt(String(qty), 10) || 0)
+  const list = (tiers || []).filter((t) => t && t.minQty > 0)
+  const sorted = [...list].sort((a, b) => b.minQty - a.minQty)
+  for (const t of sorted) {
+    if (q >= t.minQty) return { minQty: t.minQty, discountRate: t.discountRate, reduceYuan: t.reduceYuan || 0 }
+  }
+  return { minQty: 0, discountRate: 1, reduceYuan: 0 }
+}
+
+function teachingTierSummary(t) {
+  if (!t || t.minQty <= 0) return ''
+  const parts = []
+  if (t.discountRate < 0.999) parts.push(`${Math.round(t.discountRate * 1000) / 10}折`)
+  if (t.reduceYuan > 0) parts.push(`减¥${Number(t.reduceYuan).toFixed(2)}`)
+  if (!parts.length) return ''
+  return `满${t.minQty}件${parts.join('、')}`
+}
+
+/** 供前台展示阶梯文案 */
+export function formatTeachingDiscountTier(t) {
+  return teachingTierSummary(t)
+}
+
+/**
+ * 学具购物车计价：先按「单行件数」阶梯处理每行，再按「整单总件数」阶梯处理合计。
+ * @param {Array<{ productId: string, qty: number }>} cartLines
+ * @param {Array<{ id: string, name?: string, price: number }>} catalog getFranchiseTeachingProductsCatalog()
+ */
+export function calculateTeachingMaterialOrderPricing(cartLines, catalog) {
+  const policy = getTeachingMaterialDiscountPolicy()
+  const lines = []
+  let originalAmount = 0
+  let totalQty = 0
+  for (const row of cartLines || []) {
+    const qty = Math.max(0, parseInt(String(row.qty), 10) || 0)
+    if (!qty) continue
+    const p = catalog.find((x) => x.id === row.productId)
+    if (!p) continue
+    const unitPrice = Number(p.price)
+    const lineOriginal = Math.round(unitPrice * qty * 100) / 100
+    originalAmount += lineOriginal
+    totalQty += qty
+    const ltier = pickTeachingQtyTier(qty, policy.lineQuantityTiers)
+    const linePay = Math.max(
+      0,
+      Math.round((lineOriginal * ltier.discountRate - (ltier.reduceYuan || 0)) * 100) / 100,
+    )
+    lines.push({
+      productId: p.id,
+      name: p.name,
+      qty,
+      unitPrice,
+      lineOriginal,
+      linePay,
+      lineDiscountLabel: teachingTierSummary(ltier),
+    })
+  }
+  originalAmount = Math.round(originalAmount * 100) / 100
+  const afterLineSubtotal = Math.round(lines.reduce((s, x) => s + x.linePay, 0) * 100) / 100
+  const otier = pickTeachingQtyTier(totalQty, policy.orderTotalQuantityTiers)
+  const payAmount = Math.max(
+    0,
+    Math.round((afterLineSubtotal * otier.discountRate - (otier.reduceYuan || 0)) * 100) / 100,
+  )
+  const orderDiscountLabel = teachingTierSummary(otier)
+  const lineLabels = lines.filter((l) => l.lineDiscountLabel).map((l) => `${l.name}：${l.lineDiscountLabel}`)
+  const orderPart = orderDiscountLabel ? `整单${orderDiscountLabel}` : ''
+  const discountParts = [
+    ...(lineLabels.length ? [`单行：${lineLabels.join('；')}`] : []),
+    ...(orderPart ? [orderPart] : []),
+  ]
+  const discountLabel = discountParts.length ? discountParts.join('；') : '未达优惠门槛'
+  const discountAmount = Math.round((originalAmount - payAmount) * 100) / 100
+  const discountRate = originalAmount > 0 ? payAmount / originalAmount : 1
+  return {
+    originalAmount,
+    payAmount,
+    discountAmount,
+    discountRate,
+    discountLabel,
+    totalQty,
+    afterLineSubtotal,
+    lines,
+    orderDiscountLabel,
+  }
+}
+
+/** @deprecated 仅整单件数阶梯（不含单行配置）；请优先使用 calculateTeachingMaterialOrderPricing */
+export function getTeachingMaterialBulkDiscount(totalQty) {
+  const policy = getTeachingMaterialDiscountPolicy()
+  const t = pickTeachingQtyTier(totalQty, policy.orderTotalQuantityTiers)
+  const label = teachingTierSummary(t)
+  return {
+    rate: t.discountRate,
+    label: label || '未达整单件数门槛',
+    threshold: t.minQty,
+    reduceYuan: t.reduceYuan || 0,
+  }
+}
+
+/** 整单件数阶梯：下一档还差几件（供学具商城横幅提示） */
+export function getTeachingMaterialOrderTierHint(totalQty) {
+  const policy = getTeachingMaterialDiscountPolicy()
+  const tiers = [...policy.orderTotalQuantityTiers].filter((t) => t.minQty > 0).sort((a, b) => a.minQty - b.minQty)
+  const q = Math.max(0, parseInt(String(totalQty), 10) || 0)
+  if (!tiers.length) return '总部未配置整单件数优惠'
+  const best = pickTeachingQtyTier(q, policy.orderTotalQuantityTiers)
+  const highest = tiers[tiers.length - 1]
+  if (best.minQty > 0 && best.minQty >= highest.minQty) return '已享整单最高阶梯'
+  for (const t of tiers) {
+    if (q < t.minQty) {
+      const s = teachingTierSummary(t)
+      return `再加 ${t.minQty - q} 件${s ? `：整单${s}` : ''}`
+    }
+  }
+  return '已享整单优惠'
+}
+
+/** @deprecated 请使用 calculateTeachingMaterialOrderPricing，否则单行阶梯不会生效 */
 export function calculateTeachingMaterialBulkPricing(originalAmount, totalQty) {
   const original = Math.round((Number(originalAmount) || 0) * 100) / 100
-  const discount = getTeachingMaterialBulkDiscount(totalQty)
-  const payable = Math.round(original * discount.rate * 100) / 100
+  const policy = getTeachingMaterialDiscountPolicy()
+  const t = pickTeachingQtyTier(totalQty, policy.orderTotalQuantityTiers)
+  const payable = Math.max(0, Math.round((original * t.discountRate - (t.reduceYuan || 0)) * 100) / 100)
   return {
     originalAmount: original,
     payAmount: payable,
-    discountRate: discount.rate,
-    discountLabel: discount.label,
+    discountRate: t.discountRate,
+    discountLabel: teachingTierSummary(t) || '未达整单件数门槛',
     discountAmount: Math.round((original - payable) * 100) / 100,
   }
 }
@@ -1634,27 +1796,24 @@ export function purchaseTeachingMaterials(partnerId, refCode, cartLines, payMeth
   if (!['balance', 'wechat'].includes(payMethod)) return { ok: false, msg: '请选择支付方式' }
   if (!Array.isArray(cartLines) || cartLines.length === 0) return { ok: false, msg: '请先选择商品数量' }
 
-  const lines = []
-  let originalTotal = 0
-  let totalQty = 0
+  const catalog = getFranchiseTeachingProductsCatalog()
+  const validatedLines = []
   for (const row of cartLines) {
     const qty = Math.max(1, parseInt(String(row.qty), 10) || 1)
-    const catalog = getFranchiseTeachingProductsCatalog()
     const p = catalog.find((x) => x.id === row.productId)
     if (!p) return { ok: false, msg: '商品不存在或已下架' }
-    const lineTotal = Math.round(p.price * qty * 100) / 100
-    originalTotal += lineTotal
-    totalQty += qty
-    lines.push({
-      productId: p.id,
-      name: p.name,
-      qty,
-      unitPrice: p.price,
-      lineTotal,
-    })
+    validatedLines.push({ productId: row.productId, qty })
   }
-  originalTotal = Math.round(originalTotal * 100) / 100
-  const pricing = calculateTeachingMaterialBulkPricing(originalTotal, totalQty)
+  const pricing = calculateTeachingMaterialOrderPricing(validatedLines, catalog)
+  if (!pricing.lines.length) return { ok: false, msg: '请先选择商品数量' }
+  const lines = pricing.lines.map((l) => ({
+    productId: l.productId,
+    name: l.name,
+    qty: l.qty,
+    unitPrice: l.unitPrice,
+    lineTotal: l.lineOriginal,
+  }))
+  const totalQty = pricing.totalQty
   const total = pricing.payAmount
   if (!(total > 0)) return { ok: false, msg: '订单金额无效' }
 

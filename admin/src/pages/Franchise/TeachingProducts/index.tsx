@@ -3,20 +3,31 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Button, Form, Image, Input, InputNumber, Modal, Popconfirm, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd'
+import { Button, Card, Divider, Form, Image, Input, InputNumber, Modal, Popconfirm, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { UploadProps } from 'antd/es/upload/interface'
-import { HolderOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
+import { HolderOutlined, MinusCircleOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
 import {
   DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+  type TeachingDiscountPolicy,
   type TeachingProduct,
+  type TeachingQtyTier,
   deleteTeachingProduct,
+  getTeachingDiscountPolicyAdmin,
   listTeachingProductsAdmin,
   reorderTeachingProducts,
+  saveTeachingDiscountPolicyAdmin,
   upsertTeachingProduct,
 } from '@/mock/franchiseTeachingCatalog'
 
 const COVER_UPLOAD_MAX_BYTES = 1024 * 1024
+
+function formatTierDisplay(t: TeachingQtyTier): string {
+  const segs: string[] = [`满 ${t.minQty} 件`]
+  if (t.discountRate < 0.999) segs.push(`${Math.round(t.discountRate * 1000) / 10} 折`)
+  if ((t.reduceYuan ?? 0) > 0) segs.push(`减 ¥${Number(t.reduceYuan).toFixed(2)}`)
+  return segs.join('，')
+}
 
 interface SortableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   'data-row-key': string
@@ -41,7 +52,7 @@ const SortableRow: React.FC<SortableRowProps> = (props) => {
         if (!React.isValidElement(child)) return child
         const colKey = (child.props as { column?: { key?: React.Key } }).column?.key
         if (colKey === 'sort') {
-          return React.cloneElement(child as React.ReactElement, {
+          return React.cloneElement(child as React.ReactElement<{ children?: React.ReactNode }>, {
             children: (
               <span
                 ref={setActivatorNodeRef}
@@ -74,8 +85,10 @@ export default function FranchiseTeachingProducts() {
   )
 
   const [open, setOpen] = useState(false)
+  const [discountModalOpen, setDiscountModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form] = Form.useForm<TeachingProduct & { id: string }>()
+  const [policyForm] = Form.useForm<TeachingDiscountPolicy>()
   const coverImageUrlWatch = Form.useWatch('coverImageUrl', form)
   const coverPreviewSrc =
     typeof coverImageUrlWatch === 'string' && coverImageUrlWatch.trim()
@@ -83,6 +96,31 @@ export default function FranchiseTeachingProducts() {
       : DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL
 
   const refresh = () => setTick((t) => t + 1)
+
+  const policyDisplay = useMemo(() => {
+    void tick
+    return getTeachingDiscountPolicyAdmin()
+  }, [tick])
+
+  const openDiscountEdit = () => {
+    policyForm.setFieldsValue(getTeachingDiscountPolicyAdmin())
+    setDiscountModalOpen(true)
+  }
+
+  const saveDiscountPolicy = async () => {
+    try {
+      const v = await policyForm.validateFields()
+      saveTeachingDiscountPolicyAdmin({
+        lineQuantityTiers: (v.lineQuantityTiers || []).filter((x) => x && (x.minQty ?? 0) > 0),
+        orderTotalQuantityTiers: (v.orderTotalQuantityTiers || []).filter((x) => x && (x.minQty ?? 0) > 0),
+      })
+      message.success('优惠配置已保存；与加盟商端学具商城共用本地配置（须同源）')
+      setDiscountModalOpen(false)
+      refresh()
+    } catch {
+      /* validate */
+    }
+  }
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return
@@ -224,6 +262,137 @@ export default function FranchiseTeachingProducts() {
           新建商品
         </Button>
       </div>
+
+      <Card
+        title="学具采购 · 优惠配置"
+        style={{ marginBottom: 24 }}
+        extra={
+          <Button type="primary" onClick={openDiscountEdit}>
+            编辑
+          </Button>
+        }
+      >
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 16, fontSize: 13 }}>
+          面向加盟商采购：<strong>单行</strong>按每个 SKU 件数匹配；<strong>整单</strong>按购物车总件数在单行优惠后再匹配。多条阶梯时取已满足的<strong>最高</strong>门槛。
+        </Typography.Paragraph>
+        <div style={{ background: '#fafafa', borderRadius: 8, padding: '12px 16px', border: '1px solid #f0f0f0' }}>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+            1. 单行件数（单商品）
+          </Typography.Text>
+          {policyDisplay.lineQuantityTiers.length === 0 ? (
+            <Typography.Text type="secondary">未配置（不限单行阶梯）</Typography.Text>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {[...policyDisplay.lineQuantityTiers]
+                .sort((a, b) => a.minQty - b.minQty)
+                .map((t) => (
+                  <li key={`line-${t.minQty}-${t.discountRate}-${t.reduceYuan}`}>
+                    <Typography.Text>{formatTierDisplay(t)}</Typography.Text>
+                  </li>
+                ))}
+            </ul>
+          )}
+          <Divider style={{ margin: '14px 0' }} />
+          <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+            2. 整单总件数
+          </Typography.Text>
+          {policyDisplay.orderTotalQuantityTiers.length === 0 ? (
+            <Typography.Text type="secondary">未配置整单阶梯</Typography.Text>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {[...policyDisplay.orderTotalQuantityTiers]
+                .sort((a, b) => a.minQty - b.minQty)
+                .map((t) => (
+                  <li key={`order-${t.minQty}-${t.discountRate}-${t.reduceYuan}`}>
+                    <Typography.Text>{formatTierDisplay(t)}</Typography.Text>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
+      </Card>
+
+      <Modal
+        title="编辑 · 学具采购优惠配置"
+        open={discountModalOpen}
+        onCancel={() => setDiscountModalOpen(false)}
+        onOk={saveDiscountPolicy}
+        width={640}
+        destroyOnClose
+        okText="保存"
+      >
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 13 }}>
+          折扣系数 0.9 表示 9 折；可与满减（元）叠加（先打折再减）。保存后与加盟商学具商城共用本地配置（须同源）。
+        </Typography.Paragraph>
+        <Form form={policyForm} layout="vertical" style={{ marginTop: 4 }}>
+          <Typography.Text strong>1. 单行件数</Typography.Text>
+          <Form.List name="lineQuantityTiers">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} align="center" style={{ display: 'flex', marginBottom: 8 }} wrap>
+                    <Typography.Text type="secondary">满</Typography.Text>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'minQty']}
+                      rules={[{ required: true, message: '件数' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <InputNumber min={1} precision={0} style={{ width: 80 }} placeholder="件" />
+                    </Form.Item>
+                    <Typography.Text type="secondary">件 · 系数</Typography.Text>
+                    <Form.Item {...restField} name={[name, 'discountRate']} style={{ marginBottom: 0 }} initialValue={1}>
+                      <InputNumber min={0.05} max={1} step={0.05} style={{ width: 110 }} placeholder="0.9=9折" />
+                    </Form.Item>
+                    <Typography.Text type="secondary">满减¥</Typography.Text>
+                    <Form.Item {...restField} name={[name, 'reduceYuan']} style={{ marginBottom: 0 }} initialValue={0}>
+                      <InputNumber min={0} step={1} style={{ width: 100 }} placeholder="0" />
+                    </Form.Item>
+                    <MinusCircleOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
+                  </Space>
+                ))}
+                <Button type="dashed" onClick={() => add({ minQty: 5, discountRate: 0.95, reduceYuan: 0 })} block icon={<PlusOutlined />}>
+                  添加单行阶梯
+                </Button>
+              </>
+            )}
+          </Form.List>
+          <Divider style={{ margin: '16px 0' }} />
+          <Typography.Text strong>2. 整单总件数</Typography.Text>
+          <Form.List name="orderTotalQuantityTiers">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} align="center" style={{ display: 'flex', marginBottom: 8 }} wrap>
+                    <Typography.Text type="secondary">总件数满</Typography.Text>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'minQty']}
+                      rules={[{ required: true, message: '件数' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <InputNumber min={1} precision={0} style={{ width: 80 }} placeholder="件" />
+                    </Form.Item>
+                    <Typography.Text type="secondary">件 · 系数</Typography.Text>
+                    <Form.Item {...restField} name={[name, 'discountRate']} style={{ marginBottom: 0 }} initialValue={1}>
+                      <InputNumber min={0.05} max={1} step={0.05} style={{ width: 110 }} placeholder="0.9=9折" />
+                    </Form.Item>
+                    <Typography.Text type="secondary">满减¥</Typography.Text>
+                    <Form.Item {...restField} name={[name, 'reduceYuan']} style={{ marginBottom: 0 }} initialValue={0}>
+                      <InputNumber min={0} step={1} style={{ width: 100 }} placeholder="0" />
+                    </Form.Item>
+                    <MinusCircleOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
+                  </Space>
+                ))}
+                <Button type="dashed" onClick={() => add({ minQty: 10, discountRate: 0.9, reduceYuan: 0 })} block icon={<PlusOutlined />}>
+                  添加整单阶梯
+                </Button>
+              </>
+            )}
+          </Form.List>
+        </Form>
+      </Modal>
+
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <SortableContext items={data.map((d) => d.id)} strategy={verticalListSortingStrategy}>
           <Table<TeachingProduct>
