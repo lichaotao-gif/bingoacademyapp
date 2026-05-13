@@ -234,9 +234,7 @@ export default function FranchisePartnerLogin() {
       </Link>
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-bingo-dark tracking-tight leading-tight">
-            缤果AI学院·加盟商
-          </h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-bingo-dark tracking-tight leading-tight">缤果AI学院·加盟商</h1>
           <p className="text-sm text-slate-500 mt-3">加盟商工作台登录</p>
         </div>
 
