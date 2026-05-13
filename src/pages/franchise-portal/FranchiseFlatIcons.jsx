@@ -198,5 +198,6 @@ export const FRANCHISE_NAV_ICONS = [
   FlatIconChartBar,
   FlatIconTag,
   FlatIconWallet,
+  FlatIconUserPlus,
   FlatIconCog,
 ]

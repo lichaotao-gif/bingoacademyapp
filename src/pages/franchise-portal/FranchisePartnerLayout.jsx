@@ -1,19 +1,28 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { clearPartnerSession, getPartnerSession, isPartnerAccountFrozen } from '../../utils/franchisePartnerStorage'
+import {
+  clearPartnerSession,
+  consumeQueuedPartnerSessionIfPresent,
+  getPartnerSession,
+  isPartnerAccountFrozen,
+  FRANCHISE_PREVIEW_DEMO_MAIN_PHONE,
+  normalizePartnerPhoneDigits,
+} from '../../utils/franchisePartnerStorage'
+import { FRANCHISE_PARTNER_PORTAL_NAV, resolvePartnerPortalMenuKey } from '../../constants/franchisePartnerPortalNav'
 import { FRANCHISE_NAV_ICONS, FlatIconHeadset, FlatIconMenu } from './FranchiseFlatIcons'
 
 const NAV = [
-  { to: '/franchise-partner/dashboard', label: '首页概览', end: false },
-  { to: '/franchise-partner/classes', label: '班级管理' },
-  { to: '/franchise-partner/students', label: '学生管理' },
-  { to: '/franchise-partner/recharge', label: '充课中心', badge: '后续版本开发', visibleInMenu: false },
-  { to: '/franchise-partner/teaching-materials', label: '学具商城' },
-  { to: '/franchise-partner/orders', label: '订单管理' },
-  { to: '/franchise-partner/finance', label: '财务统计' },
-  { to: '/franchise-partner/discounts', label: '折扣查看', badge: '后续版本开发', visibleInMenu: false },
-  { to: '/franchise-partner/balance', label: '余额中心', visibleInMenu: false },
-  { to: '/franchise-partner/settings', label: '账号设置' },
+  { key: 'dashboard', to: '/franchise-partner/dashboard', label: '首页概览', end: false },
+  { key: 'classes', to: '/franchise-partner/classes', label: '班级管理' },
+  { key: 'students', to: '/franchise-partner/students', label: '学生管理' },
+  { key: 'recharge', to: '/franchise-partner/recharge', label: '充课中心', badge: '后续版本', visibleInMenu: true },
+  { key: 'teaching-materials', to: '/franchise-partner/teaching-materials', label: '学具商城' },
+  { key: 'orders', to: '/franchise-partner/orders', label: '订单管理', badge: '后续版本' },
+  { key: 'finance', to: '/franchise-partner/finance', label: '财务统计' },
+  { key: 'discounts', to: '/franchise-partner/discounts', label: '折扣查看', badge: '后续版本', visibleInMenu: false },
+  { key: 'balance', to: '/franchise-partner/balance', label: '余额中心', visibleInMenu: false },
+  { key: 'staff-accounts', to: '/franchise-partner/staff-accounts', label: '机构账号', ownerOnly: true },
+  { key: 'settings', to: '/franchise-partner/settings', label: '账号设置' },
 ]
 
 /** 侧栏无有效机构名时的默认展示名 */
@@ -50,6 +59,7 @@ const TITLE_MAP = {
   discounts: '折扣查看',
   balance: '余额中心',
   settings: '账号设置',
+  'staff-accounts': '机构账号',
   promote: '课程推广',
   progress: '学习进度',
 }
@@ -57,11 +67,15 @@ const TITLE_MAP = {
 export default function FranchisePartnerLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [session, setSession] = useState(() => getPartnerSession())
+  const [session, setSession] = useState(() => {
+    if (typeof window !== 'undefined') consumeQueuedPartnerSessionIfPresent()
+    return getPartnerSession()
+  })
   const [openNav, setOpenNav] = useState(false)
 
   /** useLayoutEffect：尽快在读不到会话时退回登录，避免白屏一闪 */
   useLayoutEffect(() => {
+    consumeQueuedPartnerSessionIfPresent()
     const s = getPartnerSession()
     if (!s) {
       navigate('/franchise-partner/login', { replace: true })
@@ -81,6 +95,7 @@ export default function FranchisePartnerLayout() {
 
   useEffect(() => {
     const sync = () => {
+      consumeQueuedPartnerSessionIfPresent()
       const s = getPartnerSession()
       if (!s) {
         navigate('/franchise-partner/login', { replace: true })
@@ -101,9 +116,38 @@ export default function FranchisePartnerLayout() {
     return () => window.removeEventListener('franchise-partner-session-changed', sync)
   }, [navigate])
 
+  const isStaffSession = useMemo(() => session?.staffSubUser === true, [session])
+  /** 预览主账号：强制按机构主账号对待侧栏与重定向，避免会话标记异常导致菜单缺失 */
+  const phoneDigits = useMemo(() => normalizePartnerPhoneDigits(session?.phone), [session?.phone])
+  const isPreviewDemoMainPhone = phoneDigits === FRANCHISE_PREVIEW_DEMO_MAIN_PHONE
+  const isStaffNavRestricted = isStaffSession && !isPreviewDemoMainPhone
+
+  /** 机构子账号：无权限的页面重定向到首个可访问菜单（「机构账号」页除外，可进入查看说明） */
+  useEffect(() => {
+    if (!session) return
+    if (!isStaffNavRestricted || !Array.isArray(session.staffMenuKeys) || !session.staffMenuKeys.length) return
+    const mk = resolvePartnerPortalMenuKey(location.pathname)
+    if (!mk || session.staffMenuKeys.includes(mk) || mk === 'staff-accounts') return
+    const firstKey = session.staffMenuKeys[0]
+    const target = FRANCHISE_PARTNER_PORTAL_NAV.find((x) => x.key === firstKey)?.path || '/franchise-partner/dashboard'
+    navigate(target, { replace: true })
+  }, [session, location.pathname, navigate, isStaffNavRestricted])
+
+  const visibleNavItems = useMemo(() => {
+    const keys =
+      isStaffNavRestricted && session && Array.isArray(session.staffMenuKeys) ? new Set(session.staffMenuKeys) : null
+    return NAV.filter((item) => {
+      if (item.visibleInMenu === false) return false
+      if (item.key === 'staff-accounts') return true
+      if (!keys) return true
+      return keys.has(item.key)
+    })
+  }, [session, isStaffNavRestricted])
+
   const pageTitle = useMemo(() => {
     const path = location.pathname
     if (/^\/franchise-partner\/classes\/.+/.test(path)) return '班级详情'
+    if (path.includes('/franchise-partner/teaching-materials/item/')) return '学具介绍详情'
     const seg = (path.split('/').pop() || 'dashboard').split('?')[0]
     return TITLE_MAP[seg] || '加盟商后台'
   }, [location.pathname])
@@ -114,6 +158,7 @@ export default function FranchisePartnerLayout() {
     const q = new URLSearchParams(location.search)
     if (q.get('studentId') && (path.includes('/recharge') || path.includes('/progress'))) return true
     if (/^\/franchise-partner\/classes\/.+/.test(path)) return true
+    if (path.includes('/franchise-partner/teaching-materials/item/')) return true
     return false
   }, [location.pathname, location.search])
 
@@ -122,26 +167,15 @@ export default function FranchisePartnerLayout() {
     const p = location.pathname
     return (
       p.includes('/franchise-partner/classes') ||
-      p.includes('/franchise-partner/students')
+      p.includes('/franchise-partner/students') ||
+      p.includes('/franchise-partner/staff-accounts')
     )
   }, [location.pathname])
 
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4f6fb] text-slate-500 text-sm">
-        正在进入工作台…
-      </div>
-    )
-  }
-
-  const sidebarInstitution = sidebarPartnerInstitutionName(session)
-  const headerDisplayName = VIRTUAL_PARTNER_ADMIN_NAME
-  const phoneDisplay = maskPhoneForDisplay(session.phone)
-
-  const logout = () => {
+  const logout = useCallback(() => {
     clearPartnerSession()
     navigate('/franchise-partner/login', { replace: true })
-  }
+  }, [navigate])
 
   /** 内容区返回（仅在三页展示）：回到对应二级列表 */
   const handleContentBack = useCallback(() => {
@@ -158,16 +192,37 @@ export default function FranchisePartnerLayout() {
       return
     }
 
+    if (pathname.includes('/franchise-partner/teaching-materials/item/')) {
+      navigate('/franchise-partner/teaching-materials')
+      return
+    }
+
     navigate(-1)
   }, [location, navigate])
 
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f6fb] text-slate-500 text-sm">
+        正在进入工作台…
+      </div>
+    )
+  }
+
+  const sidebarInstitution = sidebarPartnerInstitutionName(session)
+  const headerDisplayName = isStaffNavRestricted
+    ? String(session.staffName || session.contactName || '子账号').trim()
+    : String(session.contactName || VIRTUAL_PARTNER_ADMIN_NAME).trim()
+  const phoneDisplay = maskPhoneForDisplay(session.phone)
+
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#f4f6fb]">
-      {/* 深色侧栏 */}
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f4f6fb] md:flex-row">
+      {/* 深色侧栏：小屏为抽屉（点左上角菜单展开），≥md 固定显示 */}
       <aside
         className={
-          'lg:w-[240px] shrink-0 flex flex-col bg-[#0b1220] text-slate-300 border-r border-slate-800/80 ' +
-          (openNav ? 'fixed inset-0 z-50 lg:static lg:inset-auto' : 'hidden lg:flex')
+          'flex flex-col shrink-0 bg-bingo-dark text-slate-300 border-r border-slate-800/80 ' +
+          'fixed inset-y-0 left-0 z-50 w-[min(100vw,280px)] transition-transform duration-200 ease-out ' +
+          (openNav ? 'translate-x-0' : '-translate-x-full') +
+          ' md:static md:inset-auto md:z-auto md:h-full md:max-h-full md:min-h-0 md:w-[240px] md:translate-x-0 md:overflow-hidden'
         }
       >
         <div className="p-5 border-b border-white/10">
@@ -187,21 +242,24 @@ export default function FranchisePartnerLayout() {
               {sidebarInstitution}
             </p>
             <p className="text-[11px] text-slate-500 mt-1 tracking-wide">加盟商管理后台</p>
+            {isStaffNavRestricted ? (
+              <p className="text-[10px] text-amber-200/95 mt-2 leading-snug rounded-md bg-amber-500/15 px-2 py-1 border border-amber-400/25">
+                当前为子账号登录；角色与员工账号需由机构主账号登录后进行管理。
+              </p>
+            ) : null}
           </Link>
         </div>
-        <nav className="p-3 space-y-0.5 flex-1 overflow-y-auto">
-          {NAV.map((item, i) => ({ ...item, Icon: FRANCHISE_NAV_ICONS[i] || FRANCHISE_NAV_ICONS[0] }))
-            .filter((item) => item.visibleInMenu !== false)
-            .map((item) => {
-            const Icon = item.Icon
+        <nav className="p-3 space-y-0.5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          {visibleNavItems.map((item) => {
+            const Icon = FRANCHISE_NAV_ICONS[NAV.indexOf(item)] || FRANCHISE_NAV_ICONS[0]
             return (
               <NavLink
-                key={item.to}
+                key={item.key}
                 to={item.to}
                 className={({ isActive }) =>
                   'group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ' +
                   (isActive
-                    ? 'text-white shadow-sm bg-[#3B66FF] ring-1 ring-[#3B66FF]'
+                    ? 'text-white shadow-sm bg-primary ring-1 ring-primary'
                     : 'text-slate-400 hover:text-white hover:bg-white/5')
                 }
                 onClick={() => setOpenNav(false)}
@@ -249,7 +307,7 @@ export default function FranchisePartnerLayout() {
       {openNav ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           aria-label="关闭菜单"
           onClick={() => setOpenNav(false)}
         />
@@ -258,7 +316,7 @@ export default function FranchisePartnerLayout() {
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-3 sm:px-4 md:px-6 lg:px-8 py-3.5 bg-white border-b border-slate-200/90 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <Link to="/" className="lg:hidden shrink-0 py-0.5" aria-label="缤果AI学院首页">
+            <Link to="/" className="md:hidden shrink-0 py-0.5" aria-label="缤果AI学院首页">
               <img
                 src="/logo.svg"
                 alt=""
@@ -269,16 +327,16 @@ export default function FranchisePartnerLayout() {
             </Link>
             <button
               type="button"
-              className="lg:hidden p-2 rounded-lg border border-slate-200 text-slate-600 shrink-0 flex items-center justify-center"
+              className="md:hidden p-2 rounded-lg border border-slate-200 text-slate-600 shrink-0 flex items-center justify-center"
               onClick={() => setOpenNav(true)}
-              aria-label="打开菜单"
+              aria-label="打开侧栏菜单"
             >
               <FlatIconMenu className="w-5 h-5" />
             </button>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-primary text-white text-xs font-bold flex items-center justify-center shrink-0">
                 {headerDisplayName.slice(0, 1)}
               </div>
               <div className="min-w-0 max-w-[10.5rem] sm:max-w-[14rem]">
@@ -286,7 +344,15 @@ export default function FranchisePartnerLayout() {
                   {headerDisplayName}
                 </p>
                 <p className="text-[11px] sm:text-xs text-slate-600 tabular-nums mt-0.5 truncate" title={phoneDisplay}>
-                  {phoneDisplay}
+                  {isStaffNavRestricted ? (
+                    <>
+                      <span className="text-violet-700 font-medium">{String(session.staffRoleName || '子账号').trim()}</span>
+                      <span className="mx-1 text-slate-300">·</span>
+                      {phoneDisplay}
+                    </>
+                  ) : (
+                    phoneDisplay
+                  )}
                 </p>
               </div>
             </div>

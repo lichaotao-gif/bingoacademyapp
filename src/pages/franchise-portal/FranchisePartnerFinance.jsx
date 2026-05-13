@@ -27,7 +27,7 @@ function BarChartMini({ data }) {
       {data.map((d) => (
         <div key={d.key} className="flex-1 flex flex-col items-center justify-end h-full min-w-0">
           <div
-            className="w-full max-w-[40px] sm:max-w-[48px] mx-auto rounded-t-md bg-[#3B66FF]/80 hover:bg-[#3B66FF] transition-opacity relative group"
+            className="w-full max-w-[40px] sm:max-w-[48px] mx-auto rounded-t-md bg-primary/80 hover:bg-primary transition-opacity relative group"
             style={{ height: `${Math.max(6, (d.value / max) * 100)}%`, minHeight: d.value > 0 ? 6 : 3 }}
           >
             <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-slate-500 opacity-0 group-hover:opacity-100 whitespace-nowrap tabular-nums z-10">
@@ -94,8 +94,8 @@ function LineChartMini({ data }) {
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[640px] h-[220px] sm:h-[240px]" role="img" aria-label="近30日收入曲线">
         <defs>
           <linearGradient id="financeLineFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgb(5 150 105)" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="rgb(5 150 105)" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="rgb(8 145 178)" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="rgb(8 145 178)" stopOpacity="0.02" />
           </linearGradient>
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((t) => {
@@ -109,7 +109,7 @@ function LineChartMini({ data }) {
           <path
             d={lineD}
             fill="none"
-            stroke="rgb(5 150 105)"
+            stroke="rgb(8 145 178)"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -117,7 +117,7 @@ function LineChartMini({ data }) {
         ) : null}
         {points.map((p, i) => (
           <g key={p.label + i}>
-            <circle cx={p.x} cy={p.y} r="4" fill="white" stroke="rgb(5 150 105)" strokeWidth="2" />
+            <circle cx={p.x} cy={p.y} r="4" fill="white" stroke="rgb(8 145 178)" strokeWidth="2" />
             <title>{`${p.label}  ¥${p.value.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`}</title>
           </g>
         ))}
@@ -203,7 +203,7 @@ export default function FranchisePartnerFinance() {
   return (
     <div className="space-y-6">
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className="rounded-[10px] border border-slate-200 bg-white p-7 shadow-sm border-l-4 border-l-[#3B66FF]">
+        <div className="rounded-[10px] border border-slate-200 bg-white p-7 shadow-sm border-l-4 border-l-primary">
           <span className="text-[13px] text-slate-500 block mb-2">总销售额</span>
           <p className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
             ¥{totalSales.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
@@ -260,7 +260,7 @@ export default function FranchisePartnerFinance() {
               id="finance-ledger-type"
               value={ledgerType}
               onChange={(e) => setLedgerType(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 min-w-[8.5rem] focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 min-w-[8.5rem] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             >
               <option value="">全部类型</option>
               <option value="topup">充值</option>

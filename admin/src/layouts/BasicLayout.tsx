@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Dropdown, Avatar, Typography } from 'antd'
+import { Layout, Menu, Dropdown, Avatar, Typography, Tag } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   MenuFoldOutlined,
@@ -37,7 +37,16 @@ function BasicLayout() {
         label: r.name,
         children: r.children.filter((c) => !c.hideInMenu).map((c) => ({
           key: c.path,
-          label: c.name,
+          label: (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', maxWidth: '100%' }}>
+              <span>{c.name}</span>
+              {c.menuBadge ? (
+                <Tag color="orange" style={{ margin: 0, fontSize: 11, lineHeight: '18px', border: 'none' }}>
+                  {c.menuBadge}
+                </Tag>
+              ) : null}
+            </span>
+          ),
           onClick: () => navigate(c.path),
         })),
       }

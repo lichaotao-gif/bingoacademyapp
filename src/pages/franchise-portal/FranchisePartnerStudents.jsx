@@ -464,7 +464,7 @@ export default function FranchisePartnerStudents() {
               <span className="text-sm text-slate-600">当前查看本班成员</span>
               <Link
                 to="/franchise-partner/students"
-                className="text-xs font-medium text-[#3B66FF] hover:text-[#2f56e6] hover:underline"
+                className="text-xs font-medium text-primary hover:text-primary-600 hover:underline"
               >
                 全部学员（全表）
               </Link>

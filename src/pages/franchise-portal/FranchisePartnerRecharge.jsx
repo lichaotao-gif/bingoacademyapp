@@ -94,11 +94,11 @@ export default function FranchisePartnerRecharge() {
     <div className="space-y-6 max-w-[600px]">
       <p className="text-sm text-slate-500">
         按步骤完成充课：系统将按
-        <Link to="/franchise-partner/discounts" className="text-[#3B66FF] hover:underline mx-0.5">
+        <Link to="/franchise-partner/discounts" className="text-primary hover:underline mx-0.5">
           专属折扣
         </Link>
         从
-        <Link to="/franchise-partner/balance" className="text-[#3B66FF] hover:underline mx-0.5">
+        <Link to="/franchise-partner/balance" className="text-primary hover:underline mx-0.5">
           账户余额
         </Link>
         扣款并生成订单。
@@ -114,7 +114,7 @@ export default function FranchisePartnerRecharge() {
               <select
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
               >
                 <option value="">请选择学员…</option>
                 {ws.students.map((s) => {
@@ -129,7 +129,7 @@ export default function FranchisePartnerRecharge() {
               </select>
               <p className="text-xs text-slate-400 mt-2">
                 没有学员？先到
-                <Link to="/franchise-partner/students" className="text-[#3B66FF] hover:underline">
+                <Link to="/franchise-partner/students" className="text-primary hover:underline">
                   学员管理
                 </Link>
                 添加。
@@ -139,7 +139,7 @@ export default function FranchisePartnerRecharge() {
             <button
               type="button"
               onClick={goNextFrom1}
-              className="px-4 py-2.5 rounded-lg bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold"
+              className="px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold"
             >
               下一步
             </button>
@@ -153,7 +153,7 @@ export default function FranchisePartnerRecharge() {
               <select
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
               >
                 {FRANCHISE_PROMOTABLE_COURSES.map((c) => {
                   const rate = getDiscountRate(ws, c.id)
@@ -181,7 +181,7 @@ export default function FranchisePartnerRecharge() {
               <button
                 type="button"
                 onClick={goNextFrom2}
-                className="px-4 py-2.5 rounded-lg bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold"
+                className="px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold"
               >
                 下一步
               </button>
@@ -206,7 +206,7 @@ export default function FranchisePartnerRecharge() {
               </div>
               <div className="flex justify-between gap-4 py-2 border-b border-slate-200/80">
                 <span className="text-slate-500">扣费金额</span>
-                <strong className="text-[#3B66FF] tabular-nums">¥{preview.pay.toFixed(2)}</strong>
+                <strong className="text-primary tabular-nums">¥{preview.pay.toFixed(2)}</strong>
               </div>
               <div className="flex justify-between gap-4 py-2">
                 <span className="text-slate-500">扣费来源</span>
@@ -228,7 +228,7 @@ export default function FranchisePartnerRecharge() {
               <button
                 type="button"
                 onClick={confirmDeduct}
-                className="px-4 py-2.5 rounded-lg bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold"
+                className="px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold"
               >
                 确认扣费
               </button>
@@ -249,7 +249,7 @@ export default function FranchisePartnerRecharge() {
             <button
               type="button"
               onClick={resetFlow}
-              className="px-5 py-2.5 rounded-lg bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold"
+              className="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold"
             >
               继续充课
             </button>

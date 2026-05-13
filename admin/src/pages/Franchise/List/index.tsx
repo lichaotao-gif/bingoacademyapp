@@ -117,7 +117,7 @@ export default function FranchisePartnerList() {
         message.error(r.msg || '添加失败')
         return
       }
-      message.success('已添加加盟商并完成演示开户（见下方说明）')
+      message.success('已添加加盟商并完成开户')
       setModalOpen(false)
       refresh()
       Modal.info({
@@ -132,12 +132,9 @@ export default function FranchisePartnerList() {
             <Typography.Paragraph style={{ marginBottom: 8 }}>
               <strong>初始密码：</strong>为您在表单中设置的密码
             </Typography.Paragraph>
-            <Typography.Paragraph style={{ marginBottom: 8 }}>
+            <Typography.Paragraph style={{ marginBottom: 0 }}>
               <strong>推广码：</strong>
               {r.partner.refCode}
-            </Typography.Paragraph>
-            <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-              演示环境：登录档案写入当前浏览器本地存储。请与「加盟商前台」使用<strong>同一站点域名</strong>访问后台；若本地开发后台与前台端口不同，前台将无法读到本次开户，需改为同源部署或在同一应用域名下操作。
             </Typography.Paragraph>
           </div>
         ),
@@ -309,7 +306,7 @@ export default function FranchisePartnerList() {
         {topUpTarget ? (
           <>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 13 }}>
-              当前余额 {fmtMoney(topUpTarget.balance)}；推广码 {topUpTarget.refCode}。演示环境将同步写入加盟商工作台本地余额（须同源）。
+              当前余额 {fmtMoney(topUpTarget.balance)}；推广码 {topUpTarget.refCode}。确认后将入账至该加盟商账户。
             </Typography.Paragraph>
             <Form form={topUpForm} layout="vertical">
               <Form.Item name="amount" label="充值金额（元）" rules={[{ required: true, message: '请输入金额' }]}>
@@ -393,7 +390,7 @@ export default function FranchisePartnerList() {
           <Form.Item name="partnerId" label="加盟商 ID（可选，留空自动生成）">
             <Input placeholder="如 fp-m-sh001，仅字母数字 ._-" />
           </Form.Item>
-          <Form.Item name="openingBalance" label="初始账户余额（元，演示）">
+          <Form.Item name="openingBalance" label="初始账户余额（元）">
             <InputNumber min={0} step={100} style={{ width: '100%' }} placeholder="0" />
           </Form.Item>
           </div>

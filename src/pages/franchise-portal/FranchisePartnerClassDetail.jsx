@@ -42,7 +42,7 @@ export default function FranchisePartnerClassDetail() {
   const navigate = useNavigate()
   const { session, ws, refresh } = useFranchiseWorkspace()
 
-  /** 当前勾选弹窗对应的课程包 key（与 offlineProgressGroups[].packKey 一致），null 为关闭 */
+  /** 当前「更新课时进度」弹窗对应的课程包 key（与 offlineProgressGroups[].packKey 一致），null 为关闭 */
   const [progressModalKey, setProgressModalKey] = useState(null)
   const [studentModalOpen, setStudentModalOpen] = useState(false)
   const [courseModalOpen, setCourseModalOpen] = useState(false)
@@ -346,7 +346,7 @@ export default function FranchisePartnerClassDetail() {
           <div className="min-w-0 flex-1">
             <h2 className="text-[15px] font-semibold text-slate-900">线下课进度</h2>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              多课程包时按包展示进度；每行「勾选课时」仅维护该包下的线下节次，全班共用同一勾选结果。
+              多课程包时按包展示进度；每行「更新课时进度」仅维护该包下的线下节次，全班共用同一进度结果。
             </p>
           </div>
           <button
@@ -356,7 +356,7 @@ export default function FranchisePartnerClassDetail() {
             className={
               'shrink-0 inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ' +
               (availableOfflineCourses.length
-                ? 'bg-[#3B66FF] text-white border-[#3B66FF] hover:bg-[#2f56e6]'
+                ? 'bg-primary text-white border-primary hover:bg-primary-600'
                 : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed')
             }
           >
@@ -378,8 +378,8 @@ export default function FranchisePartnerClassDetail() {
                     <div className="min-w-0 flex-1 space-y-2">
                       <p className="text-sm font-semibold text-slate-900 leading-snug">{g.label}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                        <span className="tabular-nums font-medium text-[#3B66FF]">
-                          {g.done}/{g.total} 节已勾选
+                        <span className="tabular-nums font-medium text-primary">
+                          {g.done}/{g.total} 节已完成
                         </span>
                         {g.total > 0 && g.done >= g.total ? (
                           <span className="text-emerald-700 font-medium">该包已全部完成</span>
@@ -387,7 +387,7 @@ export default function FranchisePartnerClassDetail() {
                       </div>
                       <div className="h-2 rounded-full bg-slate-200 overflow-hidden max-w-md">
                         <div
-                          className="h-full rounded-full bg-[#3B66FF] transition-[width]"
+                          className="h-full rounded-full bg-primary transition-[width]"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -395,9 +395,9 @@ export default function FranchisePartnerClassDetail() {
                     <button
                       type="button"
                       onClick={() => setProgressModalKey(g.packKey)}
-                      className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#3B66FF] text-white text-sm font-semibold hover:bg-[#2f56e6] sm:min-w-[7.5rem]"
+                      className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-600 sm:min-w-[7.5rem]"
                     >
-                      勾选课时
+                      更新课时进度
                     </button>
                   </li>
                 )
@@ -413,7 +413,7 @@ export default function FranchisePartnerClassDetail() {
             <h2 className="text-[15px] font-semibold text-slate-900">本班学员</h2>
             <Link
               to={`/franchise-partner/students?classId=${encodeURIComponent(classId)}`}
-              className="text-xs font-medium text-[#3B66FF] hover:text-[#2f56e6] hover:underline shrink-0"
+              className="text-xs font-medium text-primary hover:text-primary-600 hover:underline shrink-0"
             >
               学生管理（本班）
             </Link>
@@ -518,7 +518,7 @@ export default function FranchisePartnerClassDetail() {
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
               <div className="min-w-0 pr-4">
-                <h2 className="text-base font-semibold text-slate-900 truncate">线下课进度</h2>
+                <h2 className="text-base font-semibold text-slate-900 truncate">更新课时进度</h2>
                 {progressModalGroup?.label ? (
                   <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">{progressModalGroup.label}</p>
                 ) : null}
@@ -535,7 +535,7 @@ export default function FranchisePartnerClassDetail() {
             </div>
             <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/80 shrink-0">
               <p className="text-xs text-slate-600 leading-relaxed">
-                线下上完一节课，勾选对应课时即可（全班共用同一进度）。
+                线下每上完一节课，请勾选对应节次以更新进度（全班共用）。数据即时保存，完成后点击「保存」关闭。
               </p>
             </div>
             <ul className="overflow-y-auto flex-1 px-6 py-4 space-y-2 max-h-[55vh]">
@@ -549,7 +549,7 @@ export default function FranchisePartnerClassDetail() {
                     id={`off-${fc.id}-${lesson.id}`}
                     checked={Boolean(lesson.done)}
                     onChange={(e) => handleToggleOfflineLesson(lesson.id, e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#3B66FF] focus:ring-[#3B66FF]/30"
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
                   />
                   <label
                     htmlFor={`off-${fc.id}-${lesson.id}`}
@@ -566,9 +566,9 @@ export default function FranchisePartnerClassDetail() {
               <button
                 type="button"
                 onClick={() => setProgressModalKey(null)}
-                className="w-full py-2.5 rounded-lg bg-slate-100 text-slate-800 text-sm font-semibold border border-slate-200 hover:bg-slate-200"
+                className="w-full py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-600 shadow-sm"
               >
-                关闭
+                保存
               </button>
             </div>
           </div>
@@ -618,7 +618,7 @@ export default function FranchisePartnerClassDetail() {
                                 return prev.filter((x) => x !== c.id)
                               })
                             }}
-                            className="mt-1 h-4 w-4 rounded border-slate-300 text-[#3B66FF] focus:ring-[#3B66FF]/30"
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
                           />
                           <span className="min-w-0 flex-1">
                             <span className="text-sm font-medium text-slate-800">{c.name}</span>
@@ -634,7 +634,7 @@ export default function FranchisePartnerClassDetail() {
                   </p>
                 )}
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                  新增课包会追加到当前线下课进度末尾，已勾选完成的原课时不会被重置。
+                  新增课包会追加到当前线下课进度末尾，已标记完成的原课时不会被重置。
                 </p>
               </div>
               {courseErr ? <p className="text-sm text-red-600">{courseErr}</p> : null}
@@ -652,7 +652,7 @@ export default function FranchisePartnerClassDetail() {
                   className={
                     'inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold ' +
                     (availableOfflineCourses.length
-                      ? 'bg-[#3B66FF] text-white hover:bg-[#2f56e6]'
+                      ? 'bg-primary text-white hover:bg-primary-600'
                       : 'bg-slate-100 text-slate-400 cursor-not-allowed')
                   }
                 >
@@ -696,7 +696,7 @@ export default function FranchisePartnerClassDetail() {
                   <select
                     value={transferTargetClassId}
                     onChange={(e) => setTransferTargetClassId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   >
                     {transferTargetClasses.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -728,7 +728,7 @@ export default function FranchisePartnerClassDetail() {
                   className={
                     'inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold ' +
                     (transferTargetClasses.length
-                      ? 'bg-[#3B66FF] text-white hover:bg-[#2f56e6]'
+                      ? 'bg-primary text-white hover:bg-primary-600'
                       : 'bg-slate-100 text-slate-400 cursor-not-allowed')
                   }
                 >
@@ -764,7 +764,7 @@ export default function FranchisePartnerClassDetail() {
                 <input
                   value={stuName}
                   onChange={(e) => setStuName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   placeholder="输入学员姓名"
                 />
               </div>
@@ -773,7 +773,7 @@ export default function FranchisePartnerClassDetail() {
                 <input
                   value={stuPhone}
                   onChange={(e) => setStuPhone(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   placeholder="11位家长联系电话"
                   inputMode="numeric"
                 />
@@ -783,7 +783,7 @@ export default function FranchisePartnerClassDetail() {
                 <input
                   value={stuRemark}
                   onChange={(e) => setStuRemark(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   placeholder="可选备注信息"
                 />
               </div>
@@ -798,7 +798,7 @@ export default function FranchisePartnerClassDetail() {
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#3B66FF] text-white text-sm font-semibold hover:bg-[#2f56e6]"
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-600"
                 >
                   确认添加
                 </button>

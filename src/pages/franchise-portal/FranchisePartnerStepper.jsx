@@ -17,7 +17,7 @@ export function FranchisePartnerStepper({ steps, current }) {
                 className={
                   'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 shrink-0 transition ' +
                   (isActive
-                    ? 'bg-[#3B66FF] border-[#3B66FF] text-white'
+                    ? 'bg-primary border-primary text-white'
                     : isDone
                       ? 'bg-emerald-500 border-emerald-500 text-white'
                       : 'bg-slate-100 border-slate-200 text-slate-500')
@@ -28,7 +28,7 @@ export function FranchisePartnerStepper({ steps, current }) {
               <span
                 className={
                   'text-[13px] whitespace-nowrap ' +
-                  (isActive ? 'text-[#3B66FF] font-semibold' : isDone ? 'text-emerald-600 font-medium' : 'text-slate-500')
+                  (isActive ? 'text-primary font-semibold' : isDone ? 'text-emerald-600 font-medium' : 'text-slate-500')
                 }
               >
                 {label}

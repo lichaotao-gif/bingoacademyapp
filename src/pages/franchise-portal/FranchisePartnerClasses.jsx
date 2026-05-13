@@ -88,7 +88,7 @@ export default function FranchisePartnerClasses() {
             setOfflineCourseIds(defaultOfflineCourseIds())
             setClassModalOpen(true)
           }}
-          className="shrink-0 px-4 py-2.5 rounded-lg bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold whitespace-nowrap"
+          className="shrink-0 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold whitespace-nowrap"
         >
           + 创建班级
         </button>
@@ -112,12 +112,12 @@ export default function FranchisePartnerClasses() {
             return (
               <article
                 key={cls.id}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-4 min-h-[12rem] hover:border-[#3B66FF]/35 hover:shadow-md transition-all"
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-4 min-h-[12rem] hover:border-primary/35 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between gap-3 min-w-0">
                   <Link
                     to={detailTo}
-                    className="text-base font-semibold text-slate-900 leading-snug hover:text-[#3B66FF] line-clamp-2"
+                    className="text-base font-semibold text-slate-900 leading-snug hover:text-primary line-clamp-2"
                     title="进入班级详情"
                   >
                     {cls.name}
@@ -154,7 +154,7 @@ export default function FranchisePartnerClasses() {
                 <div className="pt-3 border-t border-slate-100 mt-auto">
                   <Link
                     to={detailTo}
-                    className="inline-flex w-full justify-center items-center px-3 py-2.5 rounded-xl bg-[#3B66FF] text-white text-xs font-semibold hover:bg-[#2f56e6] transition-colors"
+                    className="inline-flex w-full justify-center items-center px-3 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-600 transition-colors"
                   >
                     班级详情
                   </Link>
@@ -189,7 +189,7 @@ export default function FranchisePartnerClasses() {
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   placeholder="输入班级名称"
                   maxLength={60}
                   autoFocus
@@ -225,7 +225,7 @@ export default function FranchisePartnerClasses() {
                               }
                             }
                           }}
-                          className="mt-1 h-4 w-4 rounded border-slate-300 text-[#3B66FF] focus:ring-[#3B66FF]/30"
+                          className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
                         />
                         <span className="min-w-0 flex-1">
                           <span className="text-sm font-medium text-slate-800">{c.name}</span>
@@ -244,7 +244,7 @@ export default function FranchisePartnerClasses() {
                 <input
                   value={courseType}
                   onChange={(e) => setCourseType(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   placeholder="如：周末班、暑期集训（可选）"
                 />
               </div>
@@ -254,7 +254,7 @@ export default function FranchisePartnerClasses() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                 />
               </div>
               {classErr ? <p className="text-sm text-red-600">{classErr}</p> : null}
@@ -268,7 +268,7 @@ export default function FranchisePartnerClasses() {
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#3B66FF] text-white text-sm font-semibold hover:bg-[#2f56e6]"
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-600"
                 >
                   确认创建
                 </button>

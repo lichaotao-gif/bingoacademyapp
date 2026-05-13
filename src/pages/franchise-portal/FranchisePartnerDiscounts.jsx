@@ -36,7 +36,7 @@ export default function FranchisePartnerDiscounts() {
                     <span className="text-red-600 font-semibold">{label}</span>
                     <span className="text-slate-400 text-sm ml-2">（{Math.round(rate * 1000) / 10}% 价）</span>
                   </td>
-                  <td className="px-5 py-3 font-semibold text-[#3B66FF] tabular-nums">¥{sale.toFixed(2)}</td>
+                  <td className="px-5 py-3 font-semibold text-primary tabular-nums">¥{sale.toFixed(2)}</td>
                 </tr>
               )
             })}
@@ -46,7 +46,7 @@ export default function FranchisePartnerDiscounts() {
 
       <p className="text-xs text-slate-400">
         充课扣款时系统按上表自动匹配折扣，详见
-        <Link to="/franchise-partner/recharge" className="text-[#3B66FF] hover:underline">
+        <Link to="/franchise-partner/recharge" className="text-primary hover:underline">
           充课中心
         </Link>
         。

@@ -18,7 +18,7 @@ export default function FranchisePartnerPromote() {
       rate: getDiscountRate(ws, c.id),
       salePrice: Math.round(c.price * getDiscountRate(ws, c.id) * 100) / 100,
     }))
-  }, [session?.refCode, origin, ws])
+  }, [session, origin, ws])
 
   const copy = useCallback((id, text) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -27,14 +27,15 @@ export default function FranchisePartnerPromote() {
     })
   }, [])
 
-  if (!session || !ws) return null
+  if (!session || !ws) {
+    return <p className="text-slate-500 text-sm">加载中…</p>
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <p className="text-sm text-slate-500">
-          课程链接已自动附带您的渠道标识 <span className="font-mono text-[#3B66FF]">{session.refCode}</span>
-          。用户通过链接访问课程页时携带该参数；加盟商侧购课/充课以总部配置的
+          课程链接已由系统自动写入您的渠道标识（无需记忆或对外展示编码）。用户通过链接访问课程页时会带上该参数；加盟商侧购课/充课以总部配置的
           <span className="text-red-600 font-medium mx-0.5">专属折扣</span>
           结算（见折扣查看）。
         </p>
@@ -59,7 +60,7 @@ export default function FranchisePartnerPromote() {
                   href={c.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs px-4 py-2 rounded-lg bg-[#3B66FF] text-white font-medium hover:bg-[#2f56e6] inline-block text-center"
+                  className="text-xs px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary-600 inline-block text-center"
                 >
                   预览落地页
                 </a>

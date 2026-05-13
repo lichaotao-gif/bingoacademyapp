@@ -9,11 +9,14 @@ export default function Layout({ children }) {
   const navigate = useNavigate()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const franchisePartnerPortal = loc.pathname.startsWith('/franchise-partner')
+  const institutionHqPortal = loc.pathname.startsWith('/institution-hq')
   /** 已登录加盟商工作台：隐藏官网顶栏/底栏与悬浮营销，沉浸后台 */
   const franchiseWorkspace =
-    loc.pathname.startsWith('/franchise-partner') && !loc.pathname.startsWith('/franchise-partner/login')
-  /** 加盟商登录页：与后台一致不叠悬浮按钮/底栏/客服，避免挡住「登录」 */
-  const franchisePartnerLoginPage = loc.pathname.includes('/franchise-partner/login')
+    (franchisePartnerPortal && !loc.pathname.startsWith('/franchise-partner/login')) ||
+    (institutionHqPortal && !loc.pathname.startsWith('/institution-hq/login'))
+  /** 加盟商 / 机构总管理登录页：与后台一致不叠悬浮按钮/底栏/客服，避免挡住「登录」 */
+  const franchisePartnerLoginPage =
+    loc.pathname.includes('/franchise-partner/login') || loc.pathname.includes('/institution-hq/login')
   const showPublicMarketingLayers = !franchiseWorkspace && !franchisePartnerLoginPage
 
   useEffect(() => {
@@ -27,7 +30,13 @@ export default function Layout({ children }) {
   const showSiteHeader = !franchiseWorkspace && !franchisePartnerLoginPage
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className={
+        franchiseWorkspace
+          ? 'flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden'
+          : 'min-h-screen flex flex-col'
+      }
+    >
       {showSiteHeader ? (
       <header className="sticky top-0 z-50 bg-bingo-dark text-white shadow-lg border-b border-cyan-500/20 bg-gradient-to-r from-[#0f172a] to-[#1e293b]">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
@@ -98,7 +107,7 @@ export default function Layout({ children }) {
       <main
         className={
           franchiseWorkspace
-            ? 'flex-1 min-h-0'
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
             : franchisePartnerLoginPage
               ? 'flex-1'
               : 'flex-1 pb-20 lg:pb-0'

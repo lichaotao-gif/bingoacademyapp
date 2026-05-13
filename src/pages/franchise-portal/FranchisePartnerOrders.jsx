@@ -43,7 +43,7 @@ export default function FranchisePartnerOrders() {
     <div className="space-y-6">
       <p className="text-sm text-slate-500">
         支持按学员、课程、日期筛选。扣款规则见
-        <Link to="/franchise-partner/discounts" className="text-[#3B66FF] hover:underline mx-0.5">
+        <Link to="/franchise-partner/discounts" className="text-primary hover:underline mx-0.5">
           专属折扣
         </Link>
         。
@@ -56,7 +56,7 @@ export default function FranchisePartnerOrders() {
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs text-slate-500">已完成销售额（元）</p>
-          <p className="text-2xl font-bold text-[#3B66FF] mt-1 tabular-nums">{totalSales.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</p>
+          <p className="text-2xl font-bold text-primary mt-1 tabular-nums">{totalSales.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs text-slate-500">状态分布</p>
@@ -72,12 +72,12 @@ export default function FranchisePartnerOrders() {
           value={filterName}
           onChange={(e) => setFilterName(e.target.value)}
           placeholder="搜索学员姓名…"
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm w-44 sm:w-52 focus:outline-none focus:border-[#3B66FF] focus:ring-2 focus:ring-[#3B66FF]/15"
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm w-44 sm:w-52 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
         />
         <select
           value={filterCourse}
           onChange={(e) => setFilterCourse(e.target.value)}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm min-w-[10rem] focus:outline-none focus:border-[#3B66FF]"
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm min-w-[10rem] focus:outline-none focus:border-primary"
         >
           <option value="">全部课程</option>
           {FRANCHISE_PROMOTABLE_COURSES.map((c) => (
@@ -90,12 +90,12 @@ export default function FranchisePartnerOrders() {
           type="date"
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#3B66FF]"
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary"
         />
         <button
           type="button"
           onClick={applyFilter}
-          className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold bg-[#3B66FF] hover:bg-[#2f56e6] text-white min-h-[42px]"
+          className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold bg-primary hover:bg-primary-600 text-white min-h-[42px]"
         >
           筛选
         </button>
@@ -145,7 +145,7 @@ export default function FranchisePartnerOrders() {
                       {o.discountLabel}
                     </span>
                   </td>
-                  <td className="px-5 py-3 font-semibold text-[#3B66FF] tabular-nums">¥{Number(o.payAmount).toFixed(2)}</td>
+                  <td className="px-5 py-3 font-semibold text-primary tabular-nums">¥{Number(o.payAmount).toFixed(2)}</td>
                   <td className="px-5 py-3 text-slate-600 whitespace-nowrap">{fmtDate(o.createdAt)}</td>
                   <td className="px-5 py-3">
                     <span

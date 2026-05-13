@@ -32,6 +32,8 @@ export interface TeachingProduct {
   name: string
   price: number
   desc: string
+  /** 详情富文本（HTML），可含图片标签等；演示环境由总部配置写入 localStorage */
+  detailHtml?: string
   coverImageUrl?: string
   enabled?: boolean
 }
@@ -49,6 +51,21 @@ export const DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL = `data:image/svg+xml;chars
   `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="404" viewBox="0 0 720 404"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#dc2626"/><stop offset="52%" stop-color="#f97316"/><stop offset="100%" stop-color="#2563eb"/></linearGradient><pattern id="p" width="36" height="36" patternUnits="userSpaceOnUse"><circle cx="8" cy="8" r="3" fill="#fff" opacity=".2"/><path d="M28 6h4v4h-4zM8 26h4v4H8z" fill="#fff" opacity=".18"/></pattern></defs><rect width="720" height="404" rx="24" fill="url(#g)"/><rect width="720" height="404" fill="url(#p)"/><g fill="#fff"><text x="48" y="92" font-family="Arial, sans-serif" font-size="28" font-weight="700" opacity=".92">BINGO AI ACADEMY</text><text x="48" y="224" font-family="Arial, sans-serif" font-size="58" font-weight="800">AI EDU KIT</text><text x="52" y="278" font-family="Arial, sans-serif" font-size="24" font-weight="600" opacity=".84">Teaching Materials</text></g><g opacity=".78" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M522 122h74l42 72-42 72h-74l-42-72z"/><path d="M522 122l37 72-37 72M596 122l-37 72 37 72"/></g></svg>`,
 )}`
 
+function escapeHtmlText(s: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/** 无自定义详情时用于种子与加盟商端展示的默认 HTML（封面 + 标题 + 简介） */
+export function buildDefaultTeachingDetailHtml(name: string, desc: string, coverUrl: string): string {
+  const cover = (coverUrl || '').trim() || DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL
+  const safeCover = cover.replace(/'/g, '%27')
+  return `<div class="teaching-product-detail"><p><img src='${safeCover}' alt="" style="max-width:100%;height:auto;border-radius:12px;border:1px solid #e2e8f0" /></p><h2 style="font-size:1.15rem;margin:0.75rem 0 0.5rem">${escapeHtmlText(name)}</h2><p style="line-height:1.65;color:#334155">${escapeHtmlText(desc)}</p><p style="color:#64748b;font-size:13px;margin-top:1rem">总部可在「学具商品配置」中编辑本页为完整图文介绍（支持 HTML）。</p></div>`
+}
+
 export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
   {
     id: 'kit-ai-starter',
@@ -57,6 +74,11 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     desc: '适合人工智能启蒙课堂：主控板、灯光、声音传感器与简易 AI 逻辑编程。',
     enabled: true,
     coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    detailHtml: buildDefaultTeachingDetailHtml(
+      'AI启蒙传感学具套装',
+      '适合人工智能启蒙课堂：主控板、灯光、声音传感器与简易 AI 逻辑编程。',
+      DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    ),
   },
   {
     id: 'robot-microbit',
@@ -65,6 +87,11 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     desc: '面向 AI 编程入门课堂，支持图形化编程、传感器交互与智能作品搭建。',
     enabled: true,
     coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    detailHtml: buildDefaultTeachingDetailHtml(
+      '人工智能 Micro:bit 编程学具',
+      '面向 AI 编程入门课堂，支持图形化编程、传感器交互与智能作品搭建。',
+      DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    ),
   },
   {
     id: 'sensor-ai-kit',
@@ -73,6 +100,11 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     desc: '支持视觉、距离、声音等多模态 AI 感知实验，配套课堂实验报告模板。',
     enabled: true,
     coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    detailHtml: buildDefaultTeachingDetailHtml(
+      'AI视觉与多模态传感器套装',
+      '支持视觉、距离、声音等多模态 AI 感知实验，配套课堂实验报告模板。',
+      DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    ),
   },
   {
     id: 'jetson-nano-edu',
@@ -81,6 +113,11 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     desc: '用于边缘 AI 与轻量深度学习推理演示，含散热、电源与教育实验指引。',
     enabled: true,
     coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    detailHtml: buildDefaultTeachingDetailHtml(
+      '边缘人工智能实验主机',
+      '用于边缘 AI 与轻量深度学习推理演示，含散热、电源与教育实验指引。',
+      DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    ),
   },
   {
     id: 'ai-xlab-pack',
@@ -89,6 +126,11 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     desc: '围绕机器学习数据采集、标注与分类实验设计，适配约 30 人 AI 班课。',
     enabled: true,
     coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    detailHtml: buildDefaultTeachingDetailHtml(
+      'AI机器学习实验耗材包（班课装）',
+      '围绕机器学习数据采集、标注与分类实验设计，适配约 30 人 AI 班课。',
+      DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    ),
   },
   {
     id: 'drone-ai-lite',
@@ -97,6 +139,11 @@ export const DEFAULT_TEACHING_PRODUCTS_SEED: TeachingProduct[] = [
     desc: '用于 AI 视觉循迹、定点巡航与智能控制入门，含安全护桨与课堂安全说明。',
     enabled: true,
     coverImageUrl: DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    detailHtml: buildDefaultTeachingDetailHtml(
+      'AI视觉循迹无人机（教育版）',
+      '用于 AI 视觉循迹、定点巡航与智能控制入门，含安全护桨与课堂安全说明。',
+      DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
+    ),
   },
 ]
 
@@ -129,13 +176,15 @@ export function normalizeTeachingDiscountPolicy(raw: unknown): TeachingDiscountP
   if (!raw || typeof raw !== 'object') return def()
   const o = raw as { lineQuantityTiers?: unknown; orderTotalQuantityTiers?: unknown }
   const lineArr = Array.isArray(o.lineQuantityTiers) ? o.lineQuantityTiers : []
-  const lineQuantityTiers = lineArr.map((x) => normalizeTier(x as TeachingQtyTier)).filter(Boolean) as TeachingQtyTier[]
+  const lineQuantityTiers = lineArr
+    .map((x) => normalizeTier(x as Partial<TeachingQtyTier> & Record<string, unknown>))
+    .filter(Boolean) as TeachingQtyTier[]
   let orderTotalQuantityTiers: TeachingQtyTier[]
   if (!Array.isArray(o.orderTotalQuantityTiers)) {
     orderTotalQuantityTiers = fallbackOrder()
   } else {
     orderTotalQuantityTiers = o.orderTotalQuantityTiers
-      .map((x) => normalizeTier(x as TeachingQtyTier))
+      .map((x) => normalizeTier(x as Partial<TeachingQtyTier> & Record<string, unknown>))
       .filter(Boolean) as TeachingQtyTier[]
   }
   return { lineQuantityTiers, orderTotalQuantityTiers }
@@ -145,11 +194,14 @@ function normalize(p: Partial<TeachingProduct> & { id?: string }): TeachingProdu
   const id = String(p.id ?? `kit-${Date.now().toString(36)}`).trim()
   if (!id || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) return null
   const price = Number(p.price)
+  const detailRaw = p.detailHtml != null ? String(p.detailHtml) : ''
+  const detailHtml = detailRaw.length > 400_000 ? detailRaw.slice(0, 400_000) : detailRaw
   return {
     id,
     name: String(p.name ?? '').trim() || '未命名商品',
     price: Number.isFinite(price) && price >= 0 ? Math.round(price * 100) / 100 : 0,
     desc: p.desc != null ? String(p.desc) : '',
+    detailHtml,
     coverImageUrl: p.coverImageUrl?.trim() || DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL,
     enabled: p.enabled !== false,
   }

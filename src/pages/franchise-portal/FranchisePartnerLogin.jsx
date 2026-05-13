@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   buildPartnerSessionPayloadForLogin,
+  consumeQueuedPartnerSessionIfPresent,
+  getPartnerSession,
   getResolvedPartnerIdForPhoneLogin,
   isPartnerAccountFrozen,
   sendPartnerLoginSmsCode,
@@ -9,13 +11,14 @@ import {
   verifyOrRegisterPartnerLogin,
   verifyPartnerLoginSmsCode,
 } from '../../utils/franchisePartnerStorage'
+import { tryInstitutionStaffLogin } from '../../utils/franchiseInstitutionAccounts'
 
 const SMS_COOLDOWN_SEC = 60
 
 /** public/logo.svg，兼容 Vite base 子路径部署 */
 const LOGO_SRC = `${import.meta.env.BASE_URL}logo.svg`
 
-/** 演示环境默认账号（正式环境勿预填） */
+/** 本地沙盘默认预填（生产环境不应预填账号） */
 const DEFAULT_LOGIN_PHONE = '13800138000'
 const DEFAULT_LOGIN_PASSWORD = 'demo123'
 
@@ -43,6 +46,14 @@ export default function FranchisePartnerLogin() {
   const [smsHint, setSmsHint] = useState('')
   const [smsCooldown, setSmsCooldown] = useState(0)
   const feedbackRef = useRef(null)
+
+  useEffect(() => {
+    consumeQueuedPartnerSessionIfPresent()
+    const s = getPartnerSession()
+    if (s && !isPartnerAccountFrozen(s.partnerId)) {
+      navigate('/franchise-partner/dashboard', { replace: true })
+    }
+  }, [navigate])
 
   /** 仅挂载时预填一次；不做延时重复写入，避免与点击登录竞态导致提交异常 */
   useEffect(() => {
@@ -74,14 +85,14 @@ export default function FranchisePartnerLogin() {
   const normalizePhone = useCallback(() => phone.replace(/\D/g, ''), [phone])
 
   const finishLogin = useCallback(
-    (digits) => {
-      const pid = getResolvedPartnerIdForPhoneLogin(digits)
+    (digits, sessionPayload) => {
+      const pid = sessionPayload?.partnerId || getResolvedPartnerIdForPhoneLogin(digits)
       if (isPartnerAccountFrozen(pid)) {
         setErr('账号已被总部冻结，无法登录。请联系总部处理。')
         return
       }
       try {
-        setPartnerSession(buildPartnerSessionPayloadForLogin(digits))
+        setPartnerSession(sessionPayload || buildPartnerSessionPayloadForLogin(digits))
         /** 使用路由跳转，由 BrowserRouter basename 统一处理子路径部署，避免手写 URL 与 BASE_URL 不一致 */
         navigate('/franchise-partner/dashboard', { replace: true })
       } catch (e) {
@@ -107,7 +118,7 @@ export default function FranchisePartnerLogin() {
       return
     }
     setSmsCooldown(SMS_COOLDOWN_SEC)
-    setSmsHint(`演示环境：本次验证码为 ${r.demoCode}（正式环境将发送至手机）`)
+    setSmsHint(`验证码：${r.demoCode}`)
   }
 
   const runPasswordLogin = useCallback(() => {
@@ -132,6 +143,16 @@ export default function FranchisePartnerLogin() {
     }
 
     try {
+      const staff = tryInstitutionStaffLogin(p, password)
+      if (staff.ok && staff.session) {
+        finishLogin(p, staff.session)
+        return
+      }
+      if (staff.msg) {
+        setErr(staff.msg)
+        return
+      }
+
       const auth = verifyOrRegisterPartnerLogin(p, password)
       if (auth.ok) {
         safeFinish()
@@ -263,7 +284,7 @@ export default function FranchisePartnerLogin() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">账号</label>
                 <input
                   type="tel"
-                  name="franchise-demo-phone"
+                  name="franchise-login-phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
@@ -274,10 +295,10 @@ export default function FranchisePartnerLogin() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">密码</label>
-                {/* 演示站用 type="text" 明文，避免被当成「密码框」后浏览器不显示或盖掉预填 */}
+                {/* type="text" 避免部分浏览器对 password 类型预填异常 */}
                 <input
                   type="text"
-                  name="franchise-demo-password"
+                  name="franchise-login-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
@@ -286,9 +307,7 @@ export default function FranchisePartnerLogin() {
                   autoCapitalize="none"
                   spellCheck={false}
                 />
-                <p className="text-xs text-slate-500 mt-1.5">
-                  演示预填：账号与密码已写入上方输入框（仅加盟商端本页）。
-                </p>
+                <p className="text-xs text-slate-500 mt-1.5">密码区分大小写。若无法登录，请联系机构管理员核实账号与权限。</p>
               </div>
               <div ref={feedbackRef}>
                 <LoginFeedback message={err} />
@@ -303,7 +322,7 @@ export default function FranchisePartnerLogin() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">账号</label>
                 <input
                   type="tel"
-                  name="franchise-demo-phone-sms"
+                  name="franchise-login-phone-sms"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"

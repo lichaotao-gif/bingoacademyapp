@@ -3,6 +3,9 @@
  * v1.1.0：独立账号、班级/学员、专属折扣、充课扣余额、订单与财务统计。
  * 生产环境应替换为总部后台 API。
  */
+import { getTeachingProductDemoDetailHtml } from '../constants/teachingProductDetailPresets.js'
+import { INSTITUTION_HQ_PENDING_WS_KEY } from '../constants/institutionHqPendingWorkspace.js'
+
 const SESSION_KEY = 'bingo_franchise_partner_session_v1'
 
 const workspaceKey = (partnerId) => `bingo_franchise_workspace_v2_${partnerId}`
@@ -13,6 +16,19 @@ function safeParse(json, fallback) {
   } catch {
     return fallback
   }
+}
+
+/** 登录页预填演示主账号（无总部开户档案时机构名/加盟编码与此对齐） */
+export const FRANCHISE_PREVIEW_DEMO_MAIN_PHONE = '13800138000'
+
+/**
+ * 统一为 11 位国内手机，避免会话里存成 8613800138000 导致演示主号判断失败、侧栏逻辑异常。
+ */
+export function normalizePartnerPhoneDigits(raw) {
+  const d = String(raw || '').replace(/\D/g, '')
+  if (d.length === 11 && /^1\d{10}$/.test(d)) return d
+  if (d.startsWith('86') && d.length === 13 && /^1\d{10}$/.test(d.slice(2))) return d.slice(2)
+  return d
 }
 
 /** 课程包（与站点课程 id 对齐） */
@@ -124,6 +140,48 @@ function normalizeOfflineCourseIdsFromMeta(meta) {
  */
 export const FRANCHISE_TEACHING_CATALOG_LS_KEY = 'bingo_franchise_teaching_products_catalog_v1'
 
+const TEACHING_DETAIL_HTML_MAX = 400_000
+
+function escapeHtmlForTeachingFallback(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/** 无总部配置的 detailHtml 时，用封面 + 简介生成占位详情（加盟商端展示） */
+export function buildFallbackTeachingDetailHtml(name, desc, coverImageUrl) {
+  const cover = coverImageUrl != null ? String(coverImageUrl).trim() : ''
+  const img = cover
+    ? `<p><img src='${cover.replace(/'/g, '%27')}' alt="" style="max-width:100%;height:auto;border-radius:12px;border:1px solid #e2e8f0" /></p>`
+    : ''
+  return `<div class="teaching-product-detail">${img}<h2 style="font-size:1.125rem;margin:0 0 0.5rem">${escapeHtmlForTeachingFallback(name)}</h2><p style="line-height:1.65;color:#334155">${escapeHtmlForTeachingFallback(desc)}</p><p style="color:#64748b;font-size:13px;margin-top:1rem">更多介绍可由总部在「学具商品配置」中编辑详情 HTML。</p></div>`
+}
+
+function clampTeachingDetailHtml(raw) {
+  const s = raw != null ? String(raw) : ''
+  if (s.length <= TEACHING_DETAIL_HTML_MAX) return s
+  return s.slice(0, TEACHING_DETAIL_HTML_MAX)
+}
+
+function withTeachingDetailFallback(p) {
+  const html = p.detailHtml != null ? String(p.detailHtml).trim() : ''
+  if (html) return { ...p, detailHtml: html }
+  /** 详情页用 getTeachingMaterialDetailBodyHtml 再拼演示长图文，避免列表里塞大段 HTML */
+  return { ...p, detailHtml: '' }
+}
+
+/** 详情页正文：优先总部 detailHtml，其次内置演示，最后封面+简介 */
+export function getTeachingMaterialDetailBodyHtml(product) {
+  if (!product || !product.id) return ''
+  const d = String(product.detailHtml || '').trim()
+  if (d) return d
+  const demo = getTeachingProductDemoDetailHtml(product)
+  if (demo) return demo
+  return buildFallbackTeachingDetailHtml(product.name, product.desc, product.coverImageUrl || '')
+}
+
 function normalizeTeachingProductFromLs(raw) {
   if (!raw || typeof raw !== 'object') return null
   const id = String(raw.id || '').trim()
@@ -135,6 +193,7 @@ function normalizeTeachingProductFromLs(raw) {
     price: Number.isFinite(price) && price >= 0 ? Math.round(price * 100) / 100 : 0,
     tag: raw.tag != null ? String(raw.tag) : '',
     desc: raw.desc != null ? String(raw.desc) : '',
+    detailHtml: clampTeachingDetailHtml(raw.detailHtml),
     emoji: raw.emoji != null ? String(raw.emoji).trim() : '',
     coverImageUrl: raw.coverImageUrl ? String(raw.coverImageUrl).trim() : '',
     coverGradientFrom: raw.coverGradientFrom ? String(raw.coverGradientFrom).trim() : '',
@@ -150,17 +209,18 @@ function normalizeTeachingProductFromLs(raw) {
 export function getFranchiseTeachingProductsCatalog() {
   try {
     const ls = localStorage.getItem(FRANCHISE_TEACHING_CATALOG_LS_KEY)
-    if (!ls) return FRANCHISE_TEACHING_PRODUCTS.map((p) => ({ ...p }))
+    if (!ls) return FRANCHISE_TEACHING_PRODUCTS.map((p) => withTeachingDetailFallback({ ...p }))
     const data = JSON.parse(ls)
     const arr = data?.products
-    if (!Array.isArray(arr) || arr.length === 0) return FRANCHISE_TEACHING_PRODUCTS.map((p) => ({ ...p }))
+    if (!Array.isArray(arr) || arr.length === 0)
+      return FRANCHISE_TEACHING_PRODUCTS.map((p) => withTeachingDetailFallback({ ...p }))
     const mapped = arr.map(normalizeTeachingProductFromLs).filter(Boolean)
     const active = mapped.filter((p) => p.enabled)
-    if (!active.length) return FRANCHISE_TEACHING_PRODUCTS.map((p) => ({ ...p }))
+    if (!active.length) return FRANCHISE_TEACHING_PRODUCTS.map((p) => withTeachingDetailFallback({ ...p }))
     /** 保持总部配置的数组顺序（不再使用 sortOrder） */
-    return active
+    return active.map((p) => withTeachingDetailFallback(p))
   } catch {
-    return FRANCHISE_TEACHING_PRODUCTS.map((p) => ({ ...p }))
+    return FRANCHISE_TEACHING_PRODUCTS.map((p) => withTeachingDetailFallback({ ...p }))
   }
 }
 
@@ -483,6 +543,28 @@ export function getPartnerSession() {
   if (!raw) return null
   const s = safeParse(raw, null)
   if (!s?.partnerId) return null
+  /**
+   * 演示主号 13800138000：自愈子账号标记、861… 前缀等，避免侧栏「机构账号」被误判隐藏。
+   */
+  const rawDigits = String(s.phone || '').replace(/\D/g, '')
+  const digits = normalizePartnerPhoneDigits(s.phone)
+  const staffSub = s.staffSubUser === true
+  const isPreviewMain = digits === FRANCHISE_PREVIEW_DEMO_MAIN_PHONE
+  if (isPreviewMain && (staffSub || rawDigits !== FRANCHISE_PREVIEW_DEMO_MAIN_PHONE)) {
+    const cleaned = { ...s, phone: FRANCHISE_PREVIEW_DEMO_MAIN_PHONE }
+    delete cleaned.staffSubUser
+    delete cleaned.staffName
+    delete cleaned.staffRoleId
+    delete cleaned.staffRoleName
+    delete cleaned.staffMenuKeys
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(cleaned))
+      window.dispatchEvent(new Event('franchise-partner-session-changed'))
+    } catch {
+      return s
+    }
+    return cleaned
+  }
   return s
 }
 
@@ -503,6 +585,45 @@ export function clearPartnerSession() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('franchise-partner-session-changed'))
   }
+}
+
+/** 机构总管理从「新标签页」打开校区工作台时，先写入此键，加盟商 Layout 首帧消费并转为正式会话 */
+const PENDING_FRANCHISE_PARTNER_SESSION_KEY = 'bingo_franchise_partner_pending_session_v1'
+
+export function queuePartnerSessionForNewTab(sessionPayload) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(PENDING_FRANCHISE_PARTNER_SESSION_KEY, JSON.stringify(sessionPayload))
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+/** 消费待注入的加盟商会话（幂等：无键则 false） */
+export function consumeQueuedPartnerSessionIfPresent() {
+  if (typeof window === 'undefined') return false
+  let raw = null
+  try {
+    raw = localStorage.getItem(PENDING_FRANCHISE_PARTNER_SESSION_KEY)
+  } catch {
+    return false
+  }
+  if (!raw) return false
+  try {
+    localStorage.removeItem(PENDING_FRANCHISE_PARTNER_SESSION_KEY)
+  } catch {
+    /* 仍尝试应用 */
+  }
+  try {
+    const p = JSON.parse(raw)
+    if (p && typeof p === 'object' && p.partnerId) {
+      setPartnerSession(p)
+      return true
+    }
+  } catch {
+    /* ignore */
+  }
+  return false
 }
 
 const DEMO_STORAGE_PREFIX = 'bingo_franchise'
@@ -569,7 +690,7 @@ function loadPartnerProvisionMap() {
 
 /** 构建登录后写入 SESSION 的档案（优先用手动开户信息） */
 export function buildPartnerSessionPayloadForLogin(phoneDigits) {
-  const p = String(phoneDigits || '').replace(/\D/g, '')
+  const p = normalizePartnerPhoneDigits(phoneDigits)
   const row = loadPartnerProvisionMap()[p]
   if (row?.partnerId && row?.refCode) {
     const masked = `${p.slice(0, 3)}****${p.slice(-4)}`
@@ -589,6 +710,17 @@ export function buildPartnerSessionPayloadForLogin(phoneDigits) {
       loginAt: new Date().toISOString(),
     }
   }
+  /** 预览默认号：固定机构名与加盟编码，便于学具/机构账号等演示数据与 localStorage 桶一致 */
+  if (p === FRANCHISE_PREVIEW_DEMO_MAIN_PHONE) {
+    return {
+      partnerId: 'p_13800138000',
+      refCode: 'FJ-QISI-DEMO',
+      phone: p,
+      orgName: '启思博雅教育中心',
+      contactName: '管理员',
+      loginAt: new Date().toISOString(),
+    }
+  }
   const refCode = `FJ-${p.slice(-4)}-${Date.now().toString(36).slice(-4).toUpperCase()}`
   const partnerId = `p_${p}`
   const masked = `${p.slice(0, 3)}****${p.slice(-4)}`
@@ -604,7 +736,7 @@ export function buildPartnerSessionPayloadForLogin(phoneDigits) {
 
 /** 与即将写入会话的 partnerId 一致，用于登录前冻结校验 */
 export function getResolvedPartnerIdForPhoneLogin(phoneDigits) {
-  const p = String(phoneDigits || '').replace(/\D/g, '')
+  const p = normalizePartnerPhoneDigits(phoneDigits)
   const row = loadPartnerProvisionMap()[p]
   if (row?.partnerId && row?.refCode) return String(row.partnerId)
   return `p_${p}`
@@ -1478,11 +1610,81 @@ function normalizeEnrollments(ws) {
   return changed
 }
 
+function consumeInstitutionPendingWorkspaceOpening(partnerId) {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(INSTITUTION_HQ_PENDING_WS_KEY)
+    if (!raw) return null
+    const o = safeParse(raw, {})
+    const pid = String(partnerId || '')
+    const by = o?.byPartnerId
+    if (!by || typeof by !== 'object' || !by[pid]) return null
+    const row = { ...by[pid] }
+    const nextBy = { ...by }
+    delete nextBy[pid]
+    localStorage.setItem(INSTITUTION_HQ_PENDING_WS_KEY, JSON.stringify({ version: 1, byPartnerId: nextBy }))
+    return row
+  } catch {
+    return null
+  }
+}
+
+/** 机构总后台新开设校区：空班表、空订单；加盟商余额 = 划拨的开业额度（演示） */
+function workspaceShellForInstitutionNewCampus(partnerId, refCode, openingBalance) {
+  const t0 = Date.now()
+  const bal = Math.max(0, Math.round(Number(openingBalance || 0) * 100) / 100)
+  const courseDiscounts = [
+    { courseId: 'ai-enlighten', rate: 0.8, label: '8折' },
+    { courseId: 'ai-advance-basic', rate: 0.75, label: '75折' },
+    { courseId: 'ai-advance-ml', rate: 0.75, label: '75折' },
+    { courseId: 'ai-programming', rate: 0.85, label: '85折' },
+  ]
+  const ledger =
+    bal > 0
+      ? [
+          {
+            id: `l-hq-alloc-${t0}`,
+            type: 'topup',
+            title: '机构总管理划拨开业额度',
+            amount: bal,
+            balanceAfter: bal,
+            createdAt: new Date().toISOString(),
+          },
+        ]
+      : []
+  return {
+    schemaVersion: 2,
+    partnerId,
+    refCode,
+    balance: bal,
+    frozen: 0,
+    courseDiscounts,
+    announcements: [
+      {
+        id: 'a-welcome',
+        title: '欢迎：本校区初始余额由机构总后台划拨，可在「余额中心」查看。',
+        date: new Date().toISOString().slice(0, 10),
+        isNew: true,
+      },
+    ],
+    orders: [],
+    ledger,
+    withdrawals: [],
+    classes: [],
+    students: [],
+    materialOrders: seedMaterialOrders(t0),
+    institutionQualification: buildDefaultInstitutionQualification(partnerId, refCode),
+  }
+}
+
 export function getWorkspace(partnerId, refCode) {
   if (typeof window === 'undefined') return defaultWorkspace(partnerId, refCode)
   const raw = localStorage.getItem(workspaceKey(partnerId))
   if (!raw) {
-    const init = defaultWorkspace(partnerId, refCode)
+    const pending = consumeInstitutionPendingWorkspaceOpening(partnerId)
+    const init = pending
+      ? workspaceShellForInstitutionNewCampus(partnerId, refCode, pending.openingBalance)
+      : defaultWorkspace(partnerId, refCode)
     localStorage.setItem(workspaceKey(partnerId), JSON.stringify(init))
     return init
   }
@@ -1783,6 +1985,35 @@ export function demoTopUpBalance(partnerId, refCode, amount, remark, opts = {}) 
   })
   saveWorkspace(partnerId, ws)
   return { ok: true, ws }
+}
+
+/** 学具商城购物车草稿（列表与详情共用，按 partnerId 隔离） */
+const TEACHING_MATERIAL_CART_DRAFT_PREFIX = 'bingo_franchise_teaching_cart_draft_v1_'
+
+export function getTeachingMaterialCartDraft(partnerId) {
+  if (typeof window === 'undefined' || !partnerId) return {}
+  try {
+    const raw = localStorage.getItem(TEACHING_MATERIAL_CART_DRAFT_PREFIX + String(partnerId))
+    const o = raw ? JSON.parse(raw) : {}
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return {}
+    const out = {}
+    for (const [k, v] of Object.entries(o)) {
+      const q = Math.max(0, parseInt(String(v), 10) || 0)
+      if (q > 0) out[String(k)] = q
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+export function saveTeachingMaterialCartDraft(partnerId, cart) {
+  if (typeof window === 'undefined' || !partnerId) return
+  try {
+    localStorage.setItem(TEACHING_MATERIAL_CART_DRAFT_PREFIX + String(partnerId), JSON.stringify(cart && typeof cart === 'object' ? cart : {}))
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 /**

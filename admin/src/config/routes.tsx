@@ -21,6 +21,8 @@ export interface RouteConfig {
   icon?: ReactNode
   children?: RouteConfig[]
   hideInMenu?: boolean
+  /** 侧栏子菜单旁展示的标签（如「后续版本」演示占位） */
+  menuBadge?: string
 }
 
 export const routes: RouteConfig[] = [
@@ -109,6 +111,9 @@ export const routes: RouteConfig[] = [
       { path: '/franchise/list', name: '加盟商列表' },
       { path: '/franchise/qualification', name: '资质审核' },
       { path: '/franchise/teaching-products', name: '学具商品配置' },
+      { path: '/franchise/institution-accounts', name: '机构账号' },
+      { path: '/franchise/partner-portal-orders', name: '订单管理', menuBadge: '后续版本' },
+      { path: '/franchise/partner-online-learning', name: '线上课与充课', menuBadge: '后续版本' },
       { path: '/franchise/detail', name: '加盟商详情', hideInMenu: true },
     ],
   },

@@ -25,14 +25,17 @@ export default defineConfig(({ mode }) => {
       include: ['react', 'react-dom', 'react-router-dom', 'antd', '@ant-design/icons'],
     },
     server: {
-      /** 固定 5288（更新端口时改此处即可） */
-      port: 5288,
-      /**
-       * true：只用上面端口；被占用时直接报错退出，绝不静默改端口。
-       * 若报错：lsof -i :5288 查看占用进程并结束后，再执行 npm run dev。
-       */
-      strictPort: true,
+      /** Vite 常用默认端口；被占用时会自动顺延，终端会打印实际 Local 地址 */
+      port: 5173,
+      strictPort: false,
+      /** 固定 IPv4，避免部分环境下 localhost 解析异常导致「打不开」 */
+      host: '127.0.0.1',
       proxy: { '/api': { target: 'http://localhost:8080', changeOrigin: true } },
+    },
+    preview: {
+      host: '127.0.0.1',
+      port: 4173,
+      strictPort: false,
     },
   }
 })

@@ -107,7 +107,7 @@ export default function FranchisePartnerDashboard() {
         <div className="lg:col-span-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-slate-900">班级管理</h2>
-            <Link to="/franchise-partner/classes" className="text-xs text-[#3B66FF] font-medium hover:underline">
+            <Link to="/franchise-partner/classes" className="text-xs text-primary font-medium hover:underline">
               全部
             </Link>
           </div>
@@ -119,7 +119,7 @@ export default function FranchisePartnerDashboard() {
                   key={cls.id}
                   className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-100 text-primary flex items-center justify-center shrink-0">
                     <FlatIconBookClass className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -133,7 +133,7 @@ export default function FranchisePartnerDashboard() {
           </ul>
           <Link
             to="/franchise-partner/classes"
-            className="mt-4 flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold transition"
+            className="mt-4 flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary hover:bg-primary-600 text-white text-sm font-semibold transition"
           >
             + 创建班级
           </Link>
@@ -148,9 +148,9 @@ export default function FranchisePartnerDashboard() {
                 to: '/franchise-partner/recharge',
                 label: '充课操作',
                 sub: '扣减余额 · 开通课程',
-                wrap: 'from-sky-50 to-sky-100/80 border-sky-100',
+                wrap: 'from-cyan-50 to-cyan-100/80 border-cyan-100',
                 Icon: FlatIconBolt,
-                iconBox: 'bg-sky-500/15 text-sky-600',
+                iconBox: 'bg-primary/15 text-primary',
               },
               {
                 to: '/franchise-partner/students',
@@ -172,9 +172,9 @@ export default function FranchisePartnerDashboard() {
                 to: '/franchise-partner/finance',
                 label: '财务统计',
                 sub: '销售与流水',
-                wrap: 'from-violet-50 to-purple-50 border-violet-100',
+                wrap: 'from-cyan-50 to-teal-50 border-cyan-100',
                 Icon: FlatIconTrendingUp,
-                iconBox: 'bg-violet-500/15 text-violet-600',
+                iconBox: 'bg-primary/15 text-primary-700',
               },
             ].map((a) => {
               const ActIcon = a.Icon
@@ -199,14 +199,14 @@ export default function FranchisePartnerDashboard() {
         <div className="lg:col-span-4 space-y-4">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <h2 className="font-semibold text-slate-900 mb-1">账户余额</h2>
-            <p className="text-2xl font-bold text-[#3B66FF] tabular-nums">¥{fmtMoney(ws.balance)}</p>
+            <p className="text-2xl font-bold text-primary tabular-nums">¥{fmtMoney(ws.balance)}</p>
             <Link
               to="/franchise-partner/balance"
-              className="mt-3 block w-full text-center py-3 rounded-xl bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold transition"
+              className="mt-3 block w-full text-center py-3 rounded-xl bg-primary hover:bg-primary-600 text-white text-sm font-semibold transition"
             >
               余额充值
             </Link>
-            <Link to="/franchise-partner/finance" className="block text-center text-xs text-slate-500 hover:text-[#3B66FF] mt-2">
+            <Link to="/franchise-partner/finance" className="block text-center text-xs text-slate-500 hover:text-primary mt-2">
               余额变动记录 →
             </Link>
           </div>
@@ -214,7 +214,7 @@ export default function FranchisePartnerDashboard() {
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-slate-900">专属折扣</h2>
-              <Link to="/franchise-partner/discounts" className="text-[11px] text-[#3B66FF] hover:underline">
+              <Link to="/franchise-partner/discounts" className="text-[11px] text-primary hover:underline">
                 折扣查看
               </Link>
             </div>
@@ -243,7 +243,7 @@ export default function FranchisePartnerDashboard() {
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-900">最新订单</h2>
-          <Link to="/franchise-partner/orders" className="text-xs text-[#3B66FF] font-medium hover:underline">
+          <Link to="/franchise-partner/orders" className="text-xs text-primary font-medium hover:underline">
             全部订单 →
           </Link>
         </div>
@@ -273,7 +273,7 @@ export default function FranchisePartnerDashboard() {
                       {o.discountLabel}
                     </span>
                   </td>
-                  <td className="px-5 py-3 font-semibold text-[#3B66FF] tabular-nums">¥{Number(o.payAmount).toFixed(2)}</td>
+                  <td className="px-5 py-3 font-semibold text-primary tabular-nums">¥{Number(o.payAmount).toFixed(2)}</td>
                   <td className="px-5 py-3 text-slate-600 whitespace-nowrap">{fmtDate(o.createdAt)}</td>
                   <td className="px-5 py-3">
                     <span

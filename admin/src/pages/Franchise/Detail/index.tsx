@@ -230,13 +230,6 @@ function CourseDiscountHqPanel({
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        按<strong>加盟商 · 课程包</strong>单独设置充课折扣系数（0.05～1）。保存后写入本地演示存储 Key{' '}
-        <Typography.Text code copyable>
-          bingo_franchise_hq_course_discounts_v1
-        </Typography.Text>
-        ，与加盟工作台同源时可覆盖其默认折扣；「清除总部覆盖」后恢复工作台内置默认值。
-      </Typography.Paragraph>
       <Space wrap>
         <Button type="primary" onClick={save}>
           保存折扣配置
@@ -391,14 +384,7 @@ export default function FranchisePartnerDetailPage() {
                             } else message.error('操作失败')
                           }}
                         />
-                        <Typography.Text type="secondary">
-                          演示环境写入 Key <Typography.Text code>bingo_franchise_hq_partner_account_v1</Typography.Text>
-                          ，须与加盟前台同源方可即时生效。
-                        </Typography.Text>
                       </Space>
-                      <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                        关闭冻结会将演示账户状态恢复为「正常」（不区分原待准入等细分状态）。
-                      </Typography.Paragraph>
                     </Space>
                   </Descriptions.Item>
                   <Descriptions.Item label="账户余额">
@@ -406,7 +392,7 @@ export default function FranchisePartnerDetailPage() {
                   </Descriptions.Item>
                   <Descriptions.Item label="冻结金额">{fmtMoney(p.frozen)}</Descriptions.Item>
                   <Descriptions.Item label="本月订单数">{p.ordersMonthCount}</Descriptions.Item>
-                  <Descriptions.Item label="累计流水（演示）">{fmtMoney(p.totalSales)}</Descriptions.Item>
+                  <Descriptions.Item label="累计流水">{fmtMoney(p.totalSales)}</Descriptions.Item>
                   <Descriptions.Item label="教具订单数">{p.materialOrderCount}</Descriptions.Item>
                   <Descriptions.Item label="班级数">{p.classes.length}</Descriptions.Item>
                 </Descriptions>

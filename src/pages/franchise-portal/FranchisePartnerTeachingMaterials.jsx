@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   FRANCHISE_TEACHING_CATALOG_LS_KEY,
   calculateTeachingMaterialOrderPricing,
   formatTeachingDiscountTier,
   getFranchiseTeachingProductsCatalog,
+  getTeachingMaterialCartDraft,
   getTeachingMaterialDiscountPolicy,
-  getTeachingMaterialOrderTierHint,
   purchaseTeachingMaterials,
+  saveTeachingMaterialCartDraft,
 } from '../../utils/franchisePartnerStorage'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
@@ -39,8 +40,17 @@ function themeForProduct(product) {
   return COVER_THEME[product.id] || { from: '#334155', to: '#64748b', dot: '#e2e8f0' }
 }
 
+function escapeXmlText(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 function makeCoverDataUrl(product) {
   const theme = themeForProduct(product)
+  const rawTitle = String(product?.name || '学具商品').trim() || '学具商品'
+  const title = escapeXmlText(rawTitle.length > 22 ? `${rawTitle.slice(0, 22)}…` : rawTitle)
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="720" height="404" viewBox="0 0 720 404">
     <defs>
@@ -48,16 +58,29 @@ function makeCoverDataUrl(product) {
         <stop offset="0%" stop-color="${theme.from}" />
         <stop offset="100%" stop-color="${theme.to}" />
       </linearGradient>
+      <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(15,23,42,0)" />
+        <stop offset="100%" stop-color="rgba(15,23,42,0.55)" />
+      </linearGradient>
     </defs>
-    <rect width="720" height="404" fill="url(#g)" rx="20" />
-    <g opacity="0.25" fill="${theme.dot}">
+    <rect width="720" height="404" fill="url(#g)" rx="20" stroke="rgba(255,255,255,0.22)" stroke-width="2" />
+    <g opacity="0.22" fill="${theme.dot}">
       <circle cx="70" cy="56" r="4"/><circle cx="105" cy="56" r="4"/><circle cx="140" cy="56" r="4"/><circle cx="175" cy="56" r="4"/>
       <circle cx="70" cy="92" r="4"/><circle cx="105" cy="92" r="4"/><circle cx="140" cy="92" r="4"/><circle cx="175" cy="92" r="4"/>
       <circle cx="560" cy="290" r="4"/><circle cx="595" cy="290" r="4"/><circle cx="630" cy="290" r="4"/><circle cx="665" cy="290" r="4"/>
       <circle cx="560" cy="326" r="4"/><circle cx="595" cy="326" r="4"/><circle cx="630" cy="326" r="4"/><circle cx="665" cy="326" r="4"/>
     </g>
+    <rect x="0" y="260" width="720" height="144" fill="url(#bar)" rx="20" />
+    <text x="36" y="368" fill="rgba(255,255,255,0.95)" font-family="system-ui,-apple-system,sans-serif" font-size="26" font-weight="700">${title}</text>
+    <text x="36" y="392" fill="rgba(255,255,255,0.75)" font-family="system-ui,-apple-system,sans-serif" font-size="14">Bingo Academy · 学具配图</text>
   </svg>`
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+}
+
+/** 列表与详情共用封面地址（无外链图时返回渐变 SVG） */
+export function getTeachingProductCoverSrc(product) {
+  if (!product) return ''
+  return product.coverImageUrl ? product.coverImageUrl : makeCoverDataUrl(product)
 }
 
 function orderStatusStyle(status) {
@@ -69,6 +92,7 @@ function orderStatusStyle(status) {
 
 export default function FranchisePartnerTeachingMaterials() {
   const { session, ws, refresh } = useFranchiseWorkspace()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [catalogTick, setCatalogTick] = useState(0)
   const teachingProducts = useMemo(() => {
     void catalogTick
@@ -102,6 +126,61 @@ export default function FranchisePartnerTeachingMaterials() {
   const [payMethod, setPayMethod] = useState('balance')
   const [submitErr, setSubmitErr] = useState('')
 
+  const skipPersistAfterHydrate = useRef(false)
+
+  const cartAddParam = searchParams.get('cartAdd') || ''
+  const buyNowParam = searchParams.get('buyNow') || ''
+
+  useEffect(() => {
+    if (!session?.partnerId) return
+    skipPersistAfterHydrate.current = true
+    setCart(getTeachingMaterialCartDraft(session.partnerId))
+  }, [session?.partnerId])
+
+  useEffect(() => {
+    if (!session?.partnerId) return
+    if (skipPersistAfterHydrate.current) {
+      skipPersistAfterHydrate.current = false
+      return
+    }
+    saveTeachingMaterialCartDraft(session.partnerId, cart)
+  }, [cart, session?.partnerId])
+
+  useEffect(() => {
+    if (!session?.partnerId || !ws) return
+    if (!cartAddParam && !buyNowParam) return
+    const base = { ...getTeachingMaterialCartDraft(session.partnerId) }
+    if (cartAddParam && teachingProducts.some((p) => p.id === cartAddParam)) {
+      base[cartAddParam] = Math.max(0, parseInt(String(base[cartAddParam]), 10) || 0) + 1
+    }
+    if (buyNowParam && teachingProducts.some((p) => p.id === buyNowParam)) {
+      base[buyNowParam] = Math.max(1, parseInt(String(base[buyNowParam]), 10) || 0)
+    }
+    saveTeachingMaterialCartDraft(session.partnerId, base)
+    skipPersistAfterHydrate.current = true
+    setCart(base)
+    if (buyNowParam && teachingProducts.some((p) => p.id === buyNowParam)) {
+      const lines = []
+      for (const [productId, qty] of Object.entries(base)) {
+        const q = Math.max(0, parseInt(String(qty), 10) || 0)
+        if (q > 0) lines.push({ productId, qty: q })
+      }
+      const payAmount = calculateTeachingMaterialOrderPricing(lines, teachingProducts).payAmount
+      setPayMethod(ws.balance >= payAmount ? 'balance' : 'wechat')
+      setCheckoutOpen(true)
+    }
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.delete('cartAdd')
+        n.delete('buyNow')
+        return n
+      },
+      { replace: true },
+    )
+    setTab('shop')
+  }, [cartAddParam, buyNowParam, session?.partnerId, ws, teachingProducts, setSearchParams])
+
   const cartLines = useMemo(() => {
     const lines = []
     for (const [productId, qty] of Object.entries(cart)) {
@@ -127,11 +206,6 @@ export default function FranchisePartnerTeachingMaterials() {
     [cartLines, teachingProducts],
   )
   const cartPayAmount = bulkPricing.payAmount
-  const nextDiscountHint = useMemo(() => getTeachingMaterialOrderTierHint(cartTotalQty), [cartTotalQty])
-  const cartStatusHint =
-    bulkPricing.discountAmount > 0
-      ? `已减 ¥${bulkPricing.discountAmount.toFixed(2)}（${bulkPricing.discountLabel}）`
-      : nextDiscountHint
 
   const shipmentRows = useMemo(() => {
     const rows = []
@@ -201,11 +275,12 @@ export default function FranchisePartnerTeachingMaterials() {
       return
     }
     setCart({})
+    saveTeachingMaterialCartDraft(session.partnerId, {})
     setCheckoutOpen(false)
     setPayMethod('balance')
     refresh()
     setTab('orders')
-    window.alert(`订单已提交：${r.orderId}\n${payMethod === 'wechat' ? '微信支付（演示环境已模拟支付成功）' : '已从账户余额扣款'}`)
+    window.alert(`订单已提交：${r.orderId}\n${payMethod === 'wechat' ? '微信支付已完成' : '已从账户余额扣款'}`)
   }
 
   if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
@@ -213,86 +288,75 @@ export default function FranchisePartnerTeachingMaterials() {
   const tabCls = (active) =>
     `px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
       active
-        ? 'bg-[#3B66FF] text-white border-[#3B66FF] shadow-sm'
+        ? 'bg-primary text-white border-primary shadow-sm'
         : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
     }`
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-slate-600 leading-relaxed flex-1 min-w-[200px]">
-        学具商城面向加盟校区提供人工智能相关教具采购服务；每款商品可先
-        <strong className="font-medium text-slate-800 mx-0.5">加入购物车</strong>
-        后统一结算。支付支持
-        <Link to="/franchise-partner/balance" className="text-[#3B66FF] font-medium hover:underline mx-0.5">
-          账户余额
-        </Link>
-        或
-        <strong className="font-medium text-slate-800 mx-0.5">微信支付</strong>
-        （演示环境即时模拟成功）。
-        </p>
-        <button
-          type="button"
-          className="shrink-0 text-xs font-medium text-[#3B66FF] border border-[#3B66FF]/30 rounded-lg px-3 py-1.5 hover:bg-sky-50"
-          onClick={() => setCatalogTick((t) => t + 1)}
-        >
-          刷新商品目录
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={tabCls(tab === 'shop')} onClick={() => setTab('shop')}>
-          学具商城
-        </button>
-        <button type="button" className={tabCls(tab === 'orders')} onClick={() => setTab('orders')}>
-          购买记录
-        </button>
-        <button type="button" className={tabCls(tab === 'shipments')} onClick={() => setTab('shipments')}>
-          发货记录
-        </button>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={tabCls(tab === 'shop')} onClick={() => setTab('shop')}>
+            学具商城
+          </button>
+          <button type="button" className={tabCls(tab === 'orders')} onClick={() => setTab('orders')}>
+            购买记录
+          </button>
+          <button type="button" className={tabCls(tab === 'shipments')} onClick={() => setTab('shipments')}>
+            发货记录
+          </button>
+        </div>
+        {tab === 'shop' ? (
+          <button
+            type="button"
+            className="shrink-0 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50"
+            onClick={() => setCatalogTick((t) => t + 1)}
+          >
+            刷新目录
+          </button>
+        ) : null}
       </div>
 
       {tab === 'shop' ? (
         <>
-          <div className="rounded-2xl border border-rose-300 bg-gradient-to-r from-rose-50 via-red-50 to-orange-50 px-4 py-3 text-sm text-rose-950 shadow-sm ring-1 ring-rose-100">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-bold">
-                <span className="mr-2 inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold text-white align-middle">采购优惠</span>
-                {policySummaryText}
-              </p>
-              <p className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
-                当前购物车 {cartTotalQty} 件，{cartStatusHint}
-              </p>
-            </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+            <span className="min-w-0 leading-snug">{policySummaryText}</span>
+            <span className="shrink-0 tabular-nums font-medium text-slate-800">购物车 {cartTotalQty} 件</span>
           </div>
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
             {teachingProducts.map((p) => {
               const q = cart[p.id] || 0
-              const coverSrc = p.coverImageUrl ? p.coverImageUrl : makeCoverDataUrl(p)
+              const coverSrc = getTeachingProductCoverSrc(p)
+              const itemPath = `item/${encodeURIComponent(p.id)}`
               return (
                 <div
                   key={p.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col hover:border-[#3B66FF]/35 transition-colors"
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col hover:border-primary/35 transition-colors overflow-hidden"
                 >
-                  <div className="relative w-full h-40 rounded-xl border border-slate-100 overflow-hidden bg-slate-100">
-                    <img src={coverSrc} alt={`${p.name} 封面`} className="w-full h-full object-cover" />
-                    {p.emoji ? (
-                      <span className="absolute top-2 left-2 text-2xl drop-shadow-sm bg-white/90 rounded-lg px-1.5 py-0.5" aria-hidden>
-                        {p.emoji}
-                      </span>
-                    ) : null}
-                    {p.tag ? (
-                      <span className="absolute top-2 right-2 text-[11px] font-semibold text-white bg-[#3B66FF] rounded-full px-2 py-0.5 shadow-sm">
-                        {p.tag}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="mt-3 min-w-0 flex-1">
-                    <h3 className="font-semibold text-slate-900 text-[15px] leading-snug">{p.name}</h3>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">{p.desc}</p>
-                    <p className="text-lg font-bold text-[#3B66FF] mt-3 tabular-nums">¥{p.price.toLocaleString('zh-CN')}</p>
-                  </div>
-                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
+                  <Link
+                    to={itemPath}
+                    className="min-w-0 flex-1 flex flex-col text-left rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 -m-1 p-1 group"
+                  >
+                    <div className="relative w-full h-40 rounded-xl border border-slate-100 overflow-hidden bg-slate-100 shadow-inner">
+                      <img src={coverSrc} alt={`${p.name} 封面`} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
+                      {p.emoji ? (
+                        <span className="absolute top-2 left-2 text-2xl drop-shadow-sm bg-white/90 rounded-lg px-1.5 py-0.5" aria-hidden>
+                          {p.emoji}
+                        </span>
+                      ) : null}
+                      {p.tag ? (
+                        <span className="absolute top-2 right-2 text-[11px] font-semibold text-white bg-primary rounded-full px-2 py-0.5 shadow-sm">
+                          {p.tag}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h3 className="mt-3 font-semibold text-slate-900 text-[15px] leading-snug group-hover:text-primary transition-colors">
+                      {p.name}
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-2 leading-relaxed line-clamp-3">{p.desc}</p>
+                    <p className="text-lg font-bold text-primary mt-3 tabular-nums">¥{p.price.toLocaleString('zh-CN')}</p>
+                  </Link>
+                  <div className="relative z-10 flex items-center gap-2 mt-4 pt-4 border-t border-slate-100 bg-white">
                     <button
                       type="button"
                       onClick={() => addToCart(p.id)}
@@ -303,7 +367,7 @@ export default function FranchisePartnerTeachingMaterials() {
                     <button
                       type="button"
                       onClick={() => buyNow(p.id)}
-                      className="flex-1 px-3 py-2.5 rounded-lg bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold"
+                      className="flex-1 px-3 py-2.5 rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold"
                     >
                       立即购买
                     </button>
@@ -456,34 +520,36 @@ export default function FranchisePartnerTeachingMaterials() {
               <span className="text-slate-600">商品原价</span>
               <span className="font-semibold text-slate-900 tabular-nums">¥{cartTotal.toFixed(2)}</span>
             </p>
-            <div className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2.5 mb-4 text-xs text-rose-900">
-              <div className="flex justify-between gap-3">
-                <span className="font-semibold">活动优惠</span>
-                <span className="font-semibold text-right leading-snug max-w-[14rem]">{bulkPricing.discountLabel}</span>
+            {bulkPricing.discountAmount > 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 mb-4 text-xs text-slate-800">
+                <div className="flex justify-between gap-3">
+                  <span className="font-medium text-slate-600">优惠</span>
+                  <span className="font-medium text-right leading-snug max-w-[14rem]">{bulkPricing.discountLabel}</span>
+                </div>
+                <div className="flex justify-between gap-3 mt-1.5 pt-1.5 border-t border-slate-200/80">
+                  <span className="text-slate-500">减免金额</span>
+                  <span className="font-semibold tabular-nums shrink-0 text-rose-700">-¥{bulkPricing.discountAmount.toFixed(2)}</span>
+                </div>
               </div>
-              <div className="flex justify-between gap-3 mt-1">
-                <span className="text-rose-800/90">{nextDiscountHint}</span>
-                <span className="font-semibold tabular-nums shrink-0">-¥{bulkPricing.discountAmount.toFixed(2)}</span>
-              </div>
-            </div>
+            ) : null}
             <p className="flex justify-between text-sm mb-4">
               <span className="text-slate-600">应付合计</span>
-              <span className="text-xl font-bold text-[#3B66FF] tabular-nums">¥{cartPayAmount.toFixed(2)}</span>
+              <span className="text-xl font-bold text-primary tabular-nums">¥{cartPayAmount.toFixed(2)}</span>
             </p>
             <form onSubmit={handleCheckout} className="space-y-4">
               <div>
                 <p className="text-xs font-medium text-slate-500 mb-2">支付方式</p>
                 <div className="flex flex-col gap-2">
-                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 cursor-pointer hover:bg-slate-50 has-[:checked]:border-[#3B66FF] has-[:checked]:bg-sky-50/50">
-                    <input type="radio" name="pay" value="balance" checked={payMethod === 'balance'} onChange={() => setPayMethod('balance')} className="text-[#3B66FF]" />
+                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 cursor-pointer hover:bg-slate-50 has-[:checked]:border-primary has-[:checked]:bg-sky-50/50">
+                    <input type="radio" name="pay" value="balance" checked={payMethod === 'balance'} onChange={() => setPayMethod('balance')} className="text-primary" />
                     <span className="text-sm">
                       账户余额（当前 ¥{ws.balance.toFixed(2)}）
-                      {cartPayAmount > ws.balance ? <span className="text-amber-700 text-xs ml-1">（不足，请充值或选微信）</span> : null}
+                      {cartPayAmount > ws.balance ? <span className="text-amber-700 text-xs ml-1">（余额不足）</span> : null}
                     </span>
                   </label>
-                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 cursor-pointer hover:bg-slate-50 has-[:checked]:border-[#3B66FF] has-[:checked]:bg-sky-50/50">
-                    <input type="radio" name="pay" value="wechat" checked={payMethod === 'wechat'} onChange={() => setPayMethod('wechat')} className="text-[#3B66FF]" />
-                    <span className="text-sm">微信支付（演示环境模拟拉起并立即支付成功）</span>
+                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 cursor-pointer hover:bg-slate-50 has-[:checked]:border-primary has-[:checked]:bg-sky-50/50">
+                    <input type="radio" name="pay" value="wechat" checked={payMethod === 'wechat'} onChange={() => setPayMethod('wechat')} className="text-primary" />
+                    <span className="text-sm">微信支付</span>
                   </label>
                 </div>
               </div>
@@ -504,7 +570,7 @@ export default function FranchisePartnerTeachingMaterials() {
       <button
         type="button"
         onClick={openCheckout}
-        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-[max(1.25rem,env(safe-area-inset-right,0px))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#3B66FF] text-white shadow-lg shadow-[#3B66FF]/30 hover:bg-[#2f56e6] transition-colors ring-4 ring-white"
+        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-[max(1.25rem,env(safe-area-inset-right,0px))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary-600 transition-colors ring-4 ring-white"
         aria-label={cartTotalQty > 0 ? `购物车，共${cartTotalQty}件商品` : '购物车'}
       >
         <span className="relative inline-flex">

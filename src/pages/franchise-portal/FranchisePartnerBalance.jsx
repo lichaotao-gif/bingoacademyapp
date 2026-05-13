@@ -30,12 +30,12 @@ export default function FranchisePartnerBalance() {
   return (
     <div className="w-full">
       <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 md:items-stretch md:gap-8 xl:gap-10">
-        <div className="min-w-0 w-full rounded-2xl border border-[#3B66FF]/25 bg-gradient-to-br from-sky-50 to-white p-6 sm:p-8 shadow-sm flex flex-col min-h-[11rem] justify-center">
+        <div className="min-w-0 w-full rounded-2xl border border-primary/25 bg-gradient-to-br from-cyan-50 to-white p-6 sm:p-8 shadow-sm flex flex-col min-h-[11rem] justify-center">
           <p className="text-xs text-slate-600 font-medium">当前余额（元）</p>
-          <p className="text-3xl sm:text-4xl font-bold text-[#3B66FF] mt-2 tabular-nums">
+          <p className="text-3xl sm:text-4xl font-bold text-primary mt-2 tabular-nums">
             ¥{ws.balance.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
           </p>
-          <Link to="/franchise-partner/finance" className="text-sm text-[#3B66FF] font-medium hover:underline mt-4 inline-block">
+          <Link to="/franchise-partner/finance" className="text-sm text-primary font-medium hover:underline mt-4 inline-block">
             查看余额变动记录 →
           </Link>
         </div>
@@ -49,7 +49,7 @@ export default function FranchisePartnerBalance() {
                 key={p}
                 type="button"
                 onClick={() => setAmount(String(p))}
-                className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/80 px-2 py-3.5 sm:py-4 text-center text-sm font-semibold tabular-nums text-slate-800 hover:border-[#3B66FF] hover:bg-sky-50/80 hover:text-[#3B66FF] sm:text-base"
+                className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/80 px-2 py-3.5 sm:py-4 text-center text-sm font-semibold tabular-nums text-slate-800 hover:border-primary hover:bg-cyan-50/80 hover:text-primary sm:text-base"
               >
                 ¥{p.toLocaleString()}
               </button>
@@ -65,7 +65,7 @@ export default function FranchisePartnerBalance() {
           />
         </div>
         {msg ? <p className={'text-sm ' + (msgOk ? 'text-emerald-600' : 'text-red-600')}>{msg}</p> : null}
-        <button type="submit" className="w-full py-3 rounded-xl bg-[#3B66FF] hover:bg-[#2f56e6] text-white text-sm font-semibold transition">
+        <button type="submit" className="w-full py-3 rounded-xl bg-primary hover:bg-primary-600 text-white text-sm font-semibold transition">
           确认充值
         </button>
       </form>

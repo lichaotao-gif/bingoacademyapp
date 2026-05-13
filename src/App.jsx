@@ -65,7 +65,16 @@ import FranchisePartnerRecharge from './pages/franchise-portal/FranchisePartnerR
 import FranchisePartnerDiscounts from './pages/franchise-portal/FranchisePartnerDiscounts'
 import FranchisePartnerBalance from './pages/franchise-portal/FranchisePartnerBalance'
 import FranchisePartnerSettings from './pages/franchise-portal/FranchisePartnerSettings'
+import FranchisePartnerStaffAccounts from './pages/franchise-portal/FranchisePartnerStaffAccounts'
 import FranchisePartnerTeachingMaterials from './pages/franchise-portal/FranchisePartnerTeachingMaterials'
+import FranchisePartnerTeachingMaterialDetail from './pages/franchise-portal/FranchisePartnerTeachingMaterialDetail'
+import InstitutionHqLogin from './pages/institution-hq/InstitutionHqLogin'
+import InstitutionHqLayout from './pages/institution-hq/InstitutionHqLayout'
+import InstitutionHqDashboard from './pages/institution-hq/InstitutionHqDashboard'
+import InstitutionHqFinance from './pages/institution-hq/InstitutionHqFinance'
+import InstitutionHqSettings from './pages/institution-hq/InstitutionHqSettings'
+import InstitutionHqCampusAccounts from './pages/institution-hq/InstitutionHqCampusAccounts'
+import InstitutionHqStaffAccounts from './pages/institution-hq/InstitutionHqStaffAccounts'
 
 export default function App() {
   return (
@@ -110,6 +119,15 @@ export default function App() {
         <Route path="/mall/materials" element={<Materials />} />
         <Route path="/franchise" element={<Franchise />} />
         <Route path="/franchise-partner/login" element={<FranchisePartnerLogin />} />
+        <Route path="/institution-hq/login" element={<InstitutionHqLogin />} />
+        <Route path="/institution-hq" element={<InstitutionHqLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<InstitutionHqDashboard />} />
+          <Route path="finance" element={<InstitutionHqFinance />} />
+          <Route path="settings" element={<InstitutionHqSettings />} />
+          <Route path="campus-accounts" element={<InstitutionHqCampusAccounts />} />
+          <Route path="hq-staff-accounts" element={<InstitutionHqStaffAccounts />} />
+        </Route>
         <Route path="/franchise-partner" element={<FranchisePartnerLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<FranchisePartnerDashboard />} />
@@ -117,10 +135,12 @@ export default function App() {
           <Route path="orders" element={<FranchisePartnerOrders />} />
           <Route path="finance" element={<FranchisePartnerFinance />} />
           <Route path="recharge" element={<FranchisePartnerRecharge />} />
+          <Route path="teaching-materials/item/:productId" element={<FranchisePartnerTeachingMaterialDetail />} />
           <Route path="teaching-materials" element={<FranchisePartnerTeachingMaterials />} />
           <Route path="discounts" element={<FranchisePartnerDiscounts />} />
           <Route path="balance" element={<FranchisePartnerBalance />} />
           <Route path="settings" element={<FranchisePartnerSettings />} />
+          <Route path="staff-accounts" element={<FranchisePartnerStaffAccounts />} />
           <Route path="classes/:classId" element={<FranchisePartnerClassDetail />} />
           <Route path="classes" element={<FranchisePartnerClasses />} />
           <Route path="students" element={<FranchisePartnerStudents />} />

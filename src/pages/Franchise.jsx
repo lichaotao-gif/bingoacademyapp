@@ -56,9 +56,12 @@ export default function Franchise() {
             >
               免费获取合作方案
             </button>
-            <a href="tel:400-xxx-xxxx" className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl text-sm font-medium transition text-center">
-              📞 400-xxx-xxxx
-            </a>
+            <Link
+              to="/franchise-partner/login"
+              className="bg-white/15 hover:bg-white/25 text-white px-8 py-3 rounded-xl text-sm font-semibold transition text-center ring-1 ring-white/25"
+            >
+              加盟商管理登录
+            </Link>
           </div>
         </div>
       </div>

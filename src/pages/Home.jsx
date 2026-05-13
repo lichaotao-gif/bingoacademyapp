@@ -181,7 +181,6 @@ export default function Home() {
       <section className="bg-gradient-to-br from-bingo-dark via-slate-800 to-cyan-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-
             {/* 左：痛点 + 定位 */}
             <div className="flex-1 max-w-2xl">
               <p className="text-xs text-cyan-300 mb-3 tracking-widest font-medium">AI时代导航 · AI + 竞赛 + 全链条教育生态</p>
@@ -242,6 +241,11 @@ export default function Home() {
                   className="flex items-center justify-between w-full bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-xl text-sm font-medium transition border border-sky-400/30">
                   <span>🔐 加盟商工作台登录</span>
                   <span className="text-sky-200 text-xs">推广 · 分佣 · 班级 →</span>
+                </Link>
+                <Link to="/institution-hq/login"
+                  className="flex items-center justify-between w-full bg-indigo-500/25 hover:bg-indigo-500/40 text-white px-5 py-3 rounded-xl text-sm font-medium transition border border-indigo-300/35">
+                  <span>🏢 机构总管理员登录</span>
+                  <span className="text-indigo-100 text-xs">多校区 · 集团汇总 →</span>
                 </Link>
               </div>
             </div>
