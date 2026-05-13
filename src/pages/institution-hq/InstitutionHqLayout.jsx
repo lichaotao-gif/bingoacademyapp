@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   INSTITUTION_HQ_PORTAL_NAV,
@@ -8,10 +8,18 @@ import {
   FlatIconChartBar,
   FlatIconCog,
   FlatIconHome,
+  FlatIconSwitchAccount,
   FlatIconUserPlus,
   FlatIconUsers,
 } from '../franchise-portal/FranchiseFlatIcons'
 import { clearInstitutionHqSession, getInstitutionHqSession } from '../../utils/institutionHqStorage'
+import DualPortalSwitchModal from '../../components/DualPortalSwitchModal'
+import {
+  applyFranchisePartnerSessionForCampus,
+  dualSwitchToFranchisePartnerWorkspace,
+  listCampusesForAdminPhone,
+  phoneDigitsHasDualPortalAccess,
+} from '../../utils/workspaceDualPortal'
 
 const MASTER_ONLY_KEYS = new Set(['hq-staff-accounts'])
 
@@ -30,6 +38,8 @@ export default function InstitutionHqLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [session, setSession] = useState(() => getInstitutionHqSession())
+  const [portalSwitchOpen, setPortalSwitchOpen] = useState(false)
+  const dualSwitchBtnRef = useRef(null)
 
   const visibleNav = useMemo(() => {
     if (!session) return []
@@ -95,6 +105,16 @@ export default function InstitutionHqLayout() {
     return '机构总管理'
   }, [location.pathname])
 
+  const showDualPortalSwitch = useMemo(
+    () => Boolean(session?.loginPhone && phoneDigitsHasDualPortalAccess(session.loginPhone)),
+    [session],
+  )
+
+  const campusOptionsForSwitch = useMemo(
+    () => (session?.loginPhone ? listCampusesForAdminPhone(session.loginPhone) : []),
+    [session?.loginPhone],
+  )
+
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0f172a] text-slate-400 text-sm">正在进入…</div>
@@ -154,9 +174,28 @@ export default function InstitutionHqLayout() {
           >
             退出登录
           </button>
-          <Link to="/" className="mt-2 block py-1 text-center text-[11px] text-slate-500 hover:text-white">
-            返回官网
-          </Link>
+          {showDualPortalSwitch ? (
+            <button
+              type="button"
+              ref={dualSwitchBtnRef}
+              onClick={() => {
+                if (campusOptionsForSwitch.length > 1) {
+                  setPortalSwitchOpen(true)
+                  return
+                }
+                const r = dualSwitchToFranchisePartnerWorkspace(session.loginPhone)
+                if (!r.ok) {
+                  window.alert(r.msg || '切换失败')
+                  return
+                }
+                navigate('/franchise-partner/dashboard')
+              }}
+              className="mt-2 w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-cyan-200/95 hover:bg-white/5 hover:text-white transition"
+            >
+              <FlatIconSwitchAccount className="h-4 w-4 shrink-0 opacity-90" />
+              <span>{campusOptionsForSwitch.length > 1 ? '切换账号' : '切换至校区工作台'}</span>
+            </button>
+          ) : null}
         </div>
       </aside>
 
@@ -171,6 +210,24 @@ export default function InstitutionHqLayout() {
           <Outlet context={{ session }} />
         </main>
       </div>
+
+      <DualPortalSwitchModal
+        open={portalSwitchOpen}
+        onClose={() => setPortalSwitchOpen(false)}
+        anchorRef={dualSwitchBtnRef}
+        variant="from-hq"
+        campuses={campusOptionsForSwitch}
+        showInstitutionHq={false}
+        onSelectCampus={(c) => {
+          const r = applyFranchisePartnerSessionForCampus(c, session.loginPhone)
+          setPortalSwitchOpen(false)
+          if (!r.ok) {
+            window.alert(r.msg || '切换失败')
+            return
+          }
+          navigate('/franchise-partner/dashboard')
+        }}
+      />
     </div>
   )
 }

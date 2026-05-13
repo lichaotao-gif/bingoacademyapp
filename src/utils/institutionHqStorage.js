@@ -188,6 +188,15 @@ const SEED_CAMPUS = [
     isSeed: true,
   },
   {
+    id: 'campus-seed-west',
+    partnerId: 'p_13800138001',
+    refCode: 'FJ-WEST-DEMO',
+    campusName: '启思博雅 · 西岸学习中心（演示）',
+    adminPhone: '13800138000',
+    passwordHint: '与旗舰校区同一管理员手机，用于演示多校区切换',
+    isSeed: true,
+  },
+  {
     id: 'campus-seed-east',
     partnerId: 'p_13900007777',
     refCode: 'FJ-EAST-DEMO',

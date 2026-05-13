@@ -107,7 +107,12 @@ export default function FranchisePartnerProgress() {
               <th className="px-5 py-3 font-medium">学员</th>
               <th className="px-5 py-3 font-medium">手机</th>
               <th className="px-5 py-3 font-medium">班级</th>
-              <th className="px-5 py-3 font-medium min-w-[10rem]">线上课程</th>
+              <th className="px-5 py-3 font-medium min-w-[10rem]">
+                <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <span>线上课程</span>
+                  <span className="text-[10px] font-semibold text-violet-600 tracking-tight">【后续版本】</span>
+                </span>
+              </th>
               <th className="px-5 py-3 font-medium whitespace-nowrap">购买/开通时间</th>
               <th className="px-5 py-3 font-medium whitespace-nowrap">最近学习</th>
               <th className="px-5 py-3 font-medium whitespace-nowrap">学习进度</th>

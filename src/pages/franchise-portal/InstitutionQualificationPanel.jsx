@@ -202,14 +202,16 @@ export default function InstitutionQualificationPanel({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {ready && iq ? <ReviewBadge status={iq.reviewStatus} /> : null}
-            <button
-              type="button"
-              onClick={openModal}
-              disabled={!ready || !iq || readOnly}
-              className="shrink-0 px-4 py-2 rounded-xl bg-primary hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
-            >
-              {iq?.pendingReview ? '修改并重新提交' : '编辑机构资料'}
-            </button>
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={openModal}
+                disabled={!ready || !iq}
+                className="shrink-0 px-4 py-2 rounded-xl bg-primary hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+              >
+                {iq?.pendingReview ? '修改并重新提交' : '编辑机构资料'}
+              </button>
+            ) : null}
           </div>
         </div>
 

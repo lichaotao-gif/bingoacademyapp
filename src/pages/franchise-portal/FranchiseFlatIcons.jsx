@@ -175,6 +175,18 @@ export function FlatIconTrendingUp({ className }) {
   )
 }
 
+/** 双端切换账号（左右循环箭头） */
+export function FlatIconSwitchAccount({ className }) {
+  return (
+    <Out className={className}>
+      <path d="M17 2.1 21 6l-4 3.9" />
+      <path d="M3 12V9a4 4 0 0 1 4-4h14" />
+      <path d="M7 21.9 3 18l4-3.9" />
+      <path d="M21 12v3a4 4 0 0 1-4 4H3" />
+    </Out>
+  )
+}
+
 /** 快捷：添加学员 */
 export function FlatIconUserPlus({ className }) {
   return (

@@ -434,7 +434,10 @@ export default function FranchisePartnerClassDetail() {
                     className="px-5 py-3 font-medium min-w-[14rem]"
                     title="每名学员可有多门线上课；每门课有独立的进度与完成状态。开通时间、最近学习等见「学习进度」或点「学情」。"
                   >
-                    线上课程
+                    <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      <span>线上课程</span>
+                      <span className="text-[10px] font-semibold text-violet-600 tracking-tight">【后续版本】</span>
+                    </span>
                   </th>
                   <th className="sticky right-0 z-20 border-l border-slate-200 bg-slate-50 px-5 py-3 font-medium whitespace-nowrap min-w-[18rem] shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)]">
                     操作

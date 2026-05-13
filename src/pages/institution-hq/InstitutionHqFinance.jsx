@@ -157,23 +157,31 @@ function LineChartMini({ data }) {
   )
 }
 
+/** 与机构概览「首页四宫格」一致的扁平色块图标 + 浅色卡片底 */
 function IconKpiTile({ icon: Icon, label, value, sub, tone }) {
-  const toneRing = {
-    cyan: 'ring-cyan-200/80 bg-gradient-to-br from-cyan-50/90 to-white',
-    emerald: 'ring-emerald-200/80 bg-gradient-to-br from-emerald-50/80 to-white',
-    sky: 'ring-sky-200/70 bg-gradient-to-br from-sky-50/70 to-white',
-    amber: 'ring-amber-200/70 bg-gradient-to-br from-amber-50/60 to-white',
-  }[tone] || 'ring-slate-200/80 bg-white'
+  const toneCard = {
+    cyan: 'border-cyan-100 bg-gradient-to-br from-cyan-50/90 to-white',
+    emerald: 'border-emerald-100 bg-gradient-to-br from-emerald-50/90 to-white',
+    sky: 'border-sky-100 bg-gradient-to-br from-sky-50/90 to-white',
+    amber: 'border-amber-100 bg-gradient-to-br from-amber-50/90 to-white',
+  }[tone] || 'border-slate-200 bg-white'
+
+  const toneIconBox = {
+    cyan: 'bg-cyan-500/12 text-cyan-600',
+    emerald: 'bg-emerald-500/12 text-emerald-600',
+    sky: 'bg-sky-500/12 text-sky-600',
+    amber: 'bg-amber-500/12 text-amber-600',
+  }[tone] || 'bg-slate-500/10 text-slate-600'
 
   return (
-    <div className={`rounded-xl border border-slate-200/90 p-4 shadow-sm ring-1 ${toneRing} flex gap-3 min-h-[5.5rem]`}>
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/90 text-primary shadow-sm ring-1 ring-slate-200/60">
-        <Icon className="h-5 w-5" />
+    <div className={`rounded-2xl border p-5 shadow-sm ${toneCard} flex items-start justify-between gap-3 min-h-[5.5rem]`}>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="mt-2 text-lg font-bold tabular-nums text-slate-900 tracking-tight">{value}</p>
+        {sub ? <p className="mt-2 text-[11px] text-slate-500 leading-snug">{sub}</p> : null}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-medium text-slate-500">{label}</p>
-        <p className="mt-0.5 text-lg font-bold tabular-nums text-slate-900 tracking-tight">{value}</p>
-        {sub ? <p className="mt-0.5 text-[11px] text-slate-400 leading-snug">{sub}</p> : null}
+      <div className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center ${toneIconBox}`} aria-hidden>
+        <Icon className="h-5 w-5" />
       </div>
     </div>
   )
@@ -336,40 +344,44 @@ export default function InstitutionHqFinance() {
   return (
     <div className="space-y-6">
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className="relative overflow-hidden rounded-[10px] border border-slate-200 bg-white p-7 shadow-sm border-l-4 border-l-primary">
-          <div className="pointer-events-none absolute -right-2 -top-2 opacity-[0.12] text-primary">
-            <FlatIconTrendingUp className="h-24 w-24" />
+        <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-slate-500">全机构累计营收</p>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums tracking-tight mt-2">¥{fmtMoney(total)}</p>
+              <p className="mt-3 text-xs text-slate-500 leading-relaxed max-w-md">
+                各校区加盟商工作台内「已完成充课」订单实付累计（演示）。
+              </p>
+            </div>
+            <div className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-sky-500/12 text-sky-600" aria-hidden>
+              <FlatIconTrendingUp className="w-5 h-5" />
+            </div>
           </div>
-          <span className="text-[13px] text-slate-500 block mb-2">全机构累计营收</span>
-          <p className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight relative z-[1]">
-            ¥{fmtMoney(total)}
-          </p>
-          <p className="mt-3 text-xs text-slate-400 leading-relaxed max-w-md relative z-[1]">
-            各校区加盟商工作台内「已完成充课」订单实付累计（演示）。
-          </p>
         </div>
-        <div className="relative overflow-hidden rounded-[10px] border border-slate-200 bg-white p-7 shadow-sm border-l-4 border-l-emerald-500">
-          <div className="pointer-events-none absolute -right-1 -top-1 opacity-[0.11] text-emerald-600">
-            <FlatIconWallet className="h-24 w-24" />
+        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-slate-500">机构总账户余额</p>
+              <p className="text-2xl sm:text-3xl font-bold text-emerald-700 tabular-nums tracking-tight mt-2">¥{fmtMoney(treasury.balance)}</p>
+              <p className="mt-3 text-xs text-slate-500 leading-relaxed max-w-md">
+                向总账户充值后，可在「校区账号」开设新校区时从本余额划拨开业额度至各校区工作台。
+              </p>
+              <button
+                type="button"
+                onClick={openTopUpModal}
+                className="inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-700/40 shadow-sm transition-colors"
+              >
+                充值
+              </button>
+            </div>
+            <div className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-emerald-500/12 text-emerald-600" aria-hidden>
+              <FlatIconWallet className="w-5 h-5" />
+            </div>
           </div>
-          <span className="text-[13px] text-slate-500 block mb-2">机构总账户余额</span>
-          <p className="text-3xl font-bold text-emerald-600 tabular-nums tracking-tight relative z-[1]">
-            ¥{fmtMoney(treasury.balance)}
-          </p>
-          <p className="mt-2 text-xs text-slate-500 leading-relaxed max-w-md relative z-[1]">
-            向总账户充值后，可在「校区账号」开设新校区时从本余额划拨开业额度至各校区工作台。
-          </p>
-          <button
-            type="button"
-            onClick={openTopUpModal}
-            className="relative z-[1] inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-700/40 shadow-sm shadow-emerald-900/10 transition-colors"
-          >
-            充值
-          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <IconKpiTile
           icon={FlatIconUsers}
           label="管理校区"
@@ -554,7 +566,7 @@ export default function InstitutionHqFinance() {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex gap-3 min-w-0">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/80">
+                <div className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-emerald-500/12 text-emerald-600" aria-hidden>
                   <FlatIconWallet className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">

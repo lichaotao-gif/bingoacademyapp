@@ -509,7 +509,10 @@ export default function FranchisePartnerStudents() {
                   className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left"
                   title="每名学员可有多门线上课；每门课有独立的进度百分比与完成状态。时间维度与全机构筛选见「学习进度」。"
                 >
-                  线上课程
+                  <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    <span>线上课程</span>
+                    <span className="text-[10px] font-semibold text-violet-600 tracking-tight">【后续版本】</span>
+                  </span>
                 </th>
                 <th className="sticky right-0 z-20 bg-slate-50 px-5 py-3 font-medium whitespace-nowrap min-w-[14rem] align-middle text-left border-l border-slate-200 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)]">
                   操作
@@ -572,7 +575,12 @@ export default function FranchisePartnerStudents() {
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">手机</th>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">所在班级</th>
                 <th className="px-5 py-3 font-medium min-w-[12rem] align-middle text-left">线下课程</th>
-                <th className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left">线上课程</th>
+                <th className="px-5 py-3 font-medium min-w-[14rem] align-middle text-left">
+                  <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    <span>线上课程</span>
+                    <span className="text-[10px] font-semibold text-violet-600 tracking-tight">【后续版本】</span>
+                  </span>
+                </th>
                 <th className="px-5 py-3 font-medium whitespace-nowrap align-middle text-left">最近开通时间</th>
                 <th className="sticky right-0 z-20 bg-slate-50 px-5 py-3 font-medium whitespace-nowrap min-w-[17rem] align-middle text-left border-l border-slate-200 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)]">
                   操作

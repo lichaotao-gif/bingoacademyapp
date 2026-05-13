@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   clearPartnerSession,
@@ -8,8 +8,17 @@ import {
   FRANCHISE_PREVIEW_DEMO_MAIN_PHONE,
   normalizePartnerPhoneDigits,
 } from '../../utils/franchisePartnerStorage'
+import DualPortalSwitchModal from '../../components/DualPortalSwitchModal'
+import {
+  applyFranchisePartnerSessionForCampus,
+  dualSwitchToInstitutionHqWorkspace,
+  listCampusesForAdminPhone,
+  phoneDigitsHasDualPortalAccess,
+  phoneDigitsHasInstitutionHqMasterAccess,
+} from '../../utils/workspaceDualPortal'
 import { FRANCHISE_PARTNER_PORTAL_NAV, resolvePartnerPortalMenuKey } from '../../constants/franchisePartnerPortalNav'
-import { FRANCHISE_NAV_ICONS, FlatIconHeadset, FlatIconMenu } from './FranchiseFlatIcons'
+import { getInstitutionHqDefaultPathAfterLogin } from '../../constants/institutionHqPortalNav'
+import { FRANCHISE_NAV_ICONS, FlatIconHeadset, FlatIconMenu, FlatIconSwitchAccount } from './FranchiseFlatIcons'
 
 const NAV = [
   { key: 'dashboard', to: '/franchise-partner/dashboard', label: '首页概览', end: false },
@@ -72,6 +81,8 @@ export default function FranchisePartnerLayout() {
     return getPartnerSession()
   })
   const [openNav, setOpenNav] = useState(false)
+  const [portalSwitchOpen, setPortalSwitchOpen] = useState(false)
+  const dualSwitchBtnRef = useRef(null)
 
   /** useLayoutEffect：尽快在读不到会话时退回登录，避免白屏一闪 */
   useLayoutEffect(() => {
@@ -121,6 +132,15 @@ export default function FranchisePartnerLayout() {
   const phoneDigits = useMemo(() => normalizePartnerPhoneDigits(session?.phone), [session?.phone])
   const isPreviewDemoMainPhone = phoneDigits === FRANCHISE_PREVIEW_DEMO_MAIN_PHONE
   const isStaffNavRestricted = isStaffSession && !isPreviewDemoMainPhone
+  const showDualPortalSwitch = useMemo(() => phoneDigitsHasDualPortalAccess(phoneDigits), [phoneDigits])
+  const campusOptionsForSwitch = useMemo(() => listCampusesForAdminPhone(phoneDigits), [phoneDigits])
+  /** 多校区，或「单校区 + 机构总」二选一以上 */
+  const franchisePortalPickerNeeded = useMemo(() => {
+    if (!showDualPortalSwitch) return false
+    if (campusOptionsForSwitch.length > 1) return true
+    if (phoneDigitsHasInstitutionHqMasterAccess(phoneDigits) && campusOptionsForSwitch.length >= 1) return true
+    return false
+  }, [showDualPortalSwitch, campusOptionsForSwitch.length, phoneDigits])
 
   /** 机构子账号：无权限的页面重定向到首个可访问菜单（「机构账号」页除外，可进入查看说明） */
   useEffect(() => {
@@ -176,6 +196,26 @@ export default function FranchisePartnerLayout() {
     clearPartnerSession()
     navigate('/franchise-partner/login', { replace: true })
   }, [navigate])
+
+  const handleDualSwitchToInstitutionHq = useCallback(() => {
+    const r = dualSwitchToInstitutionHqWorkspace(phoneDigits)
+    if (!r.ok) {
+      window.alert(r.msg || '切换失败')
+      return
+    }
+    navigate(getInstitutionHqDefaultPathAfterLogin(r.session), { replace: true })
+  }, [navigate, phoneDigits])
+
+  const openFranchisePortalSwitch = useCallback(() => {
+    if (franchisePortalPickerNeeded) {
+      setPortalSwitchOpen(true)
+      setOpenNav(false)
+      return
+    }
+    if (phoneDigitsHasInstitutionHqMasterAccess(phoneDigits)) {
+      handleDualSwitchToInstitutionHq()
+    }
+  }, [franchisePortalPickerNeeded, phoneDigits, handleDualSwitchToInstitutionHq])
 
   /** 内容区返回（仅在三页展示）：回到对应二级列表 */
   const handleContentBack = useCallback(() => {
@@ -298,9 +338,17 @@ export default function FranchisePartnerLayout() {
           >
             退出登录
           </button>
-          <Link to="/" className="block text-center text-[11px] text-slate-500 hover:text-white mt-2 py-1">
-            返回官网
-          </Link>
+          {showDualPortalSwitch ? (
+            <button
+              type="button"
+              ref={dualSwitchBtnRef}
+              onClick={openFranchisePortalSwitch}
+              className="mt-2 w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-cyan-200/95 hover:bg-white/5 hover:text-white transition"
+            >
+              <FlatIconSwitchAccount className="h-4 w-4 shrink-0 opacity-90" />
+              <span>切换账号</span>
+            </button>
+          ) : null}
         </div>
       </aside>
 
@@ -383,6 +431,30 @@ export default function FranchisePartnerLayout() {
           <Outlet context={{ session }} />
         </main>
       </div>
+
+      <DualPortalSwitchModal
+        open={portalSwitchOpen}
+        onClose={() => setPortalSwitchOpen(false)}
+        anchorRef={dualSwitchBtnRef}
+        variant="from-campus"
+        campuses={campusOptionsForSwitch}
+        currentPartnerId={session.partnerId}
+        currentRefCode={session.refCode}
+        showInstitutionHq={phoneDigitsHasInstitutionHqMasterAccess(phoneDigits)}
+        onSelectCampus={(c) => {
+          const r = applyFranchisePartnerSessionForCampus(c, phoneDigits)
+          setPortalSwitchOpen(false)
+          if (!r.ok) {
+            window.alert(r.msg || '切换失败')
+            return
+          }
+          navigate('/franchise-partner/dashboard', { replace: true })
+        }}
+        onSelectInstitutionHq={() => {
+          setPortalSwitchOpen(false)
+          handleDualSwitchToInstitutionHq()
+        }}
+      />
     </div>
   )
 }
