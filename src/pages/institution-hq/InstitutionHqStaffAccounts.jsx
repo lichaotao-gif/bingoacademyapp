@@ -9,7 +9,7 @@ import {
   deleteHqRole,
   listHqAccounts,
   listHqRoles,
-  resetHqAccountPassword,
+  updateHqAccount,
   upsertHqRole,
 } from '../../utils/institutionHqAccess'
 import { normalizePartnerPhoneDigits } from '../../utils/franchisePartnerStorage'
@@ -97,9 +97,13 @@ export default function InstitutionHqStaffAccounts() {
   const [accRoleId, setAccRoleId] = useState('')
   const [accErr, setAccErr] = useState('')
 
-  const [resetModal, setResetModal] = useState(false)
-  const [resetAccId, setResetAccId] = useState(null)
-  const [resetPw, setResetPw] = useState('')
+  const [editAccModal, setEditAccModal] = useState(false)
+  const [editAccId, setEditAccId] = useState(null)
+  const [editAccName, setEditAccName] = useState('')
+  const [editAccPhone, setEditAccPhone] = useState('')
+  const [editAccRoleId, setEditAccRoleId] = useState('')
+  const [editAccPassword, setEditAccPassword] = useState('')
+  const [editAccErr, setEditAccErr] = useState('')
 
   const openRoleCreate = () => {
     setEditingRoleId(null)
@@ -178,16 +182,31 @@ export default function InstitutionHqStaffAccounts() {
     refresh()
   }
 
-  const saveReset = (e) => {
+  const openEditAccount = (row) => {
+    setEditAccId(row.id)
+    setEditAccName(row.name || '')
+    setEditAccPhone(row.phone || '')
+    setEditAccRoleId(row.roleId || '')
+    setEditAccPassword('')
+    setEditAccErr('')
+    setEditAccModal(true)
+  }
+
+  const saveEditAccount = (e) => {
     e.preventDefault()
-    const r = resetHqAccountPassword(orgId, resetAccId, resetPw)
+    setEditAccErr('')
+    const r = updateHqAccount(orgId, editAccId, {
+      name: editAccName,
+      roleId: editAccRoleId,
+      password: editAccPassword,
+    })
     if (!r.ok) {
-      window.alert(r.msg || '重置失败')
+      setEditAccErr(r.msg || '保存失败')
       return
     }
-    setResetModal(false)
-    setResetAccId(null)
-    setResetPw('')
+    setEditAccModal(false)
+    setEditAccId(null)
+    setEditAccPassword('')
     refresh()
   }
 
@@ -363,13 +382,9 @@ export default function InstitutionHqStaffAccounts() {
                           <button
                             type="button"
                             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-primary hover:bg-slate-50"
-                            onClick={() => {
-                              setResetAccId(row.id)
-                              setResetPw('')
-                              setResetModal(true)
-                            }}
+                            onClick={() => openEditAccount(row)}
                           >
-                            重置密码
+                            编辑
                           </button>
                           <button
                             type="button"
@@ -490,22 +505,69 @@ export default function InstitutionHqStaffAccounts() {
         </ModalBackdrop>
       ) : null}
 
-      {resetModal ? (
-        <ModalBackdrop onClose={() => setResetModal(false)}>
-          <form onSubmit={saveReset} onClick={(e) => e.stopPropagation()} className="flex flex-col">
+      {editAccModal ? (
+        <ModalBackdrop onClose={() => setEditAccModal(false)}>
+          <form onSubmit={saveEditAccount} onClick={(e) => e.stopPropagation()} className="flex max-h-[92vh] flex-col">
             <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
-              <h2 className="text-base font-semibold text-slate-900">重置密码</h2>
+              <h2 className="text-base font-semibold text-slate-900">编辑权限子账号</h2>
+              <p className="mt-1 text-xs text-slate-500">可修改姓名、角色；新密码留空表示不修改登录密码。</p>
             </div>
-            <div className="px-5 py-4 sm:px-6">
-              <label className="text-xs font-medium text-slate-600">新密码（至少 6 位）</label>
-              <input type="text" value={resetPw} onChange={(e) => setResetPw(e.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" autoComplete="off" />
+            <div className="space-y-3.5 px-5 py-4 sm:px-6 overflow-y-auto flex-1 min-h-0">
+              <div>
+                <label className="text-xs font-medium text-slate-600">姓名</label>
+                <input
+                  value={editAccName}
+                  onChange={(e) => setEditAccName(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+                  maxLength={32}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">手机号（登录账号）</label>
+                <input
+                  value={editAccPhone}
+                  readOnly
+                  disabled
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm tabular-nums text-slate-600"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">角色</label>
+                <select
+                  value={editAccRoleId}
+                  onChange={(e) => setEditAccRoleId(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+                >
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">新密码（选填，至少 6 位）</label>
+                <input
+                  type="text"
+                  value={editAccPassword}
+                  onChange={(e) => setEditAccPassword(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+                  autoComplete="off"
+                  placeholder="留空则不修改密码"
+                />
+              </div>
+              {editAccErr ? <p className="text-sm text-rose-600">{editAccErr}</p> : null}
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6">
-              <button type="button" onClick={() => setResetModal(false)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditAccModal(false)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
                 取消
               </button>
               <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-600">
-                确定
+                保存
               </button>
             </div>
           </form>

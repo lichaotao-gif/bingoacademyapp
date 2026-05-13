@@ -239,6 +239,43 @@ export function resetInstitutionAccountPassword(partnerId, accountId, newPasswor
   return { ok: true }
 }
 
+/** 编辑员工子账号：姓名、角色；密码留空则不变 */
+export function updateInstitutionAccount(partnerId, accountId, input) {
+  const g = getBucket(partnerId)
+  if (!g) return { ok: false, msg: '无效加盟商' }
+  const id = String(accountId || '').trim()
+  const list = [...(g.bucket.accounts || [])]
+  const idx = list.findIndex((a) => a.id === id)
+  if (idx === -1) return { ok: false, msg: '账号不存在' }
+  const cur = list[idx]
+  const name = String((input?.name ?? cur.name) || '').trim()
+  if (!name) return { ok: false, msg: '请填写姓名' }
+  const roleId = String((input?.roleId ?? cur.roleId) || '').trim()
+  const role = (g.bucket.roles || []).find((r) => r.id === roleId)
+  if (!role) return { ok: false, msg: '请选择角色' }
+  const pwTrim = input?.password != null ? String(input.password).trim() : ''
+  let password = cur.password
+  let pwdChanged = false
+  if (pwTrim) {
+    if (pwTrim.length < 6) return { ok: false, msg: '新密码至少 6 位' }
+    password = pwTrim
+    pwdChanged = true
+  }
+  list[idx] = {
+    ...cur,
+    name,
+    password,
+    roleId,
+    roleName: role.name,
+    menuKeys: normalizeMenuKeys(role.menuKeys),
+    updatedAt: new Date().toISOString(),
+    ...(pwdChanged ? { passwordResetAt: new Date().toISOString() } : {}),
+  }
+  g.bucket.accounts = list
+  saveRoot(g.root)
+  return { ok: true }
+}
+
 /**
  * 子账号登录：校验手机+密码，返回写入加盟商会话的 payload（含 staffSubUser）。
  */

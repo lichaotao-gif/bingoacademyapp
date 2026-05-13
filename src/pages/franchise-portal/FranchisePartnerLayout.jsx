@@ -331,19 +331,12 @@ export default function FranchisePartnerLayout() {
               联系客服
             </a>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="w-full text-left text-xs text-slate-500 hover:text-red-400 px-3 py-2 rounded-lg hover:bg-white/5"
-          >
-            退出登录
-          </button>
           {showDualPortalSwitch ? (
             <button
               type="button"
               ref={dualSwitchBtnRef}
               onClick={openFranchisePortalSwitch}
-              className="mt-2 w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-cyan-200/95 hover:bg-white/5 hover:text-white transition"
+              className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-cyan-200/95 hover:bg-white/5 hover:text-white transition"
             >
               <FlatIconSwitchAccount className="h-4 w-4 shrink-0 opacity-90" />
               <span>切换账号</span>
@@ -362,8 +355,8 @@ export default function FranchisePartnerLayout() {
       ) : null}
 
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-3 sm:px-4 md:px-6 lg:px-8 py-3.5 bg-white border-b border-slate-200/90 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 lg:px-8 py-3.5 bg-white border-b border-slate-200/90 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 md:flex-none">
             <Link to="/" className="md:hidden shrink-0 py-0.5" aria-label="缤果AI学院首页">
               <img
                 src="/logo.svg"
@@ -382,7 +375,7 @@ export default function FranchisePartnerLayout() {
               <FlatIconMenu className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-primary text-white text-xs font-bold flex items-center justify-center shrink-0">
                 {headerDisplayName.slice(0, 1)}
@@ -404,6 +397,13 @@ export default function FranchisePartnerLayout() {
                 </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={logout}
+              className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50/70 hover:text-rose-700 transition"
+            >
+              退出登录
+            </button>
           </div>
         </header>
 

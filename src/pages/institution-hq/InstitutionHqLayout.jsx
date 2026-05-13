@@ -166,15 +166,8 @@ export default function InstitutionHqLayout() {
             )
           })}
         </nav>
-        <div className="shrink-0 border-t border-white/10 p-3">
-          <button
-            type="button"
-            onClick={logout}
-            className="w-full rounded-lg px-3 py-2 text-left text-xs text-slate-500 hover:bg-white/5 hover:text-rose-400"
-          >
-            退出登录
-          </button>
-          {showDualPortalSwitch ? (
+        {showDualPortalSwitch ? (
+          <div className="shrink-0 border-t border-white/10 p-3">
             <button
               type="button"
               ref={dualSwitchBtnRef}
@@ -190,21 +183,33 @@ export default function InstitutionHqLayout() {
                 }
                 navigate('/franchise-partner/dashboard')
               }}
-              className="mt-2 w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-cyan-200/95 hover:bg-white/5 hover:text-white transition"
+              className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-cyan-200/95 hover:bg-white/5 hover:text-white transition"
             >
               <FlatIconSwitchAccount className="h-4 w-4 shrink-0 opacity-90" />
               <span>{campusOptionsForSwitch.length > 1 ? '切换账号' : '切换至校区工作台'}</span>
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="z-20 flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3.5 shadow-sm md:px-8">
-          <h1 className="truncate text-lg font-bold text-slate-900">{pageTitle}</h1>
-          <p className="max-w-[12rem] truncate text-xs text-slate-500 sm:max-w-xs tabular-nums" title={session.loginPhone}>
-            {session.displayName}
-          </p>
+        <header className="z-20 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3.5 shadow-sm md:px-8">
+          <h1 className="truncate text-lg font-bold text-slate-900 min-w-0 flex-1 md:flex-none">{pageTitle}</h1>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0 ml-auto">
+            <p
+              className="max-w-[10rem] sm:max-w-[14rem] truncate text-xs text-slate-500 tabular-nums text-right"
+              title={session.loginPhone}
+            >
+              {session.displayName}
+            </p>
+            <button
+              type="button"
+              onClick={logout}
+              className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50/70 hover:text-rose-700 transition"
+            >
+              退出登录
+            </button>
+          </div>
         </header>
         <main className="mx-auto min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto overscroll-contain px-4 py-6 md:px-8">
           <Outlet context={{ session }} />
