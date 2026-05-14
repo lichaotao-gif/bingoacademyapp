@@ -225,12 +225,6 @@ export default function FranchisePartnerList() {
       render: (_, r) => `${r.classes.length} / ${r.classes.reduce((s, c) => s + c.studentCount, 0)}`,
     },
     {
-      title: '本月订单',
-      dataIndex: 'ordersMonthCount',
-      key: 'ordersMonthCount',
-      width: 90,
-    },
-    {
       title: '联系人',
       key: 'phone',
       width: 120,
@@ -290,7 +284,7 @@ export default function FranchisePartnerList() {
         columns={columns}
         dataSource={data}
         pagination={{ pageSize: 10 }}
-        scroll={{ x: 1180 }}
+        scroll={{ x: 1090 }}
       />
       <Modal
         title={topUpTarget ? `手动充值 · ${topUpTarget.orgName}` : '手动充值'}

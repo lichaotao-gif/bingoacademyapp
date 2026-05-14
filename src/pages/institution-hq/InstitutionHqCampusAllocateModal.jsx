@@ -17,6 +17,16 @@ function parseAmountInput(raw) {
   return Math.round(n * 100) / 100
 }
 
+const BTN = {
+  base: 'inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-45',
+  primary: 'bg-primary text-white shadow-sm hover:bg-primary-600 px-4 py-2.5',
+  secondary: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 px-4 py-2.5',
+}
+
+function btn(...parts) {
+  return [BTN.base, ...parts].filter(Boolean).join(' ')
+}
+
 export default function InstitutionHqCampusAllocateModal({ open, campus, treasuryBalance, onClose, onSuccess }) {
   const [amount, setAmount] = useState('')
   const [remark, setRemark] = useState('')
@@ -117,14 +127,10 @@ export default function InstitutionHqCampusAllocateModal({ open, campus, treasur
           {err ? <p className="text-sm text-rose-600">{err}</p> : null}
         </div>
         <div className="p-4 sm:px-6 border-t border-slate-100 flex justify-end gap-2 shrink-0 bg-slate-50/80 rounded-b-2xl">
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <button type="button" onClick={onClose} className={btn(BTN.secondary)}>
             取消
           </button>
-          <button
-            type="submit"
-            disabled={!afterOk}
-            className="rounded-lg bg-primary hover:bg-primary-600 disabled:opacity-45 disabled:pointer-events-none text-white text-sm font-semibold px-5 py-2.5"
-          >
+          <button type="submit" disabled={!afterOk} className={btn(BTN.primary)}>
             确认拨款
           </button>
         </div>

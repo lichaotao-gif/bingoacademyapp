@@ -1,6 +1,4 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import FranchiseCreateClassModal from './FranchiseCreateClassModal'
 import { FlatIconBookClass, FlatIconCoins, FlatIconUsers } from './FranchiseFlatIcons'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
@@ -15,8 +13,7 @@ function fmtDate(iso) {
 }
 
 export default function FranchisePartnerDashboard() {
-  const { session, ws, refresh } = useFranchiseWorkspace()
-  const [classModalOpen, setClassModalOpen] = useState(false)
+  const { session, ws } = useFranchiseWorkspace()
 
   if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
 
@@ -95,22 +92,13 @@ export default function FranchisePartnerDashboard() {
         })}
       </div>
 
-      {/* 班级管理 */}
+      {/* 班级列表 */}
       <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
-          <h2 className="font-semibold text-slate-900">班级管理</h2>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <Link to="/franchise-partner/classes" className="text-xs text-primary font-medium hover:underline">
-              全部
-            </Link>
-            <button
-              type="button"
-              onClick={() => setClassModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg bg-primary hover:bg-primary-600 text-white text-xs sm:text-sm font-semibold transition shadow-sm"
-            >
-              + 创建班级
-            </button>
-          </div>
+          <h2 className="font-semibold text-slate-900">班级列表</h2>
+          <Link to="/franchise-partner/classes" className="text-xs text-primary font-medium hover:underline shrink-0">
+            全部班级 →
+          </Link>
         </div>
         <ul className="space-y-3">
           {classesPreview.map((cls) => {
@@ -186,13 +174,6 @@ export default function FranchisePartnerDashboard() {
           </table>
         </div>
       </div>
-
-      <FranchiseCreateClassModal
-        open={classModalOpen}
-        onClose={() => setClassModalOpen(false)}
-        session={session}
-        refresh={refresh}
-      />
 
       <p className="text-[11px] text-slate-400 text-center">BingoAI学院 · 加盟商后台 v1.1.0</p>
     </div>

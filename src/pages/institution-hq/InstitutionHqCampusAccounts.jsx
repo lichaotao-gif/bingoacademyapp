@@ -71,6 +71,36 @@ function editFormFromCampus(c) {
   }
 }
 
+/** 校区账号页：统一按钮基底与变体 */
+const BTN = {
+  base: 'inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-45',
+  primary: 'bg-primary text-white shadow-sm hover:bg-primary-600 px-4 py-2.5',
+  secondary: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 px-4 py-2.5',
+  outline: 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 px-4 py-2.5',
+  accent: 'border border-primary/35 bg-primary/[0.07] text-primary hover:bg-primary/12 px-4 py-2.5',
+  danger: 'border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 px-4 py-2.5',
+  dangerMuted: 'border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 px-4 py-2.5',
+}
+
+function btn(...parts) {
+  return [BTN.base, ...parts].filter(Boolean).join(' ')
+}
+
+/** 表格行内操作：统一小号高度，避免与表体字号脱节 */
+const ROW_BTN = {
+  base: 'inline-flex min-h-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-45 px-2.5',
+  ghost: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+  primary: 'border border-primary bg-primary text-white shadow-sm hover:bg-primary-600',
+  accent: 'border border-primary/35 bg-primary/[0.08] text-primary hover:bg-primary/12',
+  danger: 'border border-rose-200 bg-white text-rose-700 hover:bg-rose-50',
+  dangerMuted: 'border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100',
+}
+
+function rowBtn(variant) {
+  const v = ROW_BTN[variant] || ROW_BTN.ghost
+  return [ROW_BTN.base, v].join(' ')
+}
+
 export default function InstitutionHqCampusAccounts() {
   const [tick, setTick] = useState(0)
   const refresh = useCallback(() => setTick((t) => t + 1), [])
@@ -313,171 +343,176 @@ export default function InstitutionHqCampusAccounts() {
       : null
 
   return (
-    <div className="w-full space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 lg:p-8 shadow-sm">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch lg:justify-between lg:gap-8">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">开设校区</h2>
-            <p className="text-sm text-slate-500 mt-2 leading-relaxed max-w-3xl">
-              为集团新增校区并生成加盟商工作台账号。可为新校区划拨开业余额，金额从机构总账户扣除。
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch gap-3 sm:gap-4 shrink-0 lg:max-w-md w-full lg:w-auto">
-            <div className="rounded-xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 sm:px-5 sm:py-4 flex-1 min-w-[11rem]">
-              <p className="text-[11px] font-medium text-emerald-800/90">机构总账户 · 当前剩余可划拨</p>
-              <p className="text-xl sm:text-2xl font-bold text-emerald-950 tabular-nums mt-1">¥{fmtMoney(treasuryBalance)}</p>
-              <p className="text-[10px] text-emerald-800/70 mt-1.5 leading-snug">新开校区填写的开业划拨将从此余额扣减</p>
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+      {/* 开设校区 */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between gap-y-4">
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-slate-900">开设校区</h2>
+              <p className="text-sm text-slate-500 mt-1 leading-relaxed max-w-2xl">
+                新增校区并生成加盟商工作台；可选从机构总账户划拨开业余额（从右侧剩余额度扣减）。
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={openModal}
-              className="rounded-xl bg-primary hover:bg-primary-600 text-white text-sm font-semibold px-6 py-3 shadow-sm self-stretch sm:self-auto sm:min-w-[8.5rem]"
-            >
-              开设校区
-            </button>
+            <div className="flex flex-col sm:flex-row sm:items-stretch gap-3 shrink-0 w-full lg:w-auto lg:items-center">
+              <div className="rounded-lg border border-emerald-200/90 bg-white px-4 py-3 shadow-sm min-w-[11.5rem] flex flex-col justify-center">
+                <p className="text-xs font-medium text-emerald-800/90">机构总账户 · 可划拨余额</p>
+                <p className="text-lg font-bold text-emerald-950 tabular-nums mt-0.5 leading-none">¥{fmtMoney(treasuryBalance)}</p>
+              </div>
+              <button type="button" onClick={openModal} className={btn(BTN.primary, 'w-full sm:w-auto sm:self-center shrink-0')}>
+                开设校区
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="w-full">
-        <div className="flex flex-wrap items-end justify-between gap-2 mb-4">
-          <h2 className="text-base font-bold text-slate-900">校区列表</h2>
-          <p className="text-xs text-slate-500">共 {campuses.length} 个校区</p>
+      {/* 校区列表 */}
+      <section className="w-full rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900">校区列表</h2>
+          <p className="text-sm text-slate-500 tabular-nums">共 {campuses.length} 个校区</p>
         </div>
-        <ul className="grid gap-4 sm:grid-cols-1 xl:grid-cols-2">
-          {campuses.map((c) => (
-            <li
-              key={c.id}
-              className={`rounded-2xl border bg-white p-4 sm:p-5 shadow-sm min-w-0 ${
-                c.disabled ? 'border-amber-200/90 bg-amber-50/25' : 'border-slate-200'
-              }`}
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-slate-900 text-[15px] leading-snug">{c.campusName}</p>
-                    {c.disabled ? (
-                      <span className="text-[10px] font-semibold uppercase tracking-wide rounded-md bg-amber-100 px-2 py-0.5 text-amber-900">
-                        已禁用
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed text-sm text-left min-w-[960px]">
+            <colgroup>
+              <col className="w-[24%]" />
+              <col className="w-[8%]" />
+              <col className="w-[14%]" />
+              <col className="w-[12%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
+              <col className="w-[20%]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/90 text-xs font-medium text-slate-600">
+                <th className="px-4 py-2.5 text-left align-middle">校区</th>
+                <th className="px-3 py-2.5 text-left align-middle">状态</th>
+                <th className="px-3 py-2.5 text-left align-middle">管理员手机</th>
+                <th className="px-3 py-2.5 text-left align-middle">联系人</th>
+                <th className="px-3 py-2.5 text-right align-middle">开业划拨</th>
+                <th className="px-3 py-2.5 text-right align-middle">账户余额</th>
+                <th className="px-4 py-2.5 text-right align-middle">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {campuses.map((c) => {
+                const planBits = [
+                  c.plannedOpenDate ? `计划开业 ${c.plannedOpenDate}` : '',
+                  c.studentCapacity ? `容量 ${c.studentCapacity} 人` : '',
+                  c.remark ? c.remark : '',
+                ].filter(Boolean)
+                return (
+                  <tr key={c.id} className={`align-middle ${c.disabled ? 'bg-amber-50/40' : 'hover:bg-slate-50/60'}`}>
+                    <td className="px-4 py-3 align-top min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 leading-snug">{c.campusName}</div>
+                      {(c.campusShortCode || c.region || c.address) ? (
+                        <div className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                          {[c.campusShortCode, c.region, c.address].filter(Boolean).join(' · ')}
+                        </div>
+                      ) : null}
+                      {planBits.length ? (
+                        <div className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2" title={planBits.join(' · ')}>
+                          {planBits.join(' · ')}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex flex-col gap-1">
+                        {c.isSeed ? (
+                          <span className="inline-flex w-fit text-xs font-medium rounded-md bg-sky-100 px-2 py-0.5 text-sky-900">预置</span>
+                        ) : (
+                          <span className="inline-flex w-fit text-xs font-medium rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">已开设</span>
+                        )}
+                        {c.disabled ? (
+                          <span className="inline-flex w-fit text-xs font-medium rounded-md bg-amber-100 px-2 py-0.5 text-amber-900">已禁用</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 align-middle tabular-nums text-sm text-slate-800 font-medium whitespace-nowrap">
+                      {normalizePartnerPhoneDigits(c.adminPhone) || '—'}
+                    </td>
+                    <td className="px-3 py-3 align-middle text-sm text-slate-700 min-w-0">
+                      <span className="block truncate" title={c.contactName || ''}>
+                        {c.contactName || '—'}
                       </span>
-                    ) : null}
-                  </div>
-                  {(c.campusShortCode || c.region || c.address) ? (
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {[c.campusShortCode, c.region, c.address].filter(Boolean).join(' · ')}
-                    </p>
-                  ) : null}
-                  <p className="text-[11px] text-slate-500 tabular-nums flex flex-wrap items-center gap-x-1 gap-y-0.5">
-                    <span className="text-slate-500 shrink-0">管理员：</span>
-                    <span className="font-medium text-slate-800">{normalizePartnerPhoneDigits(c.adminPhone) || '—'}</span>
-                    {!c.disabled ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (c.isSeed) {
-                            setSeedEditCampus(c)
-                            setSeedPwd('')
-                            setSeedPwd2('')
-                            setSeedPwdErr('')
-                          } else {
-                            openEditCampus(c)
-                          }
-                        }}
-                        className="text-[11px] font-semibold text-primary hover:underline bg-transparent border-0 p-0 cursor-pointer shadow-none shrink-0"
-                      >
-                        编辑
-                      </button>
-                    ) : null}
-                    {c.contactName ? <span className="text-slate-500">· {c.contactName}</span> : null}
-                  </p>
-                  {(c.plannedOpenDate || c.studentCapacity || c.remark) ? (
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      {[
-                        c.plannedOpenDate ? `计划开业：${c.plannedOpenDate}` : '',
-                        c.studentCapacity ? `规划容量：${c.studentCapacity} 人` : '',
-                        c.remark ? `备注：${c.remark}` : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-[11px] text-slate-600 tabular-nums">
-                    <span>
-                      开业划拨：
-                      <span className="font-semibold text-slate-800">
-                        {!c.isSeed ? `¥${fmtMoney(Number(c.openingBalanceAllocated) || 0)}` : '—'}
-                      </span>
-                    </span>
-                    <span className="inline-flex flex-wrap items-baseline gap-x-1">
-                      校区账户余额：
-                      <span className="font-semibold text-slate-800">
-                        {campusWalletPreview[c.id] != null ? `¥${fmtMoney(campusWalletPreview[c.id])}` : '—'}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={Boolean(c.disabled)}
-                        onClick={() => !c.disabled && setAllocateCampus(c)}
-                        className="text-[11px] font-semibold text-primary hover:underline disabled:opacity-35 disabled:no-underline bg-transparent border-0 p-0 m-0 cursor-pointer shadow-none shrink-0"
-                      >
-                        拨款
-                      </button>
-                    </span>
-                  </div>
-                </div>
-                <div className="flex flex-row flex-wrap sm:flex-col items-center sm:items-end justify-end sm:justify-start gap-x-3 gap-y-2 shrink-0 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0">
-                  {!c.isSeed ? (
-                    <>
-                      {!c.disabled ? (
+                    </td>
+                    <td className="px-3 py-3 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
+                      {!c.isSeed ? `¥${fmtMoney(Number(c.openingBalanceAllocated) || 0)}` : '—'}
+                    </td>
+                    <td className="px-3 py-3 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
+                      {campusWalletPreview[c.id] != null ? `¥${fmtMoney(campusWalletPreview[c.id])}` : '—'}
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {!c.disabled ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (c.isSeed) {
+                                setSeedEditCampus(c)
+                                setSeedPwd('')
+                                setSeedPwd2('')
+                                setSeedPwdErr('')
+                              } else {
+                                openEditCampus(c)
+                              }
+                            }}
+                            className={rowBtn('ghost')}
+                          >
+                            {c.isSeed ? '重置密码' : '编辑'}
+                          </button>
+                        ) : null}
+                        {!c.isSeed && !c.disabled ? (
+                          <button type="button" onClick={() => openReplaceAdmin(c)} className={rowBtn('ghost')}>
+                            换绑手机
+                          </button>
+                        ) : null}
+                        {!c.isSeed ? (
+                          <button type="button" onClick={() => toggleCampusDisable(c)} className={rowBtn('ghost')}>
+                            {c.disabled ? '启用' : '禁用'}
+                          </button>
+                        ) : null}
                         <button
                           type="button"
-                          onClick={() => openReplaceAdmin(c)}
-                          className="text-sm font-semibold text-slate-700 hover:text-slate-900 hover:underline whitespace-nowrap bg-transparent border-0 p-0 cursor-pointer shadow-none"
+                          disabled={Boolean(c.disabled)}
+                          onClick={() => !c.disabled && setAllocateCampus(c)}
+                          className={rowBtn('accent')}
                         >
-                          管理员更换
+                          拨款
                         </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => toggleCampusDisable(c)}
-                        className="text-sm font-semibold text-slate-700 hover:text-slate-900 hover:underline whitespace-nowrap bg-transparent border-0 p-0 cursor-pointer shadow-none"
-                      >
-                        {c.disabled ? '启用' : '禁用'}
-                      </button>
-                    </>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={busyId === c.id || Boolean(c.disabled)}
-                    onClick={() => openCampus(c)}
-                    className="text-sm font-semibold text-primary hover:underline disabled:opacity-35 disabled:no-underline whitespace-nowrap bg-transparent border-0 p-0 cursor-pointer shadow-none"
-                  >
-                    {busyId === c.id ? '打开中…' : '进入校区'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (c.isSeed) {
-                        window.alert(
-                          '预置演示校区不可解散，仅供体验。若需练习解散流程，请先用「开设校区」新增正式校区后再操作。',
-                        )
-                        return
-                      }
-                      dissolveCampus(c)
-                    }}
-                    title={c.isSeed ? '预置演示校区不可解散' : undefined}
-                    className={
-                      c.isSeed
-                        ? 'rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-sm font-semibold px-3 py-2 whitespace-nowrap transition shadow-none hover:bg-slate-100'
-                        : 'rounded-lg border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-700 text-sm font-semibold px-3 py-2 whitespace-nowrap transition shadow-none'
-                    }
-                  >
-                    解散校区
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+                        <button
+                          type="button"
+                          disabled={busyId === c.id || Boolean(c.disabled)}
+                          onClick={() => openCampus(c)}
+                          className={rowBtn('primary')}
+                        >
+                          {busyId === c.id ? '打开…' : '进入'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (c.isSeed) {
+                              window.alert(
+                                '预置演示校区不可解散，仅供体验。若需练习解散流程，请先用「开设校区」新增正式校区后再操作。',
+                              )
+                              return
+                            }
+                            dissolveCampus(c)
+                          }}
+                          title={c.isSeed ? '预置演示校区不可解散' : undefined}
+                          className={rowBtn(c.isSeed ? 'dangerMuted' : 'danger')}
+                        >
+                          解散
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {replaceCampus ? (
@@ -521,10 +556,10 @@ export default function InstitutionHqCampusAccounts() {
               {replaceErr ? <p className="text-sm text-rose-600">{replaceErr}</p> : null}
             </div>
             <div className="p-4 sm:px-6 border-t border-slate-100 flex justify-end gap-2 shrink-0 bg-slate-50/80 rounded-b-2xl">
-              <button type="button" onClick={closeReplaceAdmin} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={closeReplaceAdmin} className={btn(BTN.secondary)}>
                 取消
               </button>
-              <button type="submit" className="rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold px-5 py-2.5">
+              <button type="submit" className={btn(BTN.primary)}>
                 确认更换
               </button>
             </div>
@@ -580,10 +615,10 @@ export default function InstitutionHqCampusAccounts() {
               {seedPwdErr ? <p className="text-sm text-rose-600">{seedPwdErr}</p> : null}
             </div>
             <div className="p-4 sm:px-6 border-t border-slate-100 flex justify-end gap-2 shrink-0 bg-slate-50/80 rounded-b-2xl">
-              <button type="button" onClick={closeSeedEditCampus} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={closeSeedEditCampus} className={btn(BTN.secondary)}>
                 取消
               </button>
-              <button type="submit" className="rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold px-5 py-2.5">
+              <button type="submit" className={btn(BTN.primary)}>
                 保存密码
               </button>
             </div>
@@ -710,10 +745,10 @@ export default function InstitutionHqCampusAccounts() {
               {editErr ? <p className="text-sm text-rose-600">{editErr}</p> : null}
             </div>
             <div className="p-4 sm:px-6 border-t border-slate-100 flex justify-end gap-2 shrink-0 bg-slate-50/80 rounded-b-2xl">
-              <button type="button" onClick={closeEditCampus} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={closeEditCampus} className={btn(BTN.secondary)}>
                 取消
               </button>
-              <button type="submit" className="rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold px-5 py-2.5">
+              <button type="submit" className={btn(BTN.primary)}>
                 保存
               </button>
             </div>
@@ -885,7 +920,7 @@ export default function InstitutionHqCampusAccounts() {
               {err ? <p className="text-sm text-rose-600">{err}</p> : null}
             </div>
             <div className="p-4 sm:px-6 border-t border-slate-100 flex justify-end gap-2 shrink-0 bg-slate-50/80 rounded-b-2xl">
-              <button type="button" onClick={closeModal} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={closeModal} className={btn(BTN.secondary)}>
                 取消
               </button>
               <button
@@ -896,7 +931,7 @@ export default function InstitutionHqCampusAccounts() {
                   allocInputParsed > 0 &&
                   allocInputParsed > treasuryBalance
                 }
-                className="rounded-lg bg-primary hover:bg-primary-600 disabled:opacity-45 disabled:pointer-events-none text-white text-sm font-semibold px-5 py-2.5"
+                className={btn(BTN.primary)}
               >
                 确认开设
               </button>

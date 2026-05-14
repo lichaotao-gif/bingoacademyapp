@@ -13,7 +13,6 @@ import CourseEdit from '@/pages/Course/Edit'
 import CompetitionApply from '@/pages/Competition/Apply'
 import CompetitionList from '@/pages/Competition/List'
 import CompetitionDetail from '@/pages/Competition/Detail'
-import MallOrder from '@/pages/Mall/Order'
 import MallProduct from '@/pages/Mall/Product'
 import MallPackage from '@/pages/Mall/Package'
 import AiResource from '@/pages/AiResource'
@@ -31,8 +30,6 @@ import FranchisePartnerList from '@/pages/Franchise/List'
 import FranchiseQualification from '@/pages/Franchise/Qualification'
 import FranchisePartnerDetailPage from '@/pages/Franchise/Detail'
 import FranchiseTeachingProducts from '@/pages/Franchise/TeachingProducts'
-import FranchiseInstitutionAccounts from '@/pages/Franchise/InstitutionAccounts'
-import FranchiseFutureModulePlaceholder from '@/pages/Franchise/FutureModulePlaceholder'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (!getToken()) return <Navigate to="/login" replace />
@@ -69,7 +66,6 @@ export default function App() {
           <Route path="competition/apply" element={<CompetitionApply />} />
           <Route path="ai-resource/list" element={<AiResource />} />
           <Route path="mall/product" element={<MallProduct />} />
-          <Route path="mall/order" element={<MallOrder />} />
           <Route path="mall/package" element={<MallPackage />} />
           <Route path="marketing/activity" element={<MarketingActivityList />} />
           <Route path="marketing/activity/create" element={<MarketingActivityCreate />} />
@@ -82,9 +78,6 @@ export default function App() {
           <Route path="franchise/qualification" element={<FranchiseQualification />} />
           <Route path="franchise/detail" element={<FranchisePartnerDetailPage />} />
           <Route path="franchise/teaching-products" element={<FranchiseTeachingProducts />} />
-          <Route path="franchise/institution-accounts" element={<FranchiseInstitutionAccounts />} />
-          <Route path="franchise/partner-portal-orders" element={<FranchiseFutureModulePlaceholder />} />
-          <Route path="franchise/partner-online-learning" element={<FranchiseFutureModulePlaceholder />} />
           <Route path="cooperation/list" element={<Navigate to="/franchise/list" replace />} />
           <Route path="cooperation/settlement" element={<Navigate to="/finance/settlement" replace />} />
           <Route path="*" element={<div style={{ padding: 24 }}>功能开发中</div>} />

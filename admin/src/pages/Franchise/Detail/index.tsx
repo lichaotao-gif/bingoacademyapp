@@ -6,7 +6,6 @@ import {
   Descriptions,
   Input,
   InputNumber,
-  Progress,
   Space,
   Switch,
   Table,
@@ -31,13 +30,16 @@ import {
   setPartnerAccountStatus,
   syncAllPartnerAccountStatusToLocalStorage,
   updatePartnerConclusion,
-  type ClassBrief,
   type FranchisePartnerDetail,
   type LedgerRow,
   type QualificationSnapshot,
   type ReviewAttachment,
 } from '@/mock/franchisePartners'
 import { fmtMoney, fmtTime, maskPhone } from '@/utils/format'
+// @ts-expect-error 主站 JS：机构校区列表与机构总后台同源
+import { listInstitutionCampuses } from '../../../../../src/utils/institutionHqStorage.js'
+// @ts-expect-error 主站 JS
+import { getWorkspace, normalizePartnerPhoneDigits } from '../../../../../src/utils/franchisePartnerStorage.js'
 
 const ACCOUNT_TAG: Record<string, { text: string; color: string }> = {
   normal: { text: '正常', color: 'green' },
@@ -51,6 +53,17 @@ const QUAL_TAG: Record<string, { text: string; color: string }> = {
   incomplete: { text: '资料待补充', color: 'default' },
   rejected: { text: '已驳回', color: 'red' },
   pending_update: { text: '变更待审', color: 'gold' },
+}
+
+type InstitutionCampusRow = {
+  id: string
+  campusName?: string
+  adminPhone?: string
+  refCode?: string
+  partnerId?: string
+  isSeed?: boolean
+  disabled?: boolean
+  openingBalanceAllocated?: number
 }
 
 function yesNoText(value: unknown) {
@@ -258,6 +271,11 @@ export default function FranchisePartnerDetailPage() {
     return id ? getPartner(id) : undefined
   }, [id, tick])
 
+  const institutionCampuses = useMemo(() => {
+    void tick
+    return listInstitutionCampuses() as InstitutionCampusRow[]
+  }, [tick])
+
   const [conclusionDraft, setConclusionDraft] = useState('')
   useEffect(() => {
     syncAllPartnerAccountStatusToLocalStorage()
@@ -302,18 +320,65 @@ export default function FranchisePartnerDetailPage() {
     },
   ]
 
-  const classColumns: ColumnsType<ClassBrief> = [
-    { title: '班级名称', dataIndex: 'name', key: 'name', ellipsis: true },
-    { title: '学员数', dataIndex: 'studentCount', key: 'studentCount', width: 90 },
-    {
-      title: '线下课进度',
-      key: 'off',
-      width: 200,
-      render: (_, r) => (
-        <Progress percent={r.offlineTotal ? Math.round((100 * r.offlineDone) / r.offlineTotal) : 0} size="small" format={() => `${r.offlineDone}/${r.offlineTotal}`} />
-      ),
-    },
-  ]
+  const institutionCampusColumns: ColumnsType<InstitutionCampusRow> = useMemo(
+    () => [
+      { title: '校区名称', dataIndex: 'campusName', key: 'campusName', ellipsis: true, width: 220 },
+      {
+        title: '管理员角色手机（登录账号）',
+        key: 'adminPhone',
+        width: 160,
+        render: (_, r) => (
+          <Typography.Text copyable className="tabular-nums">
+            {normalizePartnerPhoneDigits(String(r.adminPhone || '')) || '—'}
+          </Typography.Text>
+        ),
+      },
+      {
+        title: '管理员角色账号',
+        dataIndex: 'partnerId',
+        key: 'partnerId',
+        width: 160,
+        ellipsis: true,
+        className: 'tabular-nums',
+      },
+      {
+        title: '开业划拨（元）',
+        dataIndex: 'openingBalanceAllocated',
+        key: 'openingBalanceAllocated',
+        width: 120,
+        align: 'right',
+        render: (_, r) =>
+          r.isSeed ? (
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>—</span>
+          ) : (
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {typeof r.openingBalanceAllocated === 'number' && Number.isFinite(r.openingBalanceAllocated)
+                ? r.openingBalanceAllocated.toFixed(2)
+                : '—'}
+            </span>
+          ),
+      },
+      {
+        title: '账户余额（元）',
+        key: 'balance',
+        width: 130,
+        align: 'right',
+        render: (_, r) => {
+          try {
+            const ws = getWorkspace(String(r.partnerId || ''), String(r.refCode || ''))
+            const b = ws?.balance
+            if (typeof b === 'number' && Number.isFinite(b)) {
+              return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(b)}</span>
+            }
+          } catch {
+            /* 无工作台档案 */
+          }
+          return <span style={{ fontVariantNumeric: 'tabular-nums' }}>—</span>
+        },
+      },
+    ],
+    [],
+  )
 
   if (!id) {
     return (
@@ -338,7 +403,7 @@ export default function FranchisePartnerDetailPage() {
   }
 
   const p = partner
-  const activeTab = ['overview', 'discounts', 'qualification', 'ledger', 'classes'].includes(tabFromQuery || '')
+  const activeTab = ['overview', 'discounts', 'qualification', 'ledger', 'institution-campuses'].includes(tabFromQuery || '')
     ? String(tabFromQuery)
     : 'overview'
 
@@ -433,15 +498,15 @@ export default function FranchisePartnerDetailPage() {
             ),
           },
           {
-            key: 'classes',
-            label: '班级情况',
+            key: 'institution-campuses',
+            label: '机构校区账号',
             children: (
-              <Table<ClassBrief>
+              <Table<InstitutionCampusRow>
                 rowKey="id"
-                columns={classColumns}
-                dataSource={p.classes}
+                columns={institutionCampusColumns}
+                dataSource={institutionCampuses}
                 pagination={false}
-                locale={{ emptyText: '暂无班级数据' }}
+                scroll={{ x: 860 }}
               />
             ),
           },
