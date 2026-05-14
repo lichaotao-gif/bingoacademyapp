@@ -164,7 +164,7 @@ export default function InstitutionHqDashboard() {
                 </div>
               </div>
               <div className="rounded-xl bg-slate-50/80 border border-slate-100 px-3 py-2.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-slate-600">
-                <span>校区账户余额（演示）</span>
+                <span>校区账户余额</span>
                 <span className="inline-flex flex-wrap items-baseline justify-end gap-x-1.5 gap-y-0.5 tabular-nums">
                   <span className="font-semibold text-slate-900">
                     {campusBalance != null ? `¥${fmtMoney(campusBalance)}` : '—'}

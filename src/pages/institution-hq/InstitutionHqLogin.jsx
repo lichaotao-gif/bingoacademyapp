@@ -102,7 +102,7 @@ export default function InstitutionHqLogin() {
     }
     if (smsCooldown > 0) return
     setSmsCooldown(SMS_COOLDOWN_SEC)
-    setSmsHint('演示环境请使用「密码登录」；短信登录与账号路由打通后可用。')
+    setSmsHint('请使用「密码登录」。短信登录与账号路由打通后可用。')
   }
 
   const handleSubmitSms = (e) => {

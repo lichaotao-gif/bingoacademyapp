@@ -160,7 +160,7 @@ export default function InstitutionHqFinance() {
           <div className="min-w-0 flex-1 pt-0.5">
             <p className="text-xs font-medium text-slate-500">机构总账户余额</p>
             <p className="mt-2 text-lg font-bold tabular-nums text-emerald-700 tracking-tight">¥{fmtMoney(treasury.balance)}</p>
-            <p className="mt-2 text-[11px] text-slate-500 leading-snug">演示充值后可供新开校区划拨</p>
+            <p className="mt-2 text-[11px] text-slate-500 leading-snug">充值入账后可划拨至新开校区</p>
             <button
               type="button"
               onClick={openTopUpModal}
@@ -199,7 +199,7 @@ export default function InstitutionHqFinance() {
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100">
           <h2 className="text-[15px] font-semibold text-slate-900">各校区财务一览</h2>
-          <p className="text-xs text-slate-400 mt-1">开业划拨、校区账户余额与在读规模（演示数据）</p>
+          <p className="text-xs text-slate-400 mt-1">开业划拨、校区账户余额与在读规模</p>
         </div>
         <table className="w-full text-sm text-left min-w-[640px]">
           <thead className="bg-slate-50 text-xs text-slate-500">
@@ -244,7 +244,7 @@ export default function InstitutionHqFinance() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between px-5 py-4 border-b border-slate-100">
           <div>
             <h2 className="text-[15px] font-semibold text-slate-900">机构总账户流水</h2>
-            <p className="text-xs text-slate-400 mt-1">总账充值、开业划拨至校区、删除校区退回等（演示）</p>
+            <p className="text-xs text-slate-400 mt-1">总账充值、开业划拨至校区、删除校区退回等</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <label className="sr-only" htmlFor="hq-finance-ledger-type">
@@ -331,7 +331,7 @@ export default function InstitutionHqFinance() {
                     机构总账户充值
                   </h2>
                   <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                    演示环境入账至机构总余额，正式环境可对接支付/财务中台。
+                    入账后计入机构总余额。后续可对接支付或财务中台。
                   </p>
                 </div>
               </div>

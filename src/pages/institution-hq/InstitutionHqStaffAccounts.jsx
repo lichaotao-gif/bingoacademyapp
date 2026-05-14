@@ -731,13 +731,13 @@ export default function InstitutionHqStaffAccounts() {
                   </button>
                 </form>
               ) : campusEditCampus.isSeed ? (
-                <p className="text-xs text-slate-500 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">预置演示校区不支持更换管理员手机，仅可重置下方登录密码。</p>
+                <p className="text-xs text-slate-500 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">预置校区不支持更换管理员手机，仅可重置下方登录密码。</p>
               ) : null}
 
               {!campusEditCampus.disabled ? (
                 <form onSubmit={submitCampusEditPwd} className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                   <p className="text-xs font-semibold text-slate-800">重置主号登录密码</p>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">本地演示：直接覆盖该手机号的加盟商主号密码，不校验旧密码。</p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">将直接覆盖该手机号的加盟商主号密码，不校验旧密码。</p>
                   <div>
                     <label className="text-xs font-medium text-slate-600">新密码（至少 6 位）</label>
                     <input

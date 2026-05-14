@@ -374,25 +374,25 @@ export default function InstitutionHqCampusAccounts() {
           <p className="text-sm text-slate-500 tabular-nums">共 {campuses.length} 个校区</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm text-left min-w-[960px]">
+          <table className="w-full table-fixed text-sm text-left min-w-[1120px]">
             <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[8%]" />
-              <col className="w-[14%]" />
+              <col className="w-[22%]" />
+              <col className="w-[7%]" />
               <col className="w-[12%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
-              <col className="w-[20%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[29%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/90 text-xs font-medium text-slate-600">
                 <th className="px-4 py-2.5 text-left align-middle">校区</th>
-                <th className="px-3 py-2.5 text-left align-middle">状态</th>
+                <th className="px-3 py-2.5 text-left align-middle whitespace-nowrap">状态</th>
                 <th className="px-3 py-2.5 text-left align-middle">管理员手机</th>
                 <th className="px-3 py-2.5 text-left align-middle">联系人</th>
                 <th className="px-3 py-2.5 text-right align-middle">开业划拨</th>
                 <th className="px-3 py-2.5 text-right align-middle">账户余额</th>
-                <th className="px-4 py-2.5 text-right align-middle">操作</th>
+                <th className="px-4 py-2.5 text-right align-middle whitespace-nowrap">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -404,7 +404,7 @@ export default function InstitutionHqCampusAccounts() {
                 ].filter(Boolean)
                 return (
                   <tr key={c.id} className={`align-middle ${c.disabled ? 'bg-amber-50/40' : 'hover:bg-slate-50/60'}`}>
-                    <td className="px-4 py-3 align-top min-w-0">
+                    <td className="px-4 py-3 align-middle min-w-0">
                       <div className="text-sm font-semibold text-slate-900 leading-snug">{c.campusName}</div>
                       {(c.campusShortCode || c.region || c.address) ? (
                         <div className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
@@ -417,15 +417,15 @@ export default function InstitutionHqCampusAccounts() {
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-3 py-3 align-middle">
-                      <div className="flex flex-col gap-1">
+                    <td className="px-3 py-3 align-middle whitespace-nowrap">
+                      <div className="inline-flex flex-nowrap items-center gap-1">
                         {c.isSeed ? (
-                          <span className="inline-flex w-fit text-xs font-medium rounded-md bg-sky-100 px-2 py-0.5 text-sky-900">预置</span>
+                          <span className="inline-flex shrink-0 text-xs font-medium rounded-md bg-sky-100 px-2 py-0.5 text-sky-900">预置</span>
                         ) : (
-                          <span className="inline-flex w-fit text-xs font-medium rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">已开设</span>
+                          <span className="inline-flex shrink-0 text-xs font-medium rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">已开设</span>
                         )}
                         {c.disabled ? (
-                          <span className="inline-flex w-fit text-xs font-medium rounded-md bg-amber-100 px-2 py-0.5 text-amber-900">已禁用</span>
+                          <span className="inline-flex shrink-0 text-xs font-medium rounded-md bg-amber-100 px-2 py-0.5 text-amber-900">已禁用</span>
                         ) : null}
                       </div>
                     </td>
@@ -443,8 +443,8 @@ export default function InstitutionHqCampusAccounts() {
                     <td className="px-3 py-3 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
                       {campusWalletPreview[c.id] != null ? `¥${fmtMoney(campusWalletPreview[c.id])}` : '—'}
                     </td>
-                    <td className="px-4 py-3 align-middle">
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <td className="px-4 py-3 align-middle whitespace-nowrap">
+                      <div className="flex flex-nowrap items-center justify-end gap-1.5">
                         {!c.disabled ? (
                           <button
                             type="button"
@@ -494,13 +494,13 @@ export default function InstitutionHqCampusAccounts() {
                           onClick={() => {
                             if (c.isSeed) {
                               window.alert(
-                                '预置演示校区不可解散，仅供体验。若需练习解散流程，请先用「开设校区」新增正式校区后再操作。',
+                                '该预置校区不可解散。请通过「开设校区」新增校区后再进行相关操作。',
                               )
                               return
                             }
                             dissolveCampus(c)
                           }}
-                          title={c.isSeed ? '预置演示校区不可解散' : undefined}
+                          title={c.isSeed ? '预置校区不可解散' : undefined}
                           className={rowBtn(c.isSeed ? 'dangerMuted' : 'danger')}
                         >
                           解散
@@ -585,7 +585,7 @@ export default function InstitutionHqCampusAccounts() {
                 编辑校区主号 · {seedEditCampus.campusName}
               </h2>
               <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                本条为演示固定校区：不能修改存档资料、不能更换登录手机或删除。若需改资料或换绑，请使用「开设校区」新增正式校区。此处仅可重置当前管理员手机对应的加盟商主号登录密码（本地演示存储）。
+                预置校区不支持修改存档资料、更换登录手机或解散。如需完整管理，请使用「开设校区」新增校区。此处仅可重置当前管理员手机号对应的加盟商主号登录密码。
               </p>
               <p className="text-xs text-slate-600 mt-2 tabular-nums">
                 登录手机：<span className="font-medium text-slate-800">{normalizePartnerPhoneDigits(seedEditCampus.adminPhone) || '—'}</span>
