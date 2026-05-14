@@ -9,7 +9,14 @@ import {
 } from '../constants/institutionHqIdentity.js'
 import { INSTITUTION_HQ_PENDING_WS_KEY } from '../constants/institutionHqPendingWorkspace.js'
 import { tryInstitutionHqStaffLogin } from './institutionHqAccess.js'
-import { normalizePartnerPhoneDigits, queuePartnerSessionForNewTab } from './franchisePartnerStorage.js'
+import {
+  demoTopUpBalance,
+  migrateFranchiseWorkspacePartnerId,
+  migratePartnerLoginCredentialsToNewPhone,
+  normalizePartnerPhoneDigits,
+  queuePartnerSessionForNewTab,
+} from './franchisePartnerStorage.js'
+import { migrateInstitutionAccountsPartnerId } from './franchiseInstitutionAccounts.js'
 
 const SESSION_KEY = 'bingo_institution_hq_session_v1'
 const CAMPUSES_KEY = 'bingo_institution_hq_campuses_v1'
@@ -86,7 +93,7 @@ export function institutionHqDemoRechargeTopUp(amount, remark) {
   return { ok: true, treasury: tr }
 }
 
-function deductTreasuryForCampusAllocation(amount, campusName, campusId) {
+function deductTreasuryForCampusAllocation(amount, campusName, campusId, options) {
   const amt = roundMoney2(amount)
   if (!(amt > 0)) return { ok: true }
   const tr = loadTreasury()
@@ -96,11 +103,16 @@ function deductTreasuryForCampusAllocation(amount, campusName, campusId) {
       msg: `机构总账户余额不足（当前 ¥${tr.balance.toFixed(2)}，需划拨 ¥${amt.toFixed(2)}）`,
     }
   }
+  const name = String(campusName || '校区').trim()
+  const ledgerTitle =
+    options && typeof options === 'object' && typeof options.ledgerTitle === 'string' && options.ledgerTitle.trim()
+      ? options.ledgerTitle.trim()
+      : `划拨开业额度至「${name}」`
   tr.balance = roundMoney2(tr.balance - amt)
   tr.ledger.unshift({
     id: `hq-alloc-${Date.now()}`,
     type: 'hq_allocate_campus',
-    title: `划拨开业额度至「${String(campusName || '校区').trim()}」`,
+    title: ledgerTitle,
     amount: -amt,
     balanceAfter: tr.balance,
     campusId: String(campusId || ''),
@@ -108,6 +120,51 @@ function deductTreasuryForCampusAllocation(amount, campusName, campusId) {
   })
   saveTreasury(tr)
   return { ok: true }
+}
+
+/** 校区入账失败时退回机构总账（演示） */
+function creditTreasuryGrantRollback(amount, campusName) {
+  const amt = roundMoney2(amount)
+  if (!(amt > 0)) return
+  const tr = loadTreasury()
+  tr.balance = roundMoney2(tr.balance + amt)
+  tr.ledger.unshift({
+    id: `hq-grant-rb-${Date.now()}`,
+    type: 'hq_refund_campus',
+    title: `拨款入账失败，退回机构总账「${String(campusName || '校区').trim()}」`,
+    amount: amt,
+    balanceAfter: tr.balance,
+    createdAt: new Date().toISOString(),
+  })
+  saveTreasury(tr)
+}
+
+/**
+ * 从机构总账户扣款并拨入指定校区加盟商工作台余额（演示）。
+ * @param {{ partnerId: string, refCode: string, id?: string, campusName?: string }} campus
+ * @param {number|string} amount
+ * @param {string} [remark]
+ */
+export function institutionHqAllocateFundsToCampus(campus, amount, remark) {
+  const pid = String(campus?.partnerId || '').trim()
+  const ref = String(campus?.refCode || '').trim()
+  if (!pid || !ref) return { ok: false, msg: '校区信息不完整' }
+  if (Boolean(campus?.disabled)) return { ok: false, msg: '该校区已禁用，无法拨款' }
+  if (!partnerIdBelongsToInstitutionHqList(pid)) return { ok: false, msg: '非本机构下属校区' }
+  const amt = roundMoney2(amount)
+  if (!(amt > 0)) return { ok: false, msg: '请输入大于 0 的金额' }
+  const name = String(campus.campusName || '校区').trim()
+  const remarkTrim = remark != null ? String(remark).trim() : ''
+  const note = remarkTrim ? ` · ${remarkTrim}` : ''
+  const ledgerTitle = `拨款至「${name}」${note}`
+  const dr = deductTreasuryForCampusAllocation(amt, name, campus.id, { ledgerTitle })
+  if (!dr.ok) return dr
+  const top = demoTopUpBalance(pid, ref, amt, `机构总拨款${note}`, { skipFrozenGuard: true })
+  if (!top.ok) {
+    creditTreasuryGrantRollback(amt, name)
+    return top
+  }
+  return { ok: true, campusBalance: top.ws.balance }
 }
 
 function refundTreasuryForCampusRemoved(amount, campusName) {
@@ -143,6 +200,22 @@ function savePendingWsRoot(root) {
     INSTITUTION_HQ_PENDING_WS_KEY,
     JSON.stringify({ version: 1, byPartnerId: root.byPartnerId || {} }),
   )
+}
+
+function migratePendingWorkspacePartnerKey(oldPid, newPid, refCode) {
+  const old = String(oldPid || '').trim()
+  const neu = String(newPid || '').trim()
+  if (!old || !neu || old === neu) return
+  const root = loadPendingWsRoot()
+  const row = root.byPartnerId[old]
+  if (!row) return
+  delete root.byPartnerId[old]
+  root.byPartnerId[neu] = {
+    ...row,
+    refCode: String(refCode || row.refCode || '').trim(),
+    at: new Date().toISOString(),
+  }
+  savePendingWsRoot(root)
 }
 
 /** 新校区保存后写入：首次 getWorkspace 时按此余额生成工作台（非预置演示桶） */
@@ -369,6 +442,138 @@ export function removeInstitutionCampus(campusId) {
   return { ok: true }
 }
 
+/**
+ * 更新已开设校区（不含管理员手机号、不含开业划拨；预置校区不可改）
+ * @param {string} campusId
+ * @param {Partial<{ campusName: string, contactName: string, region: string, address: string, campusShortCode: string, plannedOpenDate: string, studentCapacity: string|number, remark: string, passwordHint: string }>} input
+ */
+export function updateInstitutionCampus(campusId, input) {
+  const id = String(campusId || '').trim()
+  if (!id) return { ok: false, msg: '无效校区' }
+  if (SEED_CAMPUS.some((s) => s.id === id)) return { ok: false, msg: '预置校区不可修改' }
+  const list = loadCustomCampuses()
+  const idx = list.findIndex((x) => x.id === id)
+  if (idx === -1) return { ok: false, msg: '未找到该校区记录' }
+  const cur = { ...list[idx] }
+
+  const name = String(input?.campusName ?? cur.campusName ?? '').trim()
+  if (!name) return { ok: false, msg: '请填写校区名称' }
+  cur.campusName = name
+
+  const contactName = String(input?.contactName ?? '').trim()
+  if (contactName) cur.contactName = contactName
+  else delete cur.contactName
+
+  const region = String(input?.region ?? '').trim()
+  if (region) cur.region = region
+  else delete cur.region
+
+  const address = String(input?.address ?? '').trim()
+  if (address) cur.address = address
+  else delete cur.address
+
+  const campusShortCode = String(input?.campusShortCode ?? '').trim()
+  if (campusShortCode) cur.campusShortCode = campusShortCode
+  else delete cur.campusShortCode
+
+  const plannedOpenDate = String(input?.plannedOpenDate ?? '').trim()
+  if (plannedOpenDate) cur.plannedOpenDate = plannedOpenDate
+  else delete cur.plannedOpenDate
+
+  const capRaw = input?.studentCapacity
+  const studentCapacity =
+    capRaw === '' || capRaw === undefined || capRaw === null
+      ? ''
+      : String(capRaw).replace(/\D/g, '').slice(0, 6)
+  if (studentCapacity) cur.studentCapacity = studentCapacity
+  else delete cur.studentCapacity
+
+  const remark = String(input?.remark ?? '').trim()
+  if (remark) cur.remark = remark
+  else delete cur.remark
+
+  const passwordHintCustom = String(input?.passwordHint ?? '').trim()
+  if (passwordHintCustom) cur.passwordHint = passwordHintCustom
+  else
+    cur.passwordHint =
+      '首次登录请使用「忘记密码」流程，或联系机构总管理员获取初始密码。'
+
+  list[idx] = cur
+  saveCustomCampuses(list)
+  return { ok: true, campus: cur }
+}
+
+/** 禁用 / 启用校区（仅用户开设的校区；预置不可改） */
+export function setInstitutionCampusDisabled(campusId, disabled) {
+  const id = String(campusId || '').trim()
+  if (!id) return { ok: false, msg: '无效校区' }
+  if (SEED_CAMPUS.some((s) => s.id === id)) return { ok: false, msg: '预置校区不可禁用' }
+  const list = loadCustomCampuses()
+  const idx = list.findIndex((x) => x.id === id)
+  if (idx === -1) return { ok: false, msg: '未找到该校区记录' }
+  list[idx] = { ...list[idx], disabled: Boolean(disabled) }
+  saveCustomCampuses(list)
+  return { ok: true }
+}
+
+/**
+ * 更换校区管理员登录手机（仅自建校区）。会迁移工作台、开业待写入、机构子账号桶及登录密码（新号尚无密码时复制旧号密码）。
+ */
+export function changeInstitutionCampusAdminPhone(campusId, newAdminPhoneInput) {
+  const id = String(campusId || '').trim()
+  const newPhone = normalizePartnerPhoneDigits(newAdminPhoneInput)
+  if (!id) return { ok: false, msg: '无效校区' }
+  if (SEED_CAMPUS.some((s) => s.id === id)) return { ok: false, msg: '预置校区不支持更换管理员手机' }
+  if (!/^1\d{10}$/.test(newPhone)) return { ok: false, msg: '请输入11位新手机号' }
+  const list = loadCustomCampuses()
+  const idx = list.findIndex((x) => x.id === id)
+  if (idx === -1) return { ok: false, msg: '未找到该校区记录' }
+  const row = { ...list[idx] }
+  const oldPhone = normalizePartnerPhoneDigits(row.adminPhone)
+  const oldPid = String(row.partnerId || '').trim()
+  const oldRef = String(row.refCode || '').trim()
+  if (oldPhone === newPhone) return { ok: false, msg: '新手机号与当前一致' }
+  const newPid = `p_${newPhone}`
+  const dup = listInstitutionCampuses().some((x) => normalizePartnerPhoneDigits(x.adminPhone) === newPhone && x.id !== id)
+  if (dup) return { ok: false, msg: '该手机号已被其他校区使用' }
+  const newRef = `FJ-${newPhone.slice(-4)}-${Date.now().toString(36).slice(-4).toUpperCase()}`
+
+  const wsM = migrateFranchiseWorkspacePartnerId(oldPid, newPid, newRef)
+  if (!wsM.ok) return wsM
+
+  const iaM = migrateInstitutionAccountsPartnerId(oldPid, newPid, newRef)
+  if (!iaM.ok) {
+    migrateFranchiseWorkspacePartnerId(newPid, oldPid, oldRef)
+    return iaM
+  }
+
+  migratePendingWorkspacePartnerKey(oldPid, newPid, newRef)
+
+  const cr = migratePartnerLoginCredentialsToNewPhone(oldPhone, newPhone)
+  if (!cr.ok) {
+    migratePendingWorkspacePartnerKey(newPid, oldPid, oldRef)
+    migrateInstitutionAccountsPartnerId(newPid, oldPid, oldRef)
+    migrateFranchiseWorkspacePartnerId(newPid, oldPid, oldRef)
+    return cr
+  }
+
+  row.adminPhone = newPhone
+  row.partnerId = newPid
+  row.refCode = newRef
+  list[idx] = row
+  saveCustomCampuses(list)
+  return { ok: true, campus: row }
+}
+
+/** 加盟商主号登录：若该手机号在机构校区列表中且对应校区均为「禁用」，则不可登录 */
+export function isFranchiseCampusLoginDisabled(phoneDigits) {
+  const p = normalizePartnerPhoneDigits(phoneDigits)
+  if (p.length !== 11) return false
+  const matches = listInstitutionCampuses().filter((c) => normalizePartnerPhoneDigits(c.adminPhone) === p)
+  if (!matches.length) return false
+  return matches.every((c) => Boolean(c.disabled))
+}
+
 /** 构造写入加盟商工作台的会话（与 buildPartnerSessionPayloadForLogin 字段对齐） */
 export function buildPartnerSessionFromCampus(campus) {
   const phone = normalizePartnerPhoneDigits(campus.adminPhone)
@@ -385,6 +590,10 @@ export function buildPartnerSessionFromCampus(campus) {
 
 export function openCampusFranchisePartnerInNewTab(campus) {
   if (typeof window === 'undefined') return
+  if (Boolean(campus?.disabled)) {
+    window.alert('该校区已禁用，无法打开工作台')
+    return
+  }
   const payload = buildPartnerSessionFromCampus(campus)
   queuePartnerSessionForNewTab(payload)
   const u = new URL('franchise-partner/dashboard', window.location.origin + import.meta.env.BASE_URL)

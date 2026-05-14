@@ -202,7 +202,7 @@ export function resetHqAccountPassword(orgId, accountId, newPassword) {
   return { ok: true }
 }
 
-/** 编辑权限子账号：姓名、角色；密码留空则不变 */
+/** 编辑权限子账号：姓名、角色、手机号（可选改）；密码留空则不变 */
 export function updateHqAccount(orgId, accountId, input) {
   const g = getBucket(orgId)
   if (!g) return { ok: false, msg: '无效集团' }
@@ -216,6 +216,24 @@ export function updateHqAccount(orgId, accountId, input) {
   const roleId = String((input?.roleId ?? cur.roleId) || '').trim()
   const role = (g.bucket.roles || []).find((r) => r.id === roleId)
   if (!role) return { ok: false, msg: '请选择角色' }
+  let phone = String(cur.phone || '').replace(/\D/g, '')
+  if (input && Object.prototype.hasOwnProperty.call(input, 'phone')) {
+    const next = normalizePartnerPhoneDigits(input.phone)
+    if (next.length !== 11) return { ok: false, msg: '请输入11位手机号' }
+    if (next === INSTITUTION_HQ_DEMO_PHONE) {
+      return { ok: false, msg: '该手机号为机构总管理主账号，不能与权限子账号重复' }
+    }
+    const root = loadRoot()
+    for (const oid of Object.keys(root.byOrgId)) {
+      for (const acc of root.byOrgId[oid].accounts || []) {
+        if (String(acc.id) === id) continue
+        if (normalizePartnerPhoneDigits(acc.phone) === next) {
+          return { ok: false, msg: '该手机号已被其他权限子账号占用' }
+        }
+      }
+    }
+    phone = next
+  }
   const pwRaw = input?.password != null ? String(input.password) : ''
   const pwTrim = pwRaw.trim()
   let password = cur.password
@@ -228,6 +246,7 @@ export function updateHqAccount(orgId, accountId, input) {
   list[idx] = {
     ...cur,
     name,
+    phone,
     password,
     roleId,
     roleName: role.name,

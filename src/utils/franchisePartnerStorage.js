@@ -43,7 +43,7 @@ export const FRANCHISE_PROMOTABLE_COURSES = [
  * 线下授课课时目录（按课程包 id）。
  * 创建班级时选择课程包后复制到班级；管理员线下上完一节则勾选对应课时。
  */
-export const FRANCHISE_OFFLINE_LESSON_CATALOG = {
+const FRANCHISE_OFFLINE_LESSON_CATALOG_BASE = {
   'ai-enlighten': [
     { id: 'ai-enlighten-L1', title: '第1课时 · 认识身边的智能' },
     { id: 'ai-enlighten-L2', title: '第2课时 · 会思考的机器' },
@@ -80,6 +80,46 @@ export const FRANCHISE_OFFLINE_LESSON_CATALOG = {
   ],
 }
 
+/** 创建班级弹窗演示：人工智能课 1～9 星（不参与充课/折扣主列表） */
+export const FRANCHISE_CLASS_CREATE_OFFLINE_DEMO_PACKS = Array.from({ length: 9 }, (_, i) => {
+  const star = i + 1
+  const id = `fr-ai-star-${star}`
+  return { id, name: `人工智能课 · ${star}星`, price: 199 + star * 30 }
+})
+
+function buildFrAiStarOfflineLessonCatalog() {
+  const out = {}
+  for (const { id } of FRANCHISE_CLASS_CREATE_OFFLINE_DEMO_PACKS) {
+    const star = Number(String(id).replace(/^fr-ai-star-/, '')) || 1
+    out[id] = [
+      { id: `${id}-L1`, title: `第1课时 · ${star}星 · 核心能力` },
+      { id: `${id}-L2`, title: `第2课时 · ${star}星 · 综合实训` },
+    ]
+  }
+  return out
+}
+
+/** 线下课包展示名：正式推广课 + 创建班级演示星标课包 */
+export function getFranchiseOfflinePackMeta(courseId) {
+  if (!courseId) return undefined
+  return (
+    FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === courseId) ||
+    FRANCHISE_CLASS_CREATE_OFFLINE_DEMO_PACKS.find((c) => c.id === courseId)
+  )
+}
+
+function offlinePackIdOrderForNormalization() {
+  return [
+    ...FRANCHISE_PROMOTABLE_COURSES.map((c) => c.id),
+    ...FRANCHISE_CLASS_CREATE_OFFLINE_DEMO_PACKS.map((c) => c.id),
+  ]
+}
+
+export const FRANCHISE_OFFLINE_LESSON_CATALOG = {
+  ...FRANCHISE_OFFLINE_LESSON_CATALOG_BASE,
+  ...buildFrAiStarOfflineLessonCatalog(),
+}
+
 export function getOfflineLessonTemplate(courseId) {
   const rows = FRANCHISE_OFFLINE_LESSON_CATALOG[courseId]
   if (!rows?.length) return []
@@ -94,7 +134,7 @@ export function getMergedOfflineLessonTemplates(courseIds) {
     if (!courseId || seenPack.has(courseId)) continue
     if (!FRANCHISE_OFFLINE_LESSON_CATALOG[courseId]?.length) continue
     seenPack.add(courseId)
-    const pack = FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === courseId)
+    const pack = getFranchiseOfflinePackMeta(courseId)
     const packLabel = pack?.name || courseId
     for (const r of FRANCHISE_OFFLINE_LESSON_CATALOG[courseId]) {
       out.push({ id: r.id, title: r.title, done: false, packCourseId: courseId, packLabel })
@@ -127,7 +167,7 @@ function normalizeOfflineCourseIdsFromMeta(meta) {
       if (!id || !FRANCHISE_OFFLINE_LESSON_CATALOG[id]?.length) continue
       picked.add(id)
     }
-    return FRANCHISE_PROMOTABLE_COURSES.map((c) => c.id).filter((id) => picked.has(id))
+    return offlinePackIdOrderForNormalization().filter((id) => picked.has(id))
   }
   const single = typeof meta?.offlineCourseId === 'string' ? meta.offlineCourseId.trim() : ''
   if (single && FRANCHISE_OFFLINE_LESSON_CATALOG[single]?.length) return [single]
@@ -945,6 +985,23 @@ export function updatePartnerAccountPassword(phoneDigits, oldPassword, newPasswo
   return { ok: true }
 }
 
+/**
+ * 总部/演示后台：直接覆盖某手机号的加盟商主号登录密码（不校验原密码）。
+ * 仅用于管理端运维；正式环境应对接鉴权与审计接口。
+ */
+export function adminSetPartnerMainLoginPassword(phoneDigits, newPassword) {
+  const p = normalizePartnerPhoneDigits(phoneDigits)
+  if (p.length !== 11) return { ok: false, msg: '请输入11位手机号' }
+  const pw = String(newPassword || '')
+  if (pw.length < 6) return { ok: false, msg: '新密码至少 6 位' }
+  const creds = loadPartnerCreds()
+  creds[p] = pw
+  if (!savePartnerCreds(creds)) {
+    return { ok: false, msg: '无法保存新密码，请检查浏览器本地存储' }
+  }
+  return { ok: true }
+}
+
 export function displayPartnerOrgName(session) {
   if (!session) return 'BingoAI学院·加盟商'
   if (session.orgName) return session.orgName
@@ -1275,14 +1332,6 @@ export function getDiscountLabel(ws, courseId) {
   return row?.label || '原价'
 }
 
-/** 总销售额：已完成充课订单实付累计（演示口径） */
-export function computeTotalSales(ws) {
-  if (!ws?.orders?.length) return 0
-  return ws.orders
-    .filter((o) => o.status === '已完成')
-    .reduce((s, o) => s + (Number(o.payAmount) || 0), 0)
-}
-
 /** 本月订单数 */
 export function computeMonthOrderCount(ws) {
   if (!ws?.orders?.length) return 0
@@ -1502,9 +1551,7 @@ function ensureClassOfflineFields(ws) {
         }
       }
       if (c.offlineCourseIds?.length) {
-        const names = c.offlineCourseIds.map(
-          (id) => FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === id)?.name || id,
-        )
+        const names = c.offlineCourseIds.map((id) => getFranchiseOfflinePackMeta(id)?.name || id)
         const joined = names.join('、')
         if (joined && c.offlineCourseName !== joined) {
           c.offlineCourseName = joined
@@ -1515,7 +1562,7 @@ function ensureClassOfflineFields(ws) {
           changed = true
         }
       } else if (!c.offlineCourseName && c.offlineCourseId) {
-        const pack = FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === c.offlineCourseId)
+        const pack = getFranchiseOfflinePackMeta(c.offlineCourseId)
         c.offlineCourseName = pack?.name || c.offlineCourseId
         changed = true
       }
@@ -1533,7 +1580,7 @@ function ensureClassOfflineFields(ws) {
     const toBuild = effectiveIds.length ? effectiveIds : [cid]
     const merged = getMergedOfflineLessonTemplates(toBuild)
     if (!merged.length) continue
-    const names = toBuild.map((id) => FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === id)?.name || id)
+    const names = toBuild.map((id) => getFranchiseOfflinePackMeta(id)?.name || id)
     c.offlineCourseIds = toBuild
     c.offlineCourseId = toBuild[0]
     c.offlineCourseName = names.join('、')
@@ -1573,7 +1620,7 @@ function ensureDemoMultiOfflineCourseSample(ws) {
   sampleClass.offlineCourseIds = [...currentIds, ...missingIds]
   sampleClass.offlineCourseId = sampleClass.offlineCourseIds[0]
   sampleClass.offlineCourseName = sampleClass.offlineCourseIds
-    .map((id) => FRANCHISE_PROMOTABLE_COURSES.find((x) => x.id === id)?.name || id)
+    .map((id) => getFranchiseOfflinePackMeta(id)?.name || id)
     .join('、')
   if (addLessons.length) {
     sampleClass.offlineLessons = [...currentLessons, ...addLessons]
@@ -1728,6 +1775,51 @@ export function saveWorkspace(partnerId, data) {
   localStorage.setItem(workspaceKey(partnerId), JSON.stringify(data))
 }
 
+/**
+ * 将工作台数据从旧 partnerId 迁到新 partnerId（机构总更换校区管理员登录手机等）
+ * @returns {{ ok: true, migrated: boolean } | { ok: false, msg: string }}
+ */
+export function migrateFranchiseWorkspacePartnerId(oldPartnerId, newPartnerId, newRefCode) {
+  const oldPid = String(oldPartnerId || '').trim()
+  const newPid = String(newPartnerId || '').trim()
+  if (!oldPid || !newPid || oldPid === newPid) return { ok: false, msg: '无效的迁移参数' }
+  if (typeof window === 'undefined') return { ok: false, msg: '仅浏览器环境可用' }
+  const oldKey = workspaceKey(oldPid)
+  const newKey = workspaceKey(newPid)
+  if (localStorage.getItem(newKey)) return { ok: false, msg: '新手机号已存在工作台数据，无法更换' }
+  const raw = localStorage.getItem(oldKey)
+  if (!raw) return { ok: true, migrated: false }
+  try {
+    const ws = safeParse(raw, null)
+    if (!ws || typeof ws !== 'object') return { ok: false, msg: '工作台数据格式异常' }
+    ws.partnerId = newPid
+    const ref = String(newRefCode || '').trim()
+    if (ref) ws.refCode = ref
+    localStorage.setItem(newKey, JSON.stringify(ws))
+    localStorage.removeItem(oldKey)
+    return { ok: true, migrated: true }
+  } catch {
+    return { ok: false, msg: '工作台数据迁移失败' }
+  }
+}
+
+/**
+ * 将已保存的登录密码从旧手机号挪到新手机号（新号尚无密码记录时复制）
+ */
+export function migratePartnerLoginCredentialsToNewPhone(oldPhoneDigits, newPhoneDigits) {
+  const o = normalizePartnerPhoneDigits(oldPhoneDigits)
+  const n = normalizePartnerPhoneDigits(newPhoneDigits)
+  if (o.length !== 11 || n.length !== 11 || o === n) return { ok: false, msg: '手机号无效' }
+  const creds = loadPartnerCreds()
+  const pw = creds[o]
+  if (!pw) return { ok: true, copied: false }
+  if (creds[n]) return { ok: true, copied: false }
+  creds[n] = pw
+  delete creds[o]
+  if (!savePartnerCreds(creds)) return { ok: false, msg: '无法保存登录信息' }
+  return { ok: true, copied: true }
+}
+
 export function buildPromoteLink(origin, courseId, refCode) {
   const base = (origin || '').replace(/\/$/, '') || ''
   return `${base}/courses/detail/${courseId}?ref=${encodeURIComponent(refCode)}`
@@ -1798,7 +1890,7 @@ export function createClass(partnerId, refCode, name, meta = {}) {
     return { ok: false, msg: '所选课程包暂无线下课时目录，请重新选择' }
   }
   const id = `cls-${Date.now()}`
-  const names = offlineCourseIds.map((cid) => FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === cid)?.name || cid)
+  const names = offlineCourseIds.map((cid) => getFranchiseOfflinePackMeta(cid)?.name || cid)
   ws.classes.push({
     id,
     name: n,
@@ -1838,7 +1930,7 @@ export function addOfflineCoursePacksToClass(partnerId, refCode, classId, course
   if (!addLessons.length) return { ok: false, msg: '所选课程包暂无线下课时目录，请重新选择' }
 
   const nextIds = [...existingIds, ...addIds]
-  const names = nextIds.map((cid) => FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === cid)?.name || cid)
+  const names = nextIds.map((cid) => getFranchiseOfflinePackMeta(cid)?.name || cid)
   cls.offlineCourseIds = nextIds
   cls.offlineCourseId = nextIds[0]
   cls.offlineCourseName = names.join('、')

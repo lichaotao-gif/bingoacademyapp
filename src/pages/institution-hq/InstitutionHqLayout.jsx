@@ -39,7 +39,10 @@ export default function InstitutionHqLayout() {
   const location = useLocation()
   const [session, setSession] = useState(() => getInstitutionHqSession())
   const [portalSwitchOpen, setPortalSwitchOpen] = useState(false)
+  const [accountPopoverOpen, setAccountPopoverOpen] = useState(false)
   const dualSwitchBtnRef = useRef(null)
+  const accountPopoverRef = useRef(null)
+  const accountAvatarBtnRef = useRef(null)
 
   const visibleNav = useMemo(() => {
     if (!session) return []
@@ -73,6 +76,31 @@ export default function InstitutionHqLayout() {
     window.addEventListener('institution-hq-session-changed', sync)
     return () => window.removeEventListener('institution-hq-session-changed', sync)
   }, [navigate])
+
+  useEffect(() => {
+    if (!accountPopoverOpen) return
+    const onDocDown = (e) => {
+      const el = accountPopoverRef.current
+      const btn = accountAvatarBtnRef.current
+      const t = e.target
+      if (el && el.contains(t)) return
+      if (btn && btn.contains(t)) return
+      setAccountPopoverOpen(false)
+    }
+    document.addEventListener('mousedown', onDocDown)
+    const onKey = (e) => {
+      if (e.key === 'Escape') setAccountPopoverOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [accountPopoverOpen])
+
+  useEffect(() => {
+    setAccountPopoverOpen(false)
+  }, [location.pathname])
 
   useEffect(() => {
     if (!session) return
@@ -195,20 +223,79 @@ export default function InstitutionHqLayout() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header className="z-20 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3.5 shadow-sm md:px-8">
           <h1 className="truncate text-lg font-bold text-slate-900 min-w-0 flex-1 md:flex-none">{pageTitle}</h1>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0 ml-auto">
-            <p
-              className="max-w-[10rem] sm:max-w-[14rem] truncate text-xs text-slate-500 tabular-nums text-right"
-              title={session.loginPhone}
-            >
-              {session.displayName}
-            </p>
+          <div className="relative ml-auto shrink-0">
             <button
               type="button"
-              onClick={logout}
-              className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50/70 hover:text-rose-700 transition"
+              ref={accountAvatarBtnRef}
+              onClick={() => setAccountPopoverOpen((o) => !o)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 shadow ring-2 ring-white transition hover:from-slate-200 hover:to-slate-300"
+              title="账号与个人信息"
+              aria-expanded={accountPopoverOpen}
+              aria-haspopup="dialog"
             >
-              退出登录
+              <svg className="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              <span className="sr-only">打开账号与个人信息</span>
             </button>
+            {accountPopoverOpen ? (
+              <div
+                ref={accountPopoverRef}
+                role="dialog"
+                aria-label="账号与个人信息"
+                className="absolute right-0 top-full z-[100] mt-2 w-[min(calc(100vw-2rem),20rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+              >
+                <p className="text-xs font-semibold text-slate-700">登录信息</p>
+                <dl className="mt-2 space-y-2.5 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">机构名称</dt>
+                    <dd className="min-w-0 text-right font-medium text-slate-900">{session.orgName}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">登录身份</dt>
+                    <dd className="min-w-0 text-right text-slate-900">
+                      {session.staffSubUser
+                        ? `${session.displayName}（${session.staffRoleName || '子账号'}）`
+                        : session.displayName}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">登录手机</dt>
+                    <dd className="tabular-nums text-right text-slate-900">{session.loginPhone}</dd>
+                  </div>
+                </dl>
+                <p className="mt-4 text-xs font-semibold text-slate-700">个人信息</p>
+                <dl className="mt-2 space-y-2.5 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">显示名称</dt>
+                    <dd className="min-w-0 text-right font-medium text-slate-900">{session.displayName}</dd>
+                  </div>
+                  {session.staffSubUser ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="shrink-0 text-slate-500">所属角色</dt>
+                      <dd className="min-w-0 text-right text-slate-900">{session.staffRoleName || '—'}</dd>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between gap-3">
+                      <dt className="shrink-0 text-slate-500">账号类型</dt>
+                      <dd className="text-right text-slate-900">机构总管理主账号</dd>
+                    </div>
+                  )}
+                </dl>
+                <div className="mt-4 border-t border-slate-100 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccountPopoverOpen(false)
+                      logout()
+                    }}
+                    className="w-full rounded-lg border border-rose-200 bg-rose-50 py-2.5 text-sm font-semibold text-rose-800 hover:bg-rose-100 transition"
+                  >
+                    退出登录
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </header>
         <main className="mx-auto min-h-0 w-full max-w-[1600px] flex-1 overflow-y-auto overscroll-contain px-4 py-6 md:px-8">

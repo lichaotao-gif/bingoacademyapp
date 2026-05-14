@@ -5,8 +5,10 @@ import {
   addStudentToClass,
   deleteClass,
   deleteStudent,
+  FRANCHISE_CLASS_CREATE_OFFLINE_DEMO_PACKS,
   FRANCHISE_OFFLINE_LESSON_CATALOG,
   FRANCHISE_PROMOTABLE_COURSES,
+  getFranchiseOfflinePackMeta,
   moveStudentToClass,
   setClassOfflineLessonDone,
 } from '../../utils/franchisePartnerStorage'
@@ -21,7 +23,7 @@ function fmtDate(iso) {
 
 function courseLabel(courseId) {
   if (!courseId) return '—'
-  return FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === courseId)?.name || courseId
+  return getFranchiseOfflinePackMeta(courseId)?.name || courseId
 }
 
 function inferPackCourseIdFromLessonId(lessonId) {
@@ -178,7 +180,8 @@ export default function FranchisePartnerClassDetail() {
       ? fc.offlineCourseIds
       : offlineProgressGroups.map((g) => g.courseId).filter(Boolean),
   )
-  const availableOfflineCourses = FRANCHISE_PROMOTABLE_COURSES.filter(
+  const offlineCourseChoices = [...FRANCHISE_PROMOTABLE_COURSES, ...FRANCHISE_CLASS_CREATE_OFFLINE_DEMO_PACKS]
+  const availableOfflineCourses = offlineCourseChoices.filter(
     (c) => !boundOfflineCourseIds.has(c.id) && (FRANCHISE_OFFLINE_LESSON_CATALOG[c.id] || []).length,
   )
 

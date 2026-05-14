@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { computeTotalSales, FRANCHISE_PROMOTABLE_COURSES } from '../../utils/franchisePartnerStorage'
+import { FRANCHISE_PROMOTABLE_COURSES } from '../../utils/franchisePartnerStorage'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
 function fmtDate(iso) {
@@ -33,7 +33,6 @@ export default function FranchisePartnerOrders() {
 
   if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
 
-  const totalSales = computeTotalSales(ws)
   const completed = ws.orders.filter((o) => o.status === '已完成').length
   const processing = ws.orders.filter((o) => o.status === '处理中').length
 
@@ -49,14 +48,10 @@ export default function FranchisePartnerOrders() {
         。
       </p>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs text-slate-500">订单笔数</p>
           <p className="text-2xl font-bold text-slate-900 mt-1">{ws.orders.length}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">已完成销售额（元）</p>
-          <p className="text-2xl font-bold text-primary mt-1 tabular-nums">{totalSales.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs text-slate-500">状态分布</p>

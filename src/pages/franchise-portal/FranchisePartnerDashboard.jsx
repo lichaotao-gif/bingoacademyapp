@@ -1,22 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  computeMonthOrderCount,
-  computeTotalSales,
-  FRANCHISE_PROMOTABLE_COURSES,
-  getDiscountLabel,
-  getDiscountRate,
-} from '../../utils/franchisePartnerStorage'
-import {
-  FlatIconBolt,
-  FlatIconBookClass,
-  FlatIconChartBar,
-  FlatIconClipboard,
-  FlatIconCoins,
-  FlatIconCreditCard,
-  FlatIconTrendingUp,
-  FlatIconUserPlus,
-  FlatIconUsers,
-} from './FranchiseFlatIcons'
+import FranchiseCreateClassModal from './FranchiseCreateClassModal'
+import { FlatIconBookClass, FlatIconCoins, FlatIconUsers } from './FranchiseFlatIcons'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
 function fmtMoney(n) {
@@ -30,29 +15,20 @@ function fmtDate(iso) {
 }
 
 export default function FranchisePartnerDashboard() {
-  const { session, ws } = useFranchiseWorkspace()
+  const { session, ws, refresh } = useFranchiseWorkspace()
+  const [classModalOpen, setClassModalOpen] = useState(false)
 
   if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
 
-  const totalSales = computeTotalSales(ws)
-  const monthOrders = computeMonthOrderCount(ws)
   const studentCount = ws.students.length
+  const classCount = ws.classes.length
   const classesPreview = [...ws.classes].slice(0, 4)
 
   return (
     <div className="space-y-6">
-      {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* 顶部：当前余额、班级数、学员数 */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[
-          {
-            label: '总销售额（元）',
-            value: fmtMoney(totalSales),
-            sub: '+18.6% 较上月',
-            subClass: 'text-emerald-600',
-            Icon: FlatIconCreditCard,
-            iconBox: 'bg-sky-500/12 text-sky-600',
-            bg: 'bg-gradient-to-br from-sky-50 to-white border-sky-100',
-          },
           {
             label: '当前账户余额（元）',
             value: fmtMoney(ws.balance),
@@ -61,20 +37,21 @@ export default function FranchisePartnerDashboard() {
             Icon: FlatIconCoins,
             iconBox: 'bg-amber-500/12 text-amber-600',
             bg: 'bg-gradient-to-br from-amber-50 to-white border-amber-100',
+            balanceActions: true,
           },
           {
-            label: '本月订单数',
-            value: String(monthOrders),
-            sub: `累计 ${ws.orders.length} 笔`,
+            label: '班级数',
+            value: String(classCount),
+            sub: '在读班级',
             subClass: 'text-slate-500',
-            Icon: FlatIconChartBar,
-            iconBox: 'bg-emerald-500/12 text-emerald-600',
-            bg: 'bg-gradient-to-br from-emerald-50 to-white border-emerald-100',
+            Icon: FlatIconBookClass,
+            iconBox: 'bg-sky-500/12 text-sky-600',
+            bg: 'bg-gradient-to-br from-sky-50 to-white border-sky-100',
           },
           {
-            label: '在读学员数',
+            label: '学员数',
             value: String(studentCount),
-            sub: `${ws.classes.length} 个班级`,
+            sub: '在读学员',
             subClass: 'text-slate-500',
             Icon: FlatIconUsers,
             iconBox: 'bg-violet-500/12 text-violet-600',
@@ -83,18 +60,34 @@ export default function FranchisePartnerDashboard() {
         ].map((k) => {
           const KpiIcon = k.Icon
           return (
-            <div key={k.label} className={`rounded-2xl border p-5 shadow-sm ${k.bg}`}>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-xs text-slate-500 font-medium">{k.label}</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">{k.value}</p>
-                  <p className={`text-xs mt-2 font-medium ${k.subClass}`}>{k.sub}</p>
+            <div key={k.label} className={`rounded-2xl border p-3 sm:p-5 shadow-sm min-w-0 ${k.bg}`}>
+              <div className="flex items-start justify-between gap-1 sm:gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium leading-tight line-clamp-2">{k.label}</p>
+                  <p className="text-base sm:text-2xl font-bold text-slate-900 mt-1 sm:mt-2 tabular-nums break-all">{k.value}</p>
+                  <p className={`text-[10px] sm:text-xs mt-1 sm:mt-2 font-medium leading-tight ${k.subClass}`}>{k.sub}</p>
+                  {k.balanceActions ? (
+                    <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 sm:gap-2">
+                      <Link
+                        to="/franchise-partner/balance"
+                        className="inline-flex items-center justify-center px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-semibold bg-primary hover:bg-primary-600 text-white shadow-sm transition text-center"
+                      >
+                        余额充值
+                      </Link>
+                      <Link
+                        to="/franchise-partner/finance"
+                        className="text-[10px] sm:text-xs text-slate-500 hover:text-primary font-medium truncate"
+                      >
+                        余额变动记录 →
+                      </Link>
+                    </div>
+                  ) : null}
                 </div>
                 <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${k.iconBox}`}
+                  className={`w-8 h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${k.iconBox}`}
                   aria-hidden
                 >
-                  <KpiIcon className="w-5 h-5" />
+                  <KpiIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
             </div>
@@ -102,141 +95,43 @@ export default function FranchisePartnerDashboard() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 班级管理 */}
-        <div className="lg:col-span-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-slate-900">班级管理</h2>
+      {/* 班级管理 */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+          <h2 className="font-semibold text-slate-900">班级管理</h2>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link to="/franchise-partner/classes" className="text-xs text-primary font-medium hover:underline">
               全部
             </Link>
-          </div>
-          <ul className="space-y-3">
-            {classesPreview.map((cls) => {
-              const n = cls.studentIds?.length || 0
-              return (
-                <li
-                  key={cls.id}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-cyan-100 text-primary flex items-center justify-center shrink-0">
-                    <FlatIconBookClass className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900 truncate">{cls.name}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{n} 名学员</p>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">在读</span>
-                </li>
-              )
-            })}
-          </ul>
-          <Link
-            to="/franchise-partner/classes"
-            className="mt-4 flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary hover:bg-primary-600 text-white text-sm font-semibold transition"
-          >
-            + 创建班级
-          </Link>
-        </div>
-
-        {/* 快速操作 */}
-        <div className="lg:col-span-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <h2 className="font-semibold text-slate-900 mb-4">快速操作</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              {
-                to: '/franchise-partner/recharge',
-                label: '充课操作',
-                sub: '扣减余额 · 开通课程',
-                wrap: 'from-cyan-50 to-cyan-100/80 border-cyan-100',
-                Icon: FlatIconBolt,
-                iconBox: 'bg-primary/15 text-primary',
-              },
-              {
-                to: '/franchise-partner/students',
-                label: '添加学员',
-                sub: '分班与手机号',
-                wrap: 'from-orange-50 to-amber-50 border-orange-100',
-                Icon: FlatIconUserPlus,
-                iconBox: 'bg-orange-500/15 text-orange-600',
-              },
-              {
-                to: '/franchise-partner/orders',
-                label: '查看订单',
-                sub: '明细与折扣',
-                wrap: 'from-emerald-50 to-teal-50 border-emerald-100',
-                Icon: FlatIconClipboard,
-                iconBox: 'bg-emerald-500/15 text-emerald-600',
-              },
-              {
-                to: '/franchise-partner/finance',
-                label: '财务统计',
-                sub: '销售与流水',
-                wrap: 'from-cyan-50 to-teal-50 border-cyan-100',
-                Icon: FlatIconTrendingUp,
-                iconBox: 'bg-primary/15 text-primary-700',
-              },
-            ].map((a) => {
-              const ActIcon = a.Icon
-              return (
-                <Link
-                  key={a.to}
-                  to={a.to}
-                  className={`rounded-xl border p-4 bg-gradient-to-br ${a.wrap} hover:shadow-md transition block`}
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${a.iconBox}`} aria-hidden>
-                    <ActIcon className="w-5 h-5" />
-                  </div>
-                  <p className="text-sm font-semibold text-slate-900 mt-2">{a.label}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">{a.sub}</p>
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* 右侧栏 */}
-        <div className="lg:col-span-4 space-y-4">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <h2 className="font-semibold text-slate-900 mb-1">账户余额</h2>
-            <p className="text-2xl font-bold text-primary tabular-nums">¥{fmtMoney(ws.balance)}</p>
-            <Link
-              to="/franchise-partner/balance"
-              className="mt-3 block w-full text-center py-3 rounded-xl bg-primary hover:bg-primary-600 text-white text-sm font-semibold transition"
+            <button
+              type="button"
+              onClick={() => setClassModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg bg-primary hover:bg-primary-600 text-white text-xs sm:text-sm font-semibold transition shadow-sm"
             >
-              余额充值
-            </Link>
-            <Link to="/franchise-partner/finance" className="block text-center text-xs text-slate-500 hover:text-primary mt-2">
-              余额变动记录 →
-            </Link>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-slate-900">专属折扣</h2>
-              <Link to="/franchise-partner/discounts" className="text-[11px] text-primary hover:underline">
-                折扣查看
-              </Link>
-            </div>
-            <ul className="space-y-2.5">
-              {FRANCHISE_PROMOTABLE_COURSES.slice(0, 4).map((c) => {
-                const label = getDiscountLabel(ws, c.id)
-                const rate = getDiscountRate(ws, c.id)
-                const sale = Math.round(c.price * rate * 100) / 100
-                return (
-                  <li key={c.id} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-slate-600 truncate">{c.name}</span>
-                    <span className="shrink-0 text-right">
-                      <span className="text-slate-400 line-through mr-1">¥{c.price}</span>
-                      <span className="text-red-500 font-semibold">{label}</span>
-                      <span className="text-slate-800 font-medium ml-1">¥{sale}</span>
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
+              + 创建班级
+            </button>
           </div>
         </div>
+        <ul className="space-y-3">
+          {classesPreview.map((cls) => {
+            const n = cls.studentIds?.length || 0
+            return (
+              <li
+                key={cls.id}
+                className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition"
+              >
+                <div className="w-10 h-10 rounded-xl bg-cyan-100 text-primary flex items-center justify-center shrink-0">
+                  <FlatIconBookClass className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-900 truncate">{cls.name}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{n} 名学员</p>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">在读</span>
+              </li>
+            )
+          })}
+        </ul>
       </div>
 
       {/* 最新订单 */}
@@ -291,6 +186,13 @@ export default function FranchisePartnerDashboard() {
           </table>
         </div>
       </div>
+
+      <FranchiseCreateClassModal
+        open={classModalOpen}
+        onClose={() => setClassModalOpen(false)}
+        session={session}
+        refresh={refresh}
+      />
 
       <p className="text-[11px] text-slate-400 text-center">BingoAI学院 · 加盟商后台 v1.1.0</p>
     </div>

@@ -1,24 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  clearPartnerSession,
-  getPartnerSession,
-  getWorkspace,
-  hasPartnerPasswordStored,
-  updatePartnerAccountPassword,
-} from '../../utils/franchisePartnerStorage'
+import { useSearchParams } from 'react-router-dom'
+import { getWorkspace, hasPartnerPasswordStored, updatePartnerAccountPassword } from '../../utils/franchisePartnerStorage'
 import {
   getInstitutionOrgQualificationWorkspaceKeys,
   partnerIdBelongsToInstitutionHqList,
 } from '../../utils/institutionHqStorage'
-import { FieldRow, fmtTime, maskPhone } from './institutionQualificationShared'
 import InstitutionQualificationPanel from './InstitutionQualificationPanel'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
 export default function FranchisePartnerSettings() {
-  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { session, ws, refresh } = useFranchiseWorkspace()
-  const raw = typeof window !== 'undefined' ? getPartnerSession() : null
   const [pwdModalOpen, setPwdModalOpen] = useState(false)
   const [pwdOld, setPwdOld] = useState('')
   const [pwdNew, setPwdNew] = useState('')
@@ -48,6 +40,20 @@ export default function FranchisePartnerSettings() {
   const panelReady = Boolean(session && (readOnlyOrg ? iqSourceWs : ws))
 
   useEffect(() => {
+    if (searchParams.get('pwd') !== '1') return
+    setPwdErr('')
+    setPwdModalOpen(true)
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.delete('pwd')
+        return n
+      },
+      { replace: true },
+    )
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
     if (!pwdModalOpen) return
     const onKey = (e) => {
       if (e.key === 'Escape') setPwdModalOpen(false)
@@ -60,7 +66,6 @@ export default function FranchisePartnerSettings() {
 
   const phone = session.phone || ''
   const phoneDigits = String(phone).replace(/\D/g, '')
-  const contactName = session.contactName || '—'
   const hasStoredPassword = hasPartnerPasswordStored(phoneDigits)
 
   const handleChangePassword = (e) => {
@@ -76,12 +81,6 @@ export default function FranchisePartnerSettings() {
     setPwdConfirm('')
     setPwdModalOpen(false)
     window.alert('登录密码已更新。下次请使用新密码登录。')
-  }
-
-  const handleLogout = () => {
-    if (!window.confirm('确定退出当前账号？未保存的表单将丢失。')) return
-    clearPartnerSession()
-    navigate('/franchise-partner/login', { replace: true })
   }
 
   const introFranchise = readOnlyOrg ? (
@@ -112,69 +111,23 @@ export default function FranchisePartnerSettings() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8 xl:gap-10 lg:items-start">
-        <div className="min-w-0 space-y-6">
-          <InstitutionQualificationPanel
-            partnerId={panelPartnerId}
-            refCode={panelRefCode}
-            iq={iq}
-            ready={panelReady}
-            readOnly={readOnlyOrg}
-            showDemoAudit={!readOnlyOrg && Boolean(ws)}
-            onAfterMutation={refresh}
-            onRetryLoad={refresh}
-            intro={introFranchise}
-            sectionTitle={readOnlyOrg ? '机构资料（集团）' : '我的机构'}
-            sectionSubtitle={
-              readOnlyOrg ? '与机构总管理维护的资质保持一致，仅供本校查阅' : '当前对外与合规依据以「生效资质」为准'
-            }
-            modalTitle="编辑机构资质"
-          />
-        </div>
-
-        <div className="min-w-0 space-y-6">
-          <section className="w-full rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
-            <div className="w-full">
-              <h2 className="text-base font-semibold text-slate-900 mb-4">登录账号</h2>
-              <dl className="w-full space-y-0">
-                <FieldRow label="联系人">{contactName}</FieldRow>
-                <FieldRow label="登录手机">{maskPhone(phone)}</FieldRow>
-                <FieldRow label="最近登录">{raw?.loginAt ? fmtTime(raw.loginAt) : '—'}</FieldRow>
-              </dl>
-            </div>
-
-            <div className="w-full pt-6 border-t border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900 mb-1">登录密码</h2>
-              <p className="text-xs text-slate-500 mb-4">
-                {hasStoredPassword
-                  ? '修改后请使用新密码登录。演示环境密码保存在本机浏览器。'
-                  : '尚未在本地记录密码：提交后写入本机；若曾用其他浏览器登录，请先在本机重新登录一次。'}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setPwdErr('')
-                  setPwdModalOpen(true)
-                }}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-semibold hover:bg-slate-50 shadow-sm sm:w-auto"
-              >
-                修改密码
-              </button>
-            </div>
-
-            <div className="w-full pt-6 border-t border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900 mb-1">退出账号</h2>
-              <p className="text-xs text-slate-500 mb-4">退出后将清除当前登录状态，需重新登录才能使用工作台。</p>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-sm font-semibold hover:bg-rose-100 sm:w-auto"
-              >
-                退出当前账号
-              </button>
-            </div>
-          </section>
-        </div>
+      <div className="min-w-0 max-w-4xl">
+        <InstitutionQualificationPanel
+          partnerId={panelPartnerId}
+          refCode={panelRefCode}
+          iq={iq}
+          ready={panelReady}
+          readOnly={readOnlyOrg}
+          showDemoAudit={!readOnlyOrg && Boolean(ws)}
+          onAfterMutation={refresh}
+          onRetryLoad={refresh}
+          intro={introFranchise}
+          sectionTitle={readOnlyOrg ? '机构资料（集团）' : '我的机构'}
+          sectionSubtitle={
+            readOnlyOrg ? '与机构总管理维护的资质保持一致，仅供本校查阅' : '当前对外与合规依据以「生效资质」为准'
+          }
+          modalTitle="编辑机构资质"
+        />
       </div>
 
       {pwdModalOpen ? (

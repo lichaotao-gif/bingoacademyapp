@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { computeMonthOrderCount, computeTotalSales, getWorkspace } from '../../utils/franchisePartnerStorage'
-import {
-  FlatIconChartBar,
-  FlatIconCoins,
-  FlatIconCreditCard,
-  FlatIconUsers,
-} from '../franchise-portal/FranchiseFlatIcons'
+import { getWorkspace } from '../../utils/franchisePartnerStorage'
+import { FlatIconBookClass, FlatIconCoins, FlatIconUsers } from '../franchise-portal/FranchiseFlatIcons'
 import {
   getInstitutionHqTreasury,
   listInstitutionCampuses,
   openCampusFranchisePartnerInNewTab,
 } from '../../utils/institutionHqStorage'
+import InstitutionHqCampusAllocateModal from './InstitutionHqCampusAllocateModal'
 
 function fmtMoney(n) {
   return typeof n === 'number' ? n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
@@ -18,6 +14,7 @@ function fmtMoney(n) {
 
 export default function InstitutionHqDashboard() {
   const [busyId, setBusyId] = useState(null)
+  const [allocateCampus, setAllocateCampus] = useState(null)
   const [tick, setTick] = useState(0)
   const refreshTreasury = useCallback(() => setTick((t) => t + 1), [])
 
@@ -35,6 +32,7 @@ export default function InstitutionHqDashboard() {
   }, [tick])
 
   const rows = useMemo(() => {
+    void tick
     return campuses.map((c) => {
       let ws = null
       try {
@@ -42,33 +40,18 @@ export default function InstitutionHqDashboard() {
       } catch {
         ws = null
       }
-      const sales = ws ? computeTotalSales(ws) : 0
-      const monthOrders = ws ? computeMonthOrderCount(ws) : 0
       const students = ws?.students?.length ?? 0
       const classes = ws?.classes?.length ?? 0
       const campusBalance = typeof ws?.balance === 'number' && Number.isFinite(ws.balance) ? ws.balance : null
-      const orderCount = ws?.orders?.length ?? 0
-      return { campus: c, sales, monthOrders, students, classes, campusBalance, orderCount }
+      return { campus: c, students, classes, campusBalance }
     })
-  }, [campuses])
+  }, [campuses, tick])
 
-  const totalSales = useMemo(() => rows.reduce((s, r) => s + r.sales, 0), [rows])
   const totalStudents = useMemo(() => rows.reduce((s, r) => s + r.students, 0), [rows])
-  const totalMonthOrders = useMemo(() => rows.reduce((s, r) => s + r.monthOrders, 0), [rows])
   const totalClasses = useMemo(() => rows.reduce((s, r) => s + r.classes, 0), [rows])
-  const totalOrderRecords = useMemo(() => rows.reduce((s, r) => s + r.orderCount, 0), [rows])
 
   const kpiCards = useMemo(
     () => [
-      {
-        label: '全机构累计营收（元）',
-        value: fmtMoney(totalSales),
-        sub: '+18.6% 较上月',
-        subClass: 'text-emerald-600',
-        Icon: FlatIconCreditCard,
-        iconBox: 'bg-sky-500/12 text-sky-600',
-        bg: 'bg-gradient-to-br from-sky-50 to-white border-sky-100',
-      },
       {
         label: '机构总账户余额（元）',
         value: fmtMoney(hqTreasury.balance),
@@ -79,25 +62,25 @@ export default function InstitutionHqDashboard() {
         bg: 'bg-gradient-to-br from-amber-50 to-white border-amber-100',
       },
       {
-        label: '本月订单数（全机构）',
-        value: String(totalMonthOrders),
-        sub: `累计 ${totalOrderRecords} 笔`,
+        label: '班级数（全机构）',
+        value: String(totalClasses),
+        sub: `${campuses.length} 个校区`,
         subClass: 'text-slate-500',
-        Icon: FlatIconChartBar,
+        Icon: FlatIconBookClass,
         iconBox: 'bg-emerald-500/12 text-emerald-600',
         bg: 'bg-gradient-to-br from-emerald-50 to-white border-emerald-100',
       },
       {
         label: '在读学员数（全机构）',
         value: String(totalStudents),
-        sub: `${totalClasses} 个班级`,
+        sub: '各校区学员合计',
         subClass: 'text-slate-500',
         Icon: FlatIconUsers,
         iconBox: 'bg-violet-500/12 text-violet-600',
         bg: 'bg-gradient-to-br from-violet-50 to-white border-violet-100',
       },
     ],
-    [totalSales, hqTreasury.balance, totalMonthOrders, totalOrderRecords, totalStudents, totalClasses],
+    [hqTreasury.balance, totalStudents, totalClasses, campuses.length],
   )
 
   const openCampus = (c) => {
@@ -112,11 +95,8 @@ export default function InstitutionHqDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-base font-bold text-slate-900">机构概览</h2>
-        <p className="text-xs text-slate-500 mt-1 mb-4 leading-relaxed max-w-2xl">
-          配色与布局与「加盟商工作台 · 首页概览」四宫格 KPI 一致（扁平浅色底 + 角标色块图标）；下方为各校明细。
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <h2 className="text-base font-bold text-slate-900 mb-4">机构概览</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {kpiCards.map((k) => {
             const KpiIcon = k.Icon
             return (
@@ -143,7 +123,7 @@ export default function InstitutionHqDashboard() {
       <div>
         <h2 className="text-base font-bold text-slate-900 mb-3">校区列表</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {rows.map(({ campus, sales, monthOrders, students, classes, campusBalance }) => (
+          {rows.map(({ campus, students, classes, campusBalance }) => (
             <div
               key={campus.id}
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-4"
@@ -162,24 +142,18 @@ export default function InstitutionHqDashboard() {
                     管理员手机 {String(campus.adminPhone || '').replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2')}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  disabled={busyId === campus.id}
-                  onClick={() => openCampus(campus)}
-                  className="shrink-0 rounded-xl bg-primary hover:bg-primary-600 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 shadow-sm transition"
-                >
-                  {busyId === campus.id ? '打开中…' : '进入校区管理'}
-                </button>
+                <div className="flex flex-wrap items-center justify-end shrink-0">
+                  <button
+                    type="button"
+                    disabled={busyId === campus.id}
+                    onClick={() => openCampus(campus)}
+                    className="shrink-0 rounded-xl bg-primary hover:bg-primary-600 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 shadow-sm transition"
+                  >
+                    {busyId === campus.id ? '打开中…' : '进入校区管理'}
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div className="rounded-xl bg-slate-50 border border-slate-100 py-3">
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">累计营收</p>
-                  <p className="text-sm font-bold text-slate-900 mt-1 tabular-nums">¥{fmtMoney(sales)}</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 py-3">
-                  <p className="text-[10px] text-slate-500">本月订单</p>
-                  <p className="text-sm font-bold text-slate-900 mt-1 tabular-nums">{monthOrders}</p>
-                </div>
+              <div className="grid grid-cols-2 gap-3 text-center">
                 <div className="rounded-xl bg-slate-50 border border-slate-100 py-3">
                   <p className="text-[10px] text-slate-500">学员</p>
                   <p className="text-sm font-bold text-slate-900 mt-1 tabular-nums">{students}</p>
@@ -189,16 +163,33 @@ export default function InstitutionHqDashboard() {
                   <p className="text-sm font-bold text-slate-900 mt-1 tabular-nums">{classes}</p>
                 </div>
               </div>
-              <div className="rounded-xl bg-slate-50/80 border border-slate-100 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+              <div className="rounded-xl bg-slate-50/80 border border-slate-100 px-3 py-2.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-slate-600">
                 <span>校区账户余额（演示）</span>
-                <span className="font-semibold text-slate-900 tabular-nums">
-                  {campusBalance != null ? `¥${fmtMoney(campusBalance)}` : '—'}
+                <span className="inline-flex flex-wrap items-baseline justify-end gap-x-1.5 gap-y-0.5 tabular-nums">
+                  <span className="font-semibold text-slate-900">
+                    {campusBalance != null ? `¥${fmtMoney(campusBalance)}` : '—'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAllocateCampus(campus)}
+                    className="text-[11px] font-semibold text-primary hover:underline bg-transparent border-0 p-0 m-0 cursor-pointer shadow-none shrink-0"
+                  >
+                    拨款
+                  </button>
                 </span>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      <InstitutionHqCampusAllocateModal
+        open={Boolean(allocateCampus)}
+        campus={allocateCampus}
+        treasuryBalance={hqTreasury.balance}
+        onClose={() => setAllocateCampus(null)}
+        onSuccess={() => refreshTreasury()}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   FRANCHISE_TEACHING_CATALOG_LS_KEY,
@@ -125,6 +125,8 @@ export default function FranchisePartnerTeachingMaterials() {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [payMethod, setPayMethod] = useState('balance')
   const [submitErr, setSubmitErr] = useState('')
+  /** 采购记录下，哪些订单的发货明细已展开（默认均收起） */
+  const [expandedShipmentOrders, setExpandedShipmentOrders] = useState(() => new Set())
 
   const skipPersistAfterHydrate = useRef(false)
 
@@ -207,20 +209,14 @@ export default function FranchisePartnerTeachingMaterials() {
   )
   const cartPayAmount = bulkPricing.payAmount
 
-  const shipmentRows = useMemo(() => {
-    const rows = []
-    for (const o of ws?.materialOrders || []) {
-      for (const s of o.shipments || []) {
-        rows.push({
-          key: `${o.id}-${s.at}-${s.status}`,
-          orderId: o.id,
-          ...s,
-        })
-      }
-    }
-    rows.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-    return rows
-  }, [ws?.materialOrders])
+  const toggleShipmentPanel = (orderId) => {
+    setExpandedShipmentOrders((prev) => {
+      const next = new Set(prev)
+      if (next.has(orderId)) next.delete(orderId)
+      else next.add(orderId)
+      return next
+    })
+  }
 
   const setQty = (productId, qty) => {
     const q = Math.max(0, parseInt(String(qty), 10) || 0)
@@ -300,10 +296,7 @@ export default function FranchisePartnerTeachingMaterials() {
             学具商城
           </button>
           <button type="button" className={tabCls(tab === 'orders')} onClick={() => setTab('orders')}>
-            购买记录
-          </button>
-          <button type="button" className={tabCls(tab === 'shipments')} onClick={() => setTab('shipments')}>
-            发货记录
+            采购记录
           </button>
         </div>
         {tab === 'shop' ? (
@@ -400,65 +393,89 @@ export default function FranchisePartnerTeachingMaterials() {
                   </td>
                 </tr>
               ) : (
-                (ws.materialOrders || []).map((o) => (
-                  <tr key={o.id} className="border-t border-slate-100 hover:bg-slate-50/80 align-top">
-                    <td className="px-5 py-3 font-mono text-slate-800 whitespace-nowrap">{o.id}</td>
-                    <td className="px-5 py-3 text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(o.createdAt)}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">¥{Number(o.payAmount).toFixed(2)}</td>
-                    <td className="px-5 py-3 text-slate-700">{PAY_LABEL[o.payMethod] || o.payMethod}</td>
-                    <td className="px-5 py-3">
-                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${orderStatusStyle(o.status)}`}>{o.status}</span>
-                    </td>
-                    <td className="px-5 py-3 text-slate-700 text-xs leading-relaxed">
-                      {(o.items || []).map((it) => (
-                        <div key={it.productId + it.qty}>{it.name} × {it.qty}</div>
-                      ))}
-                      {o.discountRate && o.discountRate < 1 ? (
-                        <p className="mt-1 text-amber-700">
-                          {o.discountLabel} · 原价 ¥{Number(o.originalAmount || o.payAmount).toFixed(2)}，已优惠 ¥{Number(o.discountAmount || 0).toFixed(2)}
-                        </p>
+                (ws.materialOrders || []).map((o) => {
+                  const shipList = [...(o.shipments || [])].sort(
+                    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+                  )
+                  const shipmentOpen = expandedShipmentOrders.has(o.id)
+                  return (
+                    <Fragment key={o.id}>
+                      <tr className="border-t border-slate-100 hover:bg-slate-50/80 align-top">
+                        <td className="px-5 py-3 font-mono text-slate-800 whitespace-nowrap">{o.id}</td>
+                        <td className="px-5 py-3 text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(o.createdAt)}</td>
+                        <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">¥{Number(o.payAmount).toFixed(2)}</td>
+                        <td className="px-5 py-3 text-slate-700">{PAY_LABEL[o.payMethod] || o.payMethod}</td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${orderStatusStyle(o.status)}`}>{o.status}</span>
+                        </td>
+                        <td className="px-5 py-3 text-slate-700 text-xs leading-relaxed">
+                          {(o.items || []).map((it) => (
+                            <div key={it.productId + it.qty}>{it.name} × {it.qty}</div>
+                          ))}
+                          {o.discountRate && o.discountRate < 1 ? (
+                            <p className="mt-1 text-amber-700">
+                              {o.discountLabel} · 原价 ¥{Number(o.originalAmount || o.payAmount).toFixed(2)}，已优惠 ¥{Number(o.discountAmount || 0).toFixed(2)}
+                            </p>
+                          ) : null}
+                          <p className="text-slate-400 mt-1 text-[11px]">{o.receiverSnapshot}</p>
+                        </td>
+                      </tr>
+                      <tr className="bg-slate-50/70 border-t border-slate-100">
+                        <td colSpan={6} className="px-5 py-2.5 align-top">
+                          {shipList.length === 0 ? (
+                            <span className="text-xs text-slate-400">发货记录：暂无物流节点</span>
+                          ) : (
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-xs text-slate-600">
+                                发货记录<span className="text-slate-400">（{shipList.length} 条）</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleShipmentPanel(o.id)}
+                                className="shrink-0 text-xs font-semibold text-primary hover:underline"
+                                aria-expanded={shipmentOpen}
+                              >
+                                {shipmentOpen ? '收起' : '展开'}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                      {shipmentOpen && shipList.length > 0 ? (
+                        <tr className="bg-slate-50/70 border-t border-slate-100">
+                          <td colSpan={6} className="px-5 pb-3 pt-0 align-top">
+                            <div className="overflow-x-auto rounded-lg border border-slate-200/80 bg-white">
+                              <table className="w-full text-xs text-left min-w-[640px]">
+                                <thead className="bg-slate-50 text-slate-500">
+                                  <tr>
+                                    <th className="px-3 py-2 font-medium whitespace-nowrap">时间</th>
+                                    <th className="px-3 py-2 font-medium whitespace-nowrap">节点状态</th>
+                                    <th className="px-3 py-2 font-medium whitespace-nowrap">承运商</th>
+                                    <th className="px-3 py-2 font-medium whitespace-nowrap">运单号</th>
+                                    <th className="px-3 py-2 font-medium min-w-[10rem]">备注</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {shipList.map((s, idx) => (
+                                    <tr key={`${o.id}-${s.at}-${idx}`} className="border-t border-slate-100">
+                                      <td className="px-3 py-2 text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(s.at)}</td>
+                                      <td className="px-3 py-2">
+                                        <span className={`inline-flex text-xs px-2 py-0.5 rounded-full font-medium ${orderStatusStyle(s.status)}`}>{s.status}</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-slate-700">{s.carrier || '—'}</td>
+                                      <td className="px-3 py-2 font-mono text-slate-600">{s.trackingNo || '—'}</td>
+                                      <td className="px-3 py-2 text-slate-600 leading-relaxed">{s.remark || '—'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
                       ) : null}
-                      <p className="text-slate-400 mt-1 text-[11px]">{o.receiverSnapshot}</p>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      {tab === 'shipments' ? (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm text-left min-w-[900px]">
-            <thead className="bg-slate-50 text-xs text-slate-500">
-              <tr>
-                <th className="px-5 py-3 font-medium whitespace-nowrap">时间</th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap">采购单号</th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap">节点状态</th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap">承运商</th>
-                <th className="px-5 py-3 font-medium whitespace-nowrap">运单号</th>
-                <th className="px-5 py-3 font-medium min-w-[12rem]">备注</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shipmentRows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-slate-400">暂无发货与物流节点</td>
-                </tr>
-              ) : (
-                shipmentRows.map((row) => (
-                  <tr key={row.key} className="border-t border-slate-100 hover:bg-slate-50/80 align-top">
-                    <td className="px-5 py-3 text-slate-600 whitespace-nowrap tabular-nums">{fmtDateTime(row.at)}</td>
-                    <td className="px-5 py-3 font-mono text-slate-800 whitespace-nowrap">{row.orderId}</td>
-                    <td className="px-5 py-3">
-                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${orderStatusStyle(row.status)}`}>{row.status}</span>
-                    </td>
-                    <td className="px-5 py-3 text-slate-700">{row.carrier || '—'}</td>
-                    <td className="px-5 py-3 font-mono text-xs text-slate-600">{row.trackingNo || '—'}</td>
-                    <td className="px-5 py-3 text-slate-600 text-xs leading-relaxed">{row.remark || '—'}</td>
-                  </tr>
-                ))
+                    </Fragment>
+                  )
+                })
               )}
             </tbody>
           </table>

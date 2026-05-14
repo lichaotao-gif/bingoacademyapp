@@ -12,6 +12,7 @@ import {
   verifyPartnerLoginSmsCode,
 } from '../../utils/franchisePartnerStorage'
 import { tryInstitutionStaffLogin } from '../../utils/franchiseInstitutionAccounts'
+import { isFranchiseCampusLoginDisabled } from '../../utils/institutionHqStorage'
 
 const SMS_COOLDOWN_SEC = 60
 
@@ -155,6 +156,10 @@ export default function FranchisePartnerLogin() {
 
       const auth = verifyOrRegisterPartnerLogin(p, password)
       if (auth.ok) {
+        if (isFranchiseCampusLoginDisabled(p)) {
+          setErr('该手机号对应的校区已被机构总后台禁用，暂无法登录')
+          return
+        }
         safeFinish()
         return
       }
@@ -176,6 +181,10 @@ export default function FranchisePartnerLogin() {
       const credsUnavailable =
         msg.includes('无法保存') || msg.includes('登录校验失败') || msg.includes('禁止') || msg.includes('存储')
       if (credsUnavailable) {
+        if (isFranchiseCampusLoginDisabled(p)) {
+          setErr('该手机号对应的校区已被机构总后台禁用，暂无法登录')
+          return
+        }
         safeFinish()
         return
       }
@@ -203,6 +212,10 @@ export default function FranchisePartnerLogin() {
       const v = verifyPartnerLoginSmsCode(p, smsCode)
       if (!v.ok) {
         setErr(v.msg || '验证失败')
+        return
+      }
+      if (isFranchiseCampusLoginDisabled(p)) {
+        setErr('该手机号对应的校区已被机构总后台禁用，暂无法登录')
         return
       }
       finishLogin(p)

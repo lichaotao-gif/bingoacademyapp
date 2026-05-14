@@ -5,6 +5,7 @@ import {
   addStudentToClass,
   deleteStudent,
   FRANCHISE_PROMOTABLE_COURSES,
+  getFranchiseOfflinePackMeta,
   updateStudentRemark,
 } from '../../utils/franchisePartnerStorage'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
@@ -160,7 +161,7 @@ export function StudentNameWithRemark({ studentId, name, remark, session, refres
 
 function courseLabel(courseId) {
   if (!courseId) return '—'
-  return FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === courseId)?.name || courseId
+  return getFranchiseOfflinePackMeta(courseId)?.name || courseId
 }
 
 function enrollmentStatusTone(status) {

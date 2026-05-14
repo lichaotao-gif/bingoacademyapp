@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Divider,
   Form,
   Input,
   Modal,
@@ -22,6 +23,10 @@ import { listPartners, type FranchisePartnerDetail } from '@/mock/franchisePartn
 import { addInstitutionAccount, deleteInstitutionAccount, deleteInstitutionRole, listInstitutionAccounts, listInstitutionRoles, resetInstitutionAccountPassword, upsertInstitutionRole } from '../../../../../src/utils/franchiseInstitutionAccounts.js'
 // @ts-expect-error 主站常量
 import { FRANCHISE_PARTNER_MENUS_FOR_ROLE } from '../../../../../src/constants/franchisePartnerPortalNav.js'
+// @ts-expect-error 主站 JS
+import { changeInstitutionCampusAdminPhone, listInstitutionCampuses } from '../../../../../src/utils/institutionHqStorage.js'
+// @ts-expect-error 主站 JS
+import { adminSetPartnerMainLoginPassword, normalizePartnerPhoneDigits } from '../../../../../src/utils/franchisePartnerStorage.js'
 
 type RoleRow = { id: string; name: string; menuKeys: string[]; updatedAt?: string }
 type AccountRow = {
@@ -31,6 +36,16 @@ type AccountRow = {
   roleId: string
   roleName?: string
   createdAt?: string
+}
+
+type CampusRow = {
+  id: string
+  campusName: string
+  adminPhone: string
+  partnerId: string
+  refCode: string
+  isSeed?: boolean
+  disabled?: boolean
 }
 
 const MENU_CHECKBOX_OPTIONS = FRANCHISE_PARTNER_MENUS_FOR_ROLE.map((x: { key: string; label: string }) => ({
@@ -63,6 +78,11 @@ export default function FranchiseInstitutionAccounts() {
     return listInstitutionAccounts(partnerId) as AccountRow[]
   }, [tick, partnerId])
 
+  const campuses = useMemo(() => {
+    void tick
+    return listInstitutionCampuses() as CampusRow[]
+  }, [tick])
+
   const refresh = () => setTick((t) => t + 1)
 
   const [roleOpen, setRoleOpen] = useState(false)
@@ -75,6 +95,11 @@ export default function FranchiseInstitutionAccounts() {
   const [resetOpen, setResetOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<AccountRow | null>(null)
   const [resetForm] = Form.useForm<{ password: string }>()
+
+  const [campusEditOpen, setCampusEditOpen] = useState(false)
+  const [campusEditRow, setCampusEditRow] = useState<CampusRow | null>(null)
+  const [campusEditPhoneForm] = Form.useForm<{ newPhone: string }>()
+  const [campusEditPwdForm] = Form.useForm<{ password: string; confirm: string }>()
 
   React.useEffect(() => {
     if (partners.length && !partners.some((p) => p.partnerId === partnerId)) {
@@ -217,6 +242,53 @@ export default function FranchiseInstitutionAccounts() {
     },
   ]
 
+  const campusColumns: ColumnsType<CampusRow> = [
+    { title: '校区名称', dataIndex: 'campusName', key: 'campusName', ellipsis: true, width: 200 },
+    {
+      title: '管理员手机（登录账号）',
+      dataIndex: 'adminPhone',
+      key: 'adminPhone',
+      width: 140,
+      render: (v: string) => (
+        <Typography.Text copyable className="tabular-nums">
+          {normalizePartnerPhoneDigits(String(v || '')) || '—'}
+        </Typography.Text>
+      ),
+    },
+    { title: '渠道编码', dataIndex: 'refCode', key: 'refCode', width: 140, ellipsis: true },
+    {
+      title: '类型',
+      key: 'seed',
+      width: 120,
+      render: (_, row) => (
+        <Space size={4} wrap>
+          {row.isSeed ? <Tag color="blue">预置</Tag> : <Tag>已开设</Tag>}
+          {row.disabled ? <Tag color="orange">已禁用</Tag> : null}
+        </Space>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'campusAct',
+      width: 100,
+      render: (_, row) => (
+        <Button
+          type="link"
+          size="small"
+          disabled={Boolean(row.disabled)}
+          onClick={() => {
+            setCampusEditRow(row)
+            campusEditPhoneForm.resetFields()
+            campusEditPwdForm.resetFields()
+            setCampusEditOpen(true)
+          }}
+        >
+          编辑
+        </Button>
+      ),
+    },
+  ]
+
   return (
     <div>
       <h2 style={{ marginTop: 0, marginBottom: 16 }}>机构账号</h2>
@@ -239,7 +311,7 @@ export default function FranchiseInstitutionAccounts() {
         </Space>
       </Card>
 
-      {!partnerId ? (
+      {!partners.length ? (
         <Typography.Text type="secondary">暂无加盟商数据</Typography.Text>
       ) : (
         <Tabs
@@ -247,7 +319,9 @@ export default function FranchiseInstitutionAccounts() {
             {
               key: 'roles',
               label: '角色与菜单权限',
-              children: (
+              children: !partnerId ? (
+                <Typography.Text type="secondary">请在上方选择加盟商机构</Typography.Text>
+              ) : (
                 <div>
                   <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button type="primary" icon={<PlusOutlined />} onClick={openRoleCreate}>
@@ -261,7 +335,9 @@ export default function FranchiseInstitutionAccounts() {
             {
               key: 'accounts',
               label: '机构子账号',
-              children: (
+              children: !partnerId ? (
+                <Typography.Text type="secondary">请在上方选择加盟商机构</Typography.Text>
+              ) : (
                 <div>
                   <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
@@ -280,6 +356,24 @@ export default function FranchiseInstitutionAccounts() {
                     </Button>
                   </div>
                   <Table<AccountRow> rowKey="id" columns={accountColumns} dataSource={accounts} pagination={false} scroll={{ x: 720 }} />
+                </div>
+              ),
+            },
+            {
+              key: 'campuses',
+              label: '校区列表',
+              children: (
+                <div>
+                  <Typography.Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 13 }}>
+                    与机构总后台「校区账号」同源：展示当前浏览器环境下机构下属校区；管理员手机为加盟商主号登录账号。点击「编辑」可更换手机或重置主号密码（本地演示）。
+                  </Typography.Paragraph>
+                  <Table<CampusRow>
+                    rowKey="id"
+                    columns={campusColumns}
+                    dataSource={campuses}
+                    pagination={false}
+                    scroll={{ x: 900 }}
+                  />
                 </div>
               ),
             },
@@ -330,6 +424,139 @@ export default function FranchiseInstitutionAccounts() {
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title={campusEditRow ? `编辑校区主号：${campusEditRow.campusName}` : '编辑校区主号'}
+        open={campusEditOpen}
+        onCancel={() => {
+          setCampusEditOpen(false)
+          setCampusEditRow(null)
+          campusEditPhoneForm.resetFields()
+          campusEditPwdForm.resetFields()
+        }}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => {
+              setCampusEditOpen(false)
+              setCampusEditRow(null)
+              campusEditPhoneForm.resetFields()
+              campusEditPwdForm.resetFields()
+            }}
+          >
+            关闭
+          </Button>,
+        ]}
+        width={560}
+        destroyOnClose
+      >
+        {campusEditRow ? (
+          <>
+            <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 8 }} className="tabular-nums">
+              当前登录手机：{normalizePartnerPhoneDigits(campusEditRow.adminPhone) || '—'}
+            </Typography.Paragraph>
+            {!campusEditRow.isSeed && !campusEditRow.disabled ? (
+              <>
+                <Typography.Text strong style={{ fontSize: 13 }}>更换管理员手机</Typography.Text>
+                <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 4 }}>
+                  更换后工作台与子账号数据将迁移至新主号。
+                </Typography.Paragraph>
+                <Form form={campusEditPhoneForm} layout="vertical" style={{ marginTop: 8 }}>
+                  <Form.Item
+                    name="newPhone"
+                    label="新管理员手机"
+                    rules={[
+                      { required: true, message: '请输入新手机号' },
+                      { pattern: /^1\d{10}$/, message: '请输入11位中国大陆手机号' },
+                    ]}
+                  >
+                    <Input maxLength={11} placeholder="11 位数字" className="tabular-nums" />
+                  </Form.Item>
+                  <Button
+                    type="primary"
+                    onClick={async () => {
+                      try {
+                        const v = await campusEditPhoneForm.validateFields()
+                        const r = changeInstitutionCampusAdminPhone(campusEditRow.id, v.newPhone)
+                        if (!r.ok) {
+                          message.error(r.msg || '更换失败')
+                          return
+                        }
+                        message.success('管理员手机已更换')
+                        setCampusEditOpen(false)
+                        setCampusEditRow(null)
+                        campusEditPhoneForm.resetFields()
+                        campusEditPwdForm.resetFields()
+                        refresh()
+                      } catch {
+                        /* validate */
+                      }
+                    }}
+                  >
+                    保存新手机
+                  </Button>
+                </Form>
+                <Divider style={{ margin: '16px 0' }} />
+              </>
+            ) : campusEditRow.isSeed ? (
+              <>
+                <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+                  预置演示校区不支持更换管理员手机，仅可重置下方登录密码。
+                </Typography.Paragraph>
+                <Divider style={{ margin: '16px 0' }} />
+              </>
+            ) : null}
+            {!campusEditRow.disabled ? (
+              <>
+                <Typography.Text strong style={{ fontSize: 13 }}>重置主号登录密码</Typography.Text>
+                <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 4 }}>
+                  直接覆盖该手机号对应的加盟商主号密码（不校验旧密码）。
+                </Typography.Paragraph>
+                <Form form={campusEditPwdForm} layout="vertical" style={{ marginTop: 8 }}>
+                  <Form.Item name="password" label="新密码" rules={[{ required: true }, { min: 6, message: '至少6位' }]}>
+                    <Input.Password placeholder="至少 6 位" />
+                  </Form.Item>
+                  <Form.Item name="confirm" label="确认新密码" rules={[{ required: true }, { min: 6, message: '至少6位' }]}>
+                    <Input.Password />
+                  </Form.Item>
+                  <Button
+                    type="primary"
+                    onClick={async () => {
+                      try {
+                        const v = await campusEditPwdForm.validateFields()
+                        if (v.password !== v.confirm) {
+                          message.error('两次输入的密码不一致')
+                          return
+                        }
+                        const phone = normalizePartnerPhoneDigits(campusEditRow.adminPhone)
+                        const r = adminSetPartnerMainLoginPassword(phone, v.password)
+                        if (!r.ok) {
+                          message.error(r.msg || '重置失败')
+                          return
+                        }
+                        message.success('主号登录密码已更新')
+                        setCampusEditOpen(false)
+                        setCampusEditRow(null)
+                        campusEditPhoneForm.resetFields()
+                        campusEditPwdForm.resetFields()
+                        refresh()
+                      } catch {
+                        /* validate */
+                      }
+                    }}
+                  >
+                    保存新密码
+                  </Button>
+                </Form>
+              </>
+            ) : (
+              <Typography.Paragraph type="warning" style={{ fontSize: 12 }}>
+                该校区已禁用，无法编辑主号与密码。
+              </Typography.Paragraph>
+            )}
+          </>
+        ) : null}
       </Modal>
 
       <Modal

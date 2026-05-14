@@ -14,7 +14,7 @@ export const FRANCHISE_PARTNER_PORTAL_NAV = [
   { key: 'balance', path: '/franchise-partner/balance', label: '余额中心' },
   /** 仅机构主账号侧栏展示；不可作为子账号角色权限分配（避免循环授权） */
   { key: 'staff-accounts', path: '/franchise-partner/staff-accounts', label: '机构账号' },
-  { key: 'settings', path: '/franchise-partner/settings', label: '账号设置' },
+  { key: 'settings', path: '/franchise-partner/settings', label: '校区信息' },
   { key: 'promote', path: '/franchise-partner/promote', label: '课程推广' },
   { key: 'progress', path: '/franchise-partner/progress', label: '学习进度' },
 ]

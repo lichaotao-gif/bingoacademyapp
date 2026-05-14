@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FRANCHISE_PROMOTABLE_COURSES } from '../../utils/franchisePartnerStorage'
+import { getFranchiseOfflinePackMeta } from '../../utils/franchisePartnerStorage'
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
 function courseLabel(id) {
-  return FRANCHISE_PROMOTABLE_COURSES.find((c) => c.id === id)?.name || id
+  return getFranchiseOfflinePackMeta(id)?.name || id
 }
 
 function fmtDateTime(iso) {

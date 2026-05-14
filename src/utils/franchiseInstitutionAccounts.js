@@ -113,6 +113,33 @@ export function exportPartnerPortalNavCatalog() {
   return FRANCHISE_PARTNER_PORTAL_NAV.map((x) => ({ ...x }))
 }
 
+/** 机构子账号数据随 partnerId 迁移（更换校区管理员登录手机） */
+export function migrateInstitutionAccountsPartnerId(oldPartnerId, newPartnerId, newRefCode) {
+  const oldPid = String(oldPartnerId || '').trim()
+  const newPid = String(newPartnerId || '').trim()
+  if (!oldPid || !newPid || oldPid === newPid) return { ok: false, msg: '无效参数' }
+  const root = loadRoot()
+  const oldBucket = root.byPartnerId[oldPid]
+  if (!oldBucket) return { ok: true }
+  const existingNew = root.byPartnerId[newPid]
+  if (existingNew) {
+    const nonEmpty =
+      (existingNew.roles && existingNew.roles.length > 0) || (existingNew.accounts && existingNew.accounts.length > 0)
+    if (nonEmpty) return { ok: false, msg: '目标校区已存在机构账号数据，无法更换' }
+    delete root.byPartnerId[newPid]
+  }
+  const ref = String(newRefCode || '').trim()
+  const bucket = JSON.parse(JSON.stringify(oldBucket))
+  for (const acc of bucket.accounts || []) {
+    acc.partnerId = newPid
+    if (ref) acc.refCode = ref
+  }
+  delete root.byPartnerId[oldPid]
+  root.byPartnerId[newPid] = bucket
+  saveRoot(root)
+  return { ok: true }
+}
+
 function normalizeMenuKeys(keys) {
   const allowed = new Set(FRANCHISE_PARTNER_MENUS_FOR_ROLE.map((x) => x.key))
   if (!Array.isArray(keys)) return []

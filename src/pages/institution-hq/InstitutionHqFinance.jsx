@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { computeTotalSales, getWorkspace } from '../../utils/franchisePartnerStorage'
+import { getWorkspace } from '../../utils/franchisePartnerStorage'
 import {
   FlatIconChartBar,
   FlatIconCoins,
-  FlatIconTrendingUp,
   FlatIconUsers,
   FlatIconWallet,
 } from '../franchise-portal/FranchiseFlatIcons'
@@ -31,130 +30,6 @@ function hqLedgerRowMeta(type) {
   if (type === 'hq_allocate_campus') return { tag: '开业划拨', tagClass: 'bg-cyan-100 text-cyan-900' }
   if (type === 'hq_refund_campus') return { tag: '划拨退回', tagClass: 'bg-sky-100 text-sky-800' }
   return { tag: '其他', tagClass: 'bg-slate-100 text-slate-700' }
-}
-
-/** 近 6 个月：按月收入柱状图（全机构已完成充课实付） */
-function BarChartMini({ data }) {
-  if (!data.length) {
-    return <p className="text-sm text-slate-400 py-8 text-center">暂无数据</p>
-  }
-  const max = Math.max(...data.map((d) => d.value), 1)
-  return (
-    <div className="flex items-end gap-1.5 sm:gap-2 h-44 px-1 pt-4 min-h-[11rem]">
-      {data.map((d) => (
-        <div key={d.key} className="flex-1 flex flex-col items-center justify-end h-full min-w-0">
-          <div
-            className="w-full max-w-[40px] sm:max-w-[48px] mx-auto rounded-t-md bg-primary/80 hover:bg-primary transition-opacity relative group"
-            style={{ height: `${Math.max(6, (d.value / max) * 100)}%`, minHeight: d.value > 0 ? 6 : 3 }}
-          >
-            <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-slate-500 opacity-0 group-hover:opacity-100 whitespace-nowrap tabular-nums z-10">
-              ¥{d.value.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
-            </span>
-          </div>
-          <span className="text-[10px] sm:text-[11px] text-slate-400 mt-2 text-center truncate w-full">{d.label}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/** 近 30 日收入：SVG 平滑曲线（全机构已完成充课实付） */
-function LineChartMini({ data }) {
-  const W = 800
-  const H = 240
-  const padL = 44
-  const padR = 16
-  const padT = 28
-  const padB = 40
-  const innerW = W - padL - padR
-  const innerH = H - padT - padB
-  const max = data.length ? Math.max(...data.map((d) => d.value), 1) : 1
-  const n = data.length
-  if (!data.length) {
-    return <p className="text-sm text-slate-400 py-8 text-center">暂无近30日订单数据</p>
-  }
-  const points = data.map((d, i) => ({
-    x: padL + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW),
-    y: padT + innerH - (d.value / max) * innerH,
-    label: d.label,
-    value: d.value,
-  }))
-
-  let lineD = ''
-  if (points.length >= 2) {
-    lineD = `M ${points[0].x} ${points[0].y}`
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i]
-      const p1 = points[i + 1]
-      const dx = (p1.x - p0.x) / 3
-      lineD += ` C ${p0.x + dx} ${p0.y}, ${p1.x - dx} ${p1.y}, ${p1.x} ${p1.y}`
-    }
-  } else if (points.length === 1) {
-    lineD = `M ${points[0].x} ${points[0].y}`
-  }
-
-  const baseline = padT + innerH
-  let areaD = ''
-  if (points.length >= 2) {
-    areaD = `M ${points[0].x} ${baseline} L ${points[0].x} ${points[0].y}`
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i]
-      const p1 = points[i + 1]
-      const dx = (p1.x - p0.x) / 3
-      areaD += ` C ${p0.x + dx} ${p0.y}, ${p1.x - dx} ${p1.y}, ${p1.x} ${p1.y}`
-    }
-    areaD += ` L ${points[points.length - 1].x} ${baseline} Z`
-  }
-
-  return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[640px] h-[220px] sm:h-[240px]" role="img" aria-label="近30日全机构收入曲线">
-        <defs>
-          <linearGradient id="hqFinanceLineFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgb(8 145 178)" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="rgb(8 145 178)" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        {[0, 0.25, 0.5, 0.75, 1].map((t) => {
-          const y = padT + innerH * (1 - t)
-          return (
-            <line key={`grid-${t}`} x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgb(226 232 240)" strokeWidth="1" />
-          )
-        })}
-        {areaD ? <path d={areaD} fill="url(#hqFinanceLineFill)" /> : null}
-        {lineD ? (
-          <path
-            d={lineD}
-            fill="none"
-            stroke="rgb(8 145 178)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ) : null}
-        {points.map((p, i) => (
-          <g key={p.label + i}>
-            <circle cx={p.x} cy={p.y} r="4" fill="white" stroke="rgb(8 145 178)" strokeWidth="2" />
-            <title>{`${p.label}  ¥${p.value.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`}</title>
-          </g>
-        ))}
-        {points.map((p, i) =>
-          i % 5 === 0 || i === n - 1 ? (
-            <text
-              key={`t-${p.label}-${i}`}
-              x={p.x}
-              y={H - 10}
-              textAnchor="middle"
-              fill="#94a3b8"
-              style={{ fontSize: '11px' }}
-            >
-              {p.label}
-            </text>
-          ) : null,
-        )}
-      </svg>
-    </div>
-  )
 }
 
 /** 与机构概览「首页四宫格」一致的扁平色块图标 + 浅色卡片底 */
@@ -222,79 +97,16 @@ export default function InstitutionHqFinance() {
       } catch {
         ws = null
       }
-      const sales = ws ? computeTotalSales(ws) : 0
-      const orders = ws?.orders?.length ?? 0
-      const completed = ws?.orders?.filter((o) => o.status === '已完成').length ?? 0
+      const students = ws?.students?.length ?? 0
+      const classes = ws?.classes?.length ?? 0
       const campusBalance = typeof ws?.balance === 'number' ? ws.balance : null
       const allocated = !c.isSeed ? Number(c.openingBalanceAllocated) || 0 : null
-      return { campus: c, sales, orders, completed, campusBalance, allocated }
+      return { campus: c, students, classes, campusBalance, allocated }
     })
   }, [campuses, tick])
 
-  const total = useMemo(() => rows.reduce((s, r) => s + r.sales, 0), [rows])
-
-  const hqOrders = useMemo(() => {
-    const list = []
-    for (const c of campuses) {
-      try {
-        const ws = getWorkspace(c.partnerId, c.refCode)
-        if (ws?.orders?.length) list.push(...ws.orders)
-      } catch {
-        /* ignore */
-      }
-    }
-    return list
-  }, [campuses, tick])
-
-  const last30DaysSeries = useMemo(() => {
-    const days = []
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date()
-      d.setHours(0, 0, 0, 0)
-      d.setDate(d.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
-      days.push({
-        key,
-        label: `${d.getMonth() + 1}/${d.getDate()}`,
-        value: 0,
-      })
-    }
-    for (const o of hqOrders) {
-      if (o.status !== '已完成') continue
-      const k = (o.createdAt || '').slice(0, 10)
-      const row = days.find((x) => x.key === k)
-      if (row) row.value += Number(o.payAmount) || 0
-    }
-    return days
-  }, [hqOrders])
-
-  const last6MonthsSeries = useMemo(() => {
-    const now = new Date()
-    const months = []
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      months.push({
-        key: `${d.getFullYear()}-${d.getMonth()}`,
-        label: `${d.getMonth() + 1}月`,
-        value: 0,
-      })
-    }
-    for (const o of hqOrders) {
-      if (o.status !== '已完成') continue
-      const dt = new Date(o.createdAt)
-      const k = `${dt.getFullYear()}-${dt.getMonth()}`
-      const row = months.find((m) => m.key === k)
-      if (row) row.value += Number(o.payAmount) || 0
-    }
-    return months
-  }, [hqOrders])
-
   const totalAllocated = useMemo(
     () => rows.reduce((s, r) => s + (r.allocated != null ? r.allocated : 0), 0),
-    [rows],
-  )
-  const totalCampusWallets = useMemo(
-    () => rows.reduce((s, r) => s + (r.campusBalance != null ? r.campusBalance : 0), 0),
     [rows],
   )
   const ledgerCount = (treasury.ledger || []).length
@@ -343,45 +155,24 @@ export default function InstitutionHqFinance() {
 
   return (
     <div className="space-y-6">
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-slate-500">全机构累计营收</p>
-              <p className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums tracking-tight mt-2">¥{fmtMoney(total)}</p>
-              <p className="mt-3 text-xs text-slate-500 leading-relaxed max-w-md">
-                各校区加盟商工作台内「已完成充课」订单实付累计（演示）。
-              </p>
-            </div>
-            <div className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-sky-500/12 text-sky-600" aria-hidden>
-              <FlatIconTrendingUp className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-slate-500">机构总账户余额</p>
-              <p className="text-2xl sm:text-3xl font-bold text-emerald-700 tabular-nums tracking-tight mt-2">¥{fmtMoney(treasury.balance)}</p>
-              <p className="mt-3 text-xs text-slate-500 leading-relaxed max-w-md">
-                向总账户充值后，可在「校区账号」开设新校区时从本余额划拨开业额度至各校区工作台。
-              </p>
-              <button
-                type="button"
-                onClick={openTopUpModal}
-                className="inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-700/40 shadow-sm transition-colors"
-              >
-                充值
-              </button>
-            </div>
-            <div className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-emerald-500/12 text-emerald-600" aria-hidden>
-              <FlatIconWallet className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/90 to-white p-5 shadow-sm flex items-start justify-between gap-3 min-h-[5.5rem]">
+          <div className="min-w-0 flex-1 pt-0.5">
+            <p className="text-xs font-medium text-slate-500">机构总账户余额</p>
+            <p className="mt-2 text-lg font-bold tabular-nums text-emerald-700 tracking-tight">¥{fmtMoney(treasury.balance)}</p>
+            <p className="mt-2 text-[11px] text-slate-500 leading-snug">演示充值后可供新开校区划拨</p>
+            <button
+              type="button"
+              onClick={openTopUpModal}
+              className="mt-2 text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+            >
+              充值
+            </button>
+          </div>
+          <div className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center bg-emerald-500/12 text-emerald-600" aria-hidden>
+            <FlatIconWallet className="w-5 h-5" />
+          </div>
+        </div>
         <IconKpiTile
           icon={FlatIconUsers}
           label="管理校区"
@@ -397,13 +188,6 @@ export default function InstitutionHqFinance() {
           tone="amber"
         />
         <IconKpiTile
-          icon={FlatIconWallet}
-          label="校区账户余额合计"
-          value={`¥${fmtMoney(totalCampusWallets)}`}
-          sub="各校加盟商工作台当前余额之和"
-          tone="emerald"
-        />
-        <IconKpiTile
           icon={FlatIconChartBar}
           label="总账流水"
           value={`${ledgerCount} 笔`}
@@ -412,50 +196,24 @@ export default function InstitutionHqFinance() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-b border-slate-100 shrink-0">
-            <h2 className="text-[15px] font-semibold text-slate-900">近30日收入趋势</h2>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-800 font-medium whitespace-nowrap">
-              全机构 · 近30天 · 已完成充课
-            </span>
-          </div>
-          <div className="px-5 py-4 flex-1 min-h-0 overflow-x-auto">
-            <LineChartMini data={last30DaysSeries} />
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-b border-slate-100 shrink-0">
-            <h2 className="text-[15px] font-semibold text-slate-900">近6个月收入</h2>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 font-medium whitespace-nowrap">
-              全机构 · 按月 · 已完成充课
-            </span>
-          </div>
-          <div className="px-5 py-4 flex-1 min-h-0">
-            <BarChartMini data={last6MonthsSeries} />
-          </div>
-        </div>
-      </div>
-
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100">
           <h2 className="text-[15px] font-semibold text-slate-900">各校区财务一览</h2>
-          <p className="text-xs text-slate-400 mt-1">开业划拨、校区余额与累计营收（演示数据）</p>
+          <p className="text-xs text-slate-400 mt-1">开业划拨、校区账户余额与在读规模（演示数据）</p>
         </div>
-        <table className="w-full text-sm text-left min-w-[780px]">
+        <table className="w-full text-sm text-left min-w-[640px]">
           <thead className="bg-slate-50 text-xs text-slate-500">
             <tr>
               <th className="px-5 py-3 font-medium">校区</th>
               <th className="px-5 py-3 font-medium text-right">开业划拨</th>
               <th className="px-5 py-3 font-medium text-right">校区账户余额</th>
-              <th className="px-5 py-3 font-medium text-right">累计营收</th>
-              <th className="px-5 py-3 font-medium text-right">订单数</th>
-              <th className="px-5 py-3 font-medium text-right">已完成</th>
+              <th className="px-5 py-3 font-medium text-right">学生数</th>
+              <th className="px-5 py-3 font-medium text-right">班级数</th>
               <th className="px-5 py-3 font-medium w-40">操作</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ campus, sales, orders, completed, campusBalance, allocated }) => (
+            {rows.map(({ campus, students, classes, campusBalance, allocated }) => (
               <tr key={campus.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                 <td className="px-5 py-3 font-medium text-slate-900">{campus.campusName}</td>
                 <td className="px-5 py-3 text-right tabular-nums text-slate-700">
@@ -464,9 +222,8 @@ export default function InstitutionHqFinance() {
                 <td className="px-5 py-3 text-right tabular-nums font-medium text-slate-900">
                   {campusBalance != null ? `¥${fmtMoney(campusBalance)}` : '—'}
                 </td>
-                <td className="px-5 py-3 text-right tabular-nums font-semibold text-slate-900">¥{fmtMoney(sales)}</td>
-                <td className="px-5 py-3 text-right tabular-nums text-slate-700">{orders}</td>
-                <td className="px-5 py-3 text-right tabular-nums text-slate-700">{completed}</td>
+                <td className="px-5 py-3 text-right tabular-nums text-slate-700">{students}</td>
+                <td className="px-5 py-3 text-right tabular-nums text-slate-700">{classes}</td>
                 <td className="px-5 py-3">
                   <button
                     type="button"

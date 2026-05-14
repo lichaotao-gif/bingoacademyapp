@@ -22,7 +22,7 @@ import {
 
 /**
  * 机构资质：编辑 / 提交审核 / 演示通过驳回。
- * 机构总与加盟商「账号设置」共用；集团托管校区侧 readOnly 仅展示。
+ * 机构总与加盟商「机构信息 / 账号设置」资质区共用；集团托管校区侧 readOnly 仅展示。
  */
 export default function InstitutionQualificationPanel({
   partnerId,
@@ -274,7 +274,7 @@ export default function InstitutionQualificationPanel({
           ) : (
             <p className="text-sm text-slate-500 py-6">
               {readOnly
-                ? '暂无机构档案。请联系机构总管理员在「机构总管理 → 账号设置」中维护并提交审核。'
+                ? '暂无机构档案。请联系机构总管理员在「机构总管理 → 机构信息」中维护并提交审核。'
                 : '暂无机构档案，请点击「编辑机构资料」填写。'}
             </p>
           )}

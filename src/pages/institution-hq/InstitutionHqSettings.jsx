@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useOutletContext } from 'react-router-dom'
 import { getWorkspace } from '../../utils/franchisePartnerStorage'
-import {
-  clearInstitutionHqSession,
-  getInstitutionOrgQualificationWorkspaceKeys,
-} from '../../utils/institutionHqStorage'
+import { getInstitutionOrgQualificationWorkspaceKeys } from '../../utils/institutionHqStorage'
 import InstitutionQualificationPanel from '../franchise-portal/InstitutionQualificationPanel'
 
 export default function InstitutionHqSettings() {
   const ctx = useOutletContext()
   const session = ctx?.session
-  const navigate = useNavigate()
   const [tick, setTick] = useState(0)
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
@@ -37,11 +33,6 @@ export default function InstitutionHqSettings() {
   }, [keys, tick])
 
   const iq = iqSourceWs?.institutionQualification
-
-  const logout = () => {
-    clearInstitutionHqSession()
-    navigate('/institution-hq/login', { replace: true })
-  }
 
   if (!session) {
     return <p className="text-slate-500 text-sm">加载中…</p>
@@ -84,34 +75,6 @@ export default function InstitutionHqSettings() {
           modalTitle="编辑机构资质（集团）"
         />
       )}
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">登录信息</h2>
-        <dl className="space-y-3 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">机构名称</dt>
-            <dd className="text-slate-900 font-medium text-right">{session.orgName}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">登录身份</dt>
-            <dd className="text-slate-900 text-right">
-              {session.staffSubUser ? `${session.displayName}（${session.staffRoleName || '子账号'}）` : session.displayName}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">登录手机</dt>
-            <dd className="text-slate-900 tabular-nums text-right">{session.loginPhone}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <button
-        type="button"
-        onClick={logout}
-        className="rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-sm font-semibold px-5 py-2.5 hover:bg-rose-100 transition"
-      >
-        退出登录
-      </button>
     </div>
   )
 }

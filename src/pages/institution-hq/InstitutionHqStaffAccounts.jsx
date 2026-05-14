@@ -12,7 +12,8 @@ import {
   updateHqAccount,
   upsertHqRole,
 } from '../../utils/institutionHqAccess'
-import { normalizePartnerPhoneDigits } from '../../utils/franchisePartnerStorage'
+import { adminSetPartnerMainLoginPassword, normalizePartnerPhoneDigits } from '../../utils/franchisePartnerStorage'
+import { changeInstitutionCampusAdminPhone, listInstitutionCampuses } from '../../utils/institutionHqStorage'
 
 function fmtTime(iso) {
   if (!iso) return '—'
@@ -83,6 +84,11 @@ export default function InstitutionHqStaffAccounts() {
     return listHqAccounts(orgId)
   }, [tick, orgId])
 
+  const campuses = useMemo(() => {
+    void tick
+    return listInstitutionCampuses()
+  }, [tick])
+
   const [tab, setTab] = useState('roles')
   const [roleModal, setRoleModal] = useState(false)
   const [editingRoleId, setEditingRoleId] = useState(null)
@@ -104,6 +110,14 @@ export default function InstitutionHqStaffAccounts() {
   const [editAccRoleId, setEditAccRoleId] = useState('')
   const [editAccPassword, setEditAccPassword] = useState('')
   const [editAccErr, setEditAccErr] = useState('')
+
+  /** 校区列表：单弹窗内编辑主号手机与登录密码 */
+  const [campusEditCampus, setCampusEditCampus] = useState(null)
+  const [ceNewPhone, setCeNewPhone] = useState('')
+  const [cePhoneErr, setCePhoneErr] = useState('')
+  const [cePwd, setCePwd] = useState('')
+  const [cePwd2, setCePwd2] = useState('')
+  const [cePwdErr, setCePwdErr] = useState('')
 
   const openRoleCreate = () => {
     setEditingRoleId(null)
@@ -197,6 +211,7 @@ export default function InstitutionHqStaffAccounts() {
     setEditAccErr('')
     const r = updateHqAccount(orgId, editAccId, {
       name: editAccName,
+      phone: editAccPhone,
       roleId: editAccRoleId,
       password: editAccPassword,
     })
@@ -207,6 +222,50 @@ export default function InstitutionHqStaffAccounts() {
     setEditAccModal(false)
     setEditAccId(null)
     setEditAccPassword('')
+    refresh()
+  }
+
+  const closeCampusEditModal = () => {
+    setCampusEditCampus(null)
+    setCeNewPhone('')
+    setCePhoneErr('')
+    setCePwd('')
+    setCePwd2('')
+    setCePwdErr('')
+  }
+
+  const submitCampusEditPhone = (e) => {
+    e.preventDefault()
+    setCePhoneErr('')
+    if (!campusEditCampus) return
+    const r = changeInstitutionCampusAdminPhone(campusEditCampus.id, ceNewPhone)
+    if (!r.ok) {
+      setCePhoneErr(r.msg || '更换失败')
+      return
+    }
+    closeCampusEditModal()
+    refresh()
+  }
+
+  const submitCampusEditPwd = (e) => {
+    e.preventDefault()
+    setCePwdErr('')
+    if (!campusEditCampus) return
+    if (cePwd.length < 6) {
+      setCePwdErr('新密码至少 6 位')
+      return
+    }
+    if (cePwd !== cePwd2) {
+      setCePwdErr('两次输入的密码不一致')
+      return
+    }
+    const phone = normalizePartnerPhoneDigits(campusEditCampus.adminPhone)
+    const r = adminSetPartnerMainLoginPassword(phone, cePwd)
+    if (!r.ok) {
+      setCePwdErr(r.msg || '重置失败')
+      return
+    }
+    closeCampusEditModal()
     refresh()
   }
 
@@ -257,14 +316,23 @@ export default function InstitutionHqStaffAccounts() {
         <button type="button" className={segBtn(tab === 'accounts')} onClick={() => setTab('accounts')}>
           权限子账号
         </button>
+        <button type="button" className={segBtn(tab === 'campuses')} onClick={() => setTab('campuses')}>
+          校区列表
+        </button>
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-slate-900">{tab === 'roles' ? '角色列表' : '子账号列表'}</h2>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {tab === 'roles' ? '角色列表' : tab === 'accounts' ? '子账号列表' : '下属校区'}
+            </h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              {tab === 'roles' ? '每个角色对应一组工作台菜单权限。' : '每个子账号绑定一个角色，用手机号登录机构总管理。'}
+              {tab === 'roles'
+                ? '每个角色对应一组工作台菜单权限。'
+                : tab === 'accounts'
+                  ? '每个子账号绑定一个角色，用手机号登录机构总管理。'
+                  : '各校区加盟商主号登录手机与「校区账号」页同源；点「编辑」可更换管理员手机或重置主号登录密码。'}
             </p>
           </div>
           {tab === 'roles' ? (
@@ -275,7 +343,7 @@ export default function InstitutionHqStaffAccounts() {
             >
               新建角色
             </button>
-          ) : (
+          ) : tab === 'accounts' ? (
             <button
               type="button"
               onClick={openAccModal}
@@ -283,7 +351,7 @@ export default function InstitutionHqStaffAccounts() {
             >
               添加子账号
             </button>
-          )}
+          ) : null}
         </div>
 
         <div className="overflow-x-auto">
@@ -344,7 +412,7 @@ export default function InstitutionHqStaffAccounts() {
                 )}
               </tbody>
             </table>
-          ) : (
+          ) : tab === 'accounts' ? (
             <table className="w-full min-w-[min(100%,640px)] table-fixed text-left text-sm">
               <colgroup>
                 <col className="w-[18%]" />
@@ -398,6 +466,63 @@ export default function InstitutionHqStaffAccounts() {
                             删除
                           </button>
                         </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full min-w-[min(100%,720px)] table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[28%]" />
+                <col className="w-[24%]" />
+                <col className="w-[18%]" />
+                <col className="w-[30%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-slate-100 bg-white text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-3 sm:px-6">校区名称</th>
+                  <th className="px-4 py-3 sm:px-6">管理员手机</th>
+                  <th className="px-4 py-3 sm:px-6">类型</th>
+                  <th className="px-4 py-3 text-right sm:px-6">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {campuses.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-14 text-center sm:px-6">
+                      <p className="text-slate-500">暂无校区</p>
+                      <p className="mt-1 text-xs text-slate-400">请先在「校区账号」中开设校区。</p>
+                    </td>
+                  </tr>
+                ) : (
+                  campuses.map((c) => (
+                    <tr key={c.id} className="hover:bg-slate-50/60">
+                      <td className="px-4 py-3.5 font-medium text-slate-900 sm:px-6">
+                        {c.campusName}
+                        {c.disabled ? (
+                          <span className="ml-2 text-[10px] font-semibold text-amber-700">已禁用</span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3.5 tabular-nums text-slate-800 sm:px-6">{normalizePartnerPhoneDigits(c.adminPhone) || '—'}</td>
+                      <td className="px-4 py-3.5 text-xs text-slate-600 sm:px-6">{c.isSeed ? '预置' : '已开设'}</td>
+                      <td className="px-4 py-3.5 text-right sm:px-6">
+                        <button
+                          type="button"
+                          disabled={Boolean(c.disabled)}
+                          onClick={() => {
+                            setCampusEditCampus(c)
+                            setCeNewPhone('')
+                            setCePhoneErr('')
+                            setCePwd('')
+                            setCePwd2('')
+                            setCePwdErr('')
+                          }}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-primary hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          编辑
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -510,7 +635,7 @@ export default function InstitutionHqStaffAccounts() {
           <form onSubmit={saveEditAccount} onClick={(e) => e.stopPropagation()} className="flex max-h-[92vh] flex-col">
             <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
               <h2 className="text-base font-semibold text-slate-900">编辑权限子账号</h2>
-              <p className="mt-1 text-xs text-slate-500">可修改姓名、角色；新密码留空表示不修改登录密码。</p>
+              <p className="mt-1 text-xs text-slate-500">可修改姓名、登录手机、角色；新密码留空表示不修改登录密码。</p>
             </div>
             <div className="space-y-3.5 px-5 py-4 sm:px-6 overflow-y-auto flex-1 min-h-0">
               <div>
@@ -526,9 +651,10 @@ export default function InstitutionHqStaffAccounts() {
                 <label className="text-xs font-medium text-slate-600">手机号（登录账号）</label>
                 <input
                   value={editAccPhone}
-                  readOnly
-                  disabled
-                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm tabular-nums text-slate-600"
+                  onChange={(e) => setEditAccPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm tabular-nums"
+                  maxLength={11}
+                  inputMode="numeric"
                 />
               </div>
               <div>
@@ -571,6 +697,82 @@ export default function InstitutionHqStaffAccounts() {
               </button>
             </div>
           </form>
+        </ModalBackdrop>
+      ) : null}
+
+      {campusEditCampus ? (
+        <ModalBackdrop onClose={closeCampusEditModal}>
+          <div onClick={(e) => e.stopPropagation()} className="flex max-h-[92vh] flex-col">
+            <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+              <h2 className="text-base font-semibold text-slate-900">编辑校区主号 · {campusEditCampus.campusName}</h2>
+              <p className="mt-1 text-xs text-slate-500 tabular-nums">
+                当前登录手机：{normalizePartnerPhoneDigits(campusEditCampus.adminPhone) || '—'}
+              </p>
+            </div>
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4 sm:px-6">
+              {!campusEditCampus.isSeed && !campusEditCampus.disabled ? (
+                <form onSubmit={submitCampusEditPhone} className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                  <p className="text-xs font-semibold text-slate-800">更换管理员手机</p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">更换后加盟商工作台、开业待写入与子账号数据将迁移至新主号。</p>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">新管理员手机（11 位）</label>
+                    <input
+                      required
+                      value={ceNewPhone}
+                      onChange={(e) => setCeNewPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm tabular-nums"
+                      maxLength={11}
+                      inputMode="numeric"
+                    />
+                  </div>
+                  {cePhoneErr ? <p className="text-sm text-rose-600">{cePhoneErr}</p> : null}
+                  <button type="submit" className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-600 sm:w-auto">
+                    保存新手机
+                  </button>
+                </form>
+              ) : campusEditCampus.isSeed ? (
+                <p className="text-xs text-slate-500 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">预置演示校区不支持更换管理员手机，仅可重置下方登录密码。</p>
+              ) : null}
+
+              {!campusEditCampus.disabled ? (
+                <form onSubmit={submitCampusEditPwd} className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                  <p className="text-xs font-semibold text-slate-800">重置主号登录密码</p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">本地演示：直接覆盖该手机号的加盟商主号密码，不校验旧密码。</p>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">新密码（至少 6 位）</label>
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      value={cePwd}
+                      onChange={(e) => setCePwd(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">确认新密码</label>
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      value={cePwd2}
+                      onChange={(e) => setCePwd2(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+                    />
+                  </div>
+                  {cePwdErr ? <p className="text-sm text-rose-600">{cePwdErr}</p> : null}
+                  <button type="submit" className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-600 sm:w-auto">
+                    保存新密码
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs text-amber-800 rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">该校区已禁用，无法编辑主号与密码。</p>
+              )}
+            </div>
+            <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6">
+              <button type="button" onClick={closeCampusEditModal} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                关闭
+              </button>
+            </div>
+          </div>
         </ModalBackdrop>
       ) : null}
     </div>

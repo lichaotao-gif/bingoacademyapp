@@ -7,7 +7,7 @@ export const INSTITUTION_HQ_PORTAL_NAV = [
   { key: 'finance', path: '/institution-hq/finance', label: '财务统计' },
   { key: 'campus-accounts', path: '/institution-hq/campus-accounts', label: '校区账号' },
   { key: 'hq-staff-accounts', path: '/institution-hq/hq-staff-accounts', label: '机构账号' },
-  { key: 'settings', path: '/institution-hq/settings', label: '账号设置' },
+  { key: 'settings', path: '/institution-hq/settings', label: '机构信息' },
 ]
 
 /** 主账号给子账号角色分配时可勾选的菜单（不含「机构账号」权限页本身） */

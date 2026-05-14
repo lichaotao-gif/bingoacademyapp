@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { fmtTime } from './institutionQualificationShared'
 import {
   clearPartnerSession,
   consumeQueuedPartnerSessionIfPresent,
@@ -31,7 +32,7 @@ const NAV = [
   { key: 'discounts', to: '/franchise-partner/discounts', label: '折扣查看', badge: '后续版本', visibleInMenu: false },
   { key: 'balance', to: '/franchise-partner/balance', label: '余额中心', visibleInMenu: false },
   { key: 'staff-accounts', to: '/franchise-partner/staff-accounts', label: '机构账号', ownerOnly: true },
-  { key: 'settings', to: '/franchise-partner/settings', label: '账号设置' },
+  { key: 'settings', to: '/franchise-partner/settings', label: '校区信息' },
 ]
 
 /** 侧栏无有效机构名时的默认展示名 */
@@ -67,7 +68,7 @@ const TITLE_MAP = {
   finance: '财务统计',
   discounts: '折扣查看',
   balance: '余额中心',
-  settings: '账号设置',
+  settings: '校区信息',
   'staff-accounts': '机构账号',
   promote: '课程推广',
   progress: '学习进度',
@@ -82,7 +83,10 @@ export default function FranchisePartnerLayout() {
   })
   const [openNav, setOpenNav] = useState(false)
   const [portalSwitchOpen, setPortalSwitchOpen] = useState(false)
+  const [accountPopoverOpen, setAccountPopoverOpen] = useState(false)
   const dualSwitchBtnRef = useRef(null)
+  const accountPopoverRef = useRef(null)
+  const accountAvatarBtnRef = useRef(null)
 
   /** useLayoutEffect：尽快在读不到会话时退回登录，避免白屏一闪 */
   useLayoutEffect(() => {
@@ -126,6 +130,31 @@ export default function FranchisePartnerLayout() {
     window.addEventListener('franchise-partner-session-changed', sync)
     return () => window.removeEventListener('franchise-partner-session-changed', sync)
   }, [navigate])
+
+  useEffect(() => {
+    if (!accountPopoverOpen) return
+    const onDocDown = (e) => {
+      const el = accountPopoverRef.current
+      const btn = accountAvatarBtnRef.current
+      const t = e.target
+      if (el && el.contains(t)) return
+      if (btn && btn.contains(t)) return
+      setAccountPopoverOpen(false)
+    }
+    document.addEventListener('mousedown', onDocDown)
+    const onKey = (e) => {
+      if (e.key === 'Escape') setAccountPopoverOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [accountPopoverOpen])
+
+  useEffect(() => {
+    setAccountPopoverOpen(false)
+  }, [location.pathname])
 
   const isStaffSession = useMemo(() => session?.staffSubUser === true, [session])
   /** 预览主账号：强制按机构主账号对待侧栏与重定向，避免会话标记异常导致菜单缺失 */
@@ -193,6 +222,7 @@ export default function FranchisePartnerLayout() {
   }, [location.pathname])
 
   const logout = useCallback(() => {
+    setAccountPopoverOpen(false)
     clearPartnerSession()
     navigate('/franchise-partner/login', { replace: true })
   }, [navigate])
@@ -375,35 +405,75 @@ export default function FranchisePartnerLayout() {
               <FlatIconMenu className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-primary text-white text-xs font-bold flex items-center justify-center shrink-0">
-                {headerDisplayName.slice(0, 1)}
-              </div>
-              <div className="min-w-0 max-w-[10.5rem] sm:max-w-[14rem]">
-                <p className="text-sm font-medium text-slate-900 truncate" title={headerDisplayName}>
-                  {headerDisplayName}
-                </p>
-                <p className="text-[11px] sm:text-xs text-slate-600 tabular-nums mt-0.5 truncate" title={phoneDisplay}>
-                  {isStaffNavRestricted ? (
-                    <>
-                      <span className="text-violet-700 font-medium">{String(session.staffRoleName || '子账号').trim()}</span>
-                      <span className="mx-1 text-slate-300">·</span>
-                      {phoneDisplay}
-                    </>
-                  ) : (
-                    phoneDisplay
-                  )}
-                </p>
-              </div>
-            </div>
+          <div className="relative ml-auto shrink-0">
             <button
               type="button"
-              onClick={logout}
-              className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50/70 hover:text-rose-700 transition"
+              ref={accountAvatarBtnRef}
+              onClick={() => setAccountPopoverOpen((o) => !o)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-primary text-white text-sm font-bold shadow ring-2 ring-white transition hover:brightness-105"
+              title="账号与个人信息"
+              aria-label="打开账号与个人信息"
+              aria-expanded={accountPopoverOpen}
+              aria-haspopup="dialog"
             >
-              退出登录
+              {headerDisplayName.slice(0, 1)}
             </button>
+            {accountPopoverOpen ? (
+              <div
+                ref={accountPopoverRef}
+                role="dialog"
+                aria-label="账号与个人信息"
+                className="absolute right-0 top-full z-[100] mt-2 w-[min(calc(100vw-2rem),20rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+              >
+                <p className="text-xs font-semibold text-slate-700">登录信息</p>
+                <dl className="mt-2 space-y-2.5 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">校区名称</dt>
+                    <dd className="min-w-0 text-right font-medium text-slate-900" title={sidebarInstitution}>
+                      {sidebarInstitution}
+                    </dd>
+                  </div>
+                  {session.refCode ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="shrink-0 text-slate-500">加盟编码</dt>
+                      <dd className="min-w-0 text-right font-mono text-xs text-slate-900">{session.refCode}</dd>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">当前登录</dt>
+                    <dd className="min-w-0 text-right text-slate-900">
+                      {isStaffNavRestricted
+                        ? `${String(session.staffName || '').trim() || '子账号'}（${String(session.staffRoleName || '子账号').trim()}）`
+                        : headerDisplayName}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">登录手机</dt>
+                    <dd className="tabular-nums text-right text-slate-900">{phoneDisplay}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-slate-500">最近登录</dt>
+                    <dd className="text-right text-slate-900 text-xs">{session.loginAt ? fmtTime(session.loginAt) : '—'}</dd>
+                  </div>
+                </dl>
+                <div className="mt-4 border-t border-slate-100 pt-3 space-y-2">
+                  <Link
+                    to="/franchise-partner/settings?pwd=1"
+                    onClick={() => setAccountPopoverOpen(false)}
+                    className="flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition"
+                  >
+                    修改密码
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="w-full rounded-lg border border-rose-200 bg-rose-50 py-2.5 text-sm font-semibold text-rose-800 hover:bg-rose-100 transition"
+                  >
+                    退出登录
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </header>
 
