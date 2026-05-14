@@ -1014,17 +1014,28 @@ export default function Courses() {
 
         {/* ── 课程分类 Tab + 课程列表 ── */}
         <section className="mb-14">
-          <div className="flex flex-wrap gap-2 mb-8 border-b border-slate-200 pb-2">
-            {COURSE_TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveTab(t.key)}
-                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition ${activeTab === t.key ? 'bg-primary text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-3 mb-8 border-b border-slate-200 pb-2 min-w-0">
+            <div className="flex flex-wrap gap-2 flex-1 min-w-0">
+              {COURSE_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveTab(t.key)}
+                  className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition ${activeTab === t.key ? 'bg-primary text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <Link
+              to="/profile/study"
+              className="shrink-0 text-sm font-semibold text-primary hover:text-primary-600 hover:underline inline-flex items-center gap-1 whitespace-nowrap"
+            >
+              学习中心
+              <span className="text-base font-normal leading-none" aria-hidden>
+                →
+              </span>
+            </Link>
           </div>
           <PaymentModal
             open={paymentOpen}

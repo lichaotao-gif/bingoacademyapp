@@ -124,9 +124,14 @@ export default function FranchisePartnerDashboard() {
 
       {/* 最新订单 */}
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900">最新订单</h2>
-          <Link to="/franchise-partner/orders" className="text-xs text-primary font-medium hover:underline">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="font-semibold text-slate-900">最新订单</h2>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200/90 shrink-0">
+              后续版本
+            </span>
+          </div>
+          <Link to="/franchise-partner/orders" className="text-xs text-primary font-medium hover:underline shrink-0">
             全部订单 →
           </Link>
         </div>
