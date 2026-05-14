@@ -13,6 +13,7 @@ import {
   Table,
   Tabs,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd'
@@ -24,7 +25,11 @@ import { addInstitutionAccount, deleteInstitutionAccount, deleteInstitutionRole,
 // @ts-expect-error 主站常量
 import { FRANCHISE_PARTNER_MENUS_FOR_ROLE } from '../../../../../src/constants/franchisePartnerPortalNav.js'
 // @ts-expect-error 主站 JS
-import { changeInstitutionCampusAdminPhone, listInstitutionCampuses } from '../../../../../src/utils/institutionHqStorage.js'
+import {
+  changeInstitutionCampusAdminPhone,
+  listInstitutionCampuses,
+  removeInstitutionCampus,
+} from '../../../../../src/utils/institutionHqStorage.js'
 // @ts-expect-error 主站 JS
 import { adminSetPartnerMainLoginPassword, normalizePartnerPhoneDigits } from '../../../../../src/utils/franchisePartnerStorage.js'
 
@@ -270,21 +275,57 @@ export default function FranchiseInstitutionAccounts() {
     {
       title: '操作',
       key: 'campusAct',
-      width: 100,
+      width: 200,
       render: (_, row) => (
-        <Button
-          type="link"
-          size="small"
-          disabled={Boolean(row.disabled)}
-          onClick={() => {
-            setCampusEditRow(row)
-            campusEditPhoneForm.resetFields()
-            campusEditPwdForm.resetFields()
-            setCampusEditOpen(true)
-          }}
-        >
-          编辑
-        </Button>
+        <Space size={4} wrap>
+          <Button
+            type="link"
+            size="small"
+            disabled={Boolean(row.disabled)}
+            onClick={() => {
+              setCampusEditRow(row)
+              campusEditPhoneForm.resetFields()
+              campusEditPwdForm.resetFields()
+              setCampusEditOpen(true)
+            }}
+          >
+            编辑
+          </Button>
+          {row.isSeed ? (
+            <Tooltip title="预置演示校区不可解散，仅供体验">
+              <span>
+                <Button type="link" size="small" danger disabled>
+                  解散校区
+                </Button>
+              </span>
+            </Tooltip>
+          ) : (
+            <Popconfirm
+              title={`确定解散校区「${String(row.campusName || '').trim() || '该校区'}」吗？`}
+              description="解散后将从机构校区列表中移除；若尚未首次打开该校区的加盟商工作台，开业划拨额度将退回机构总账户；已打开过工作台的校区仅移除列表关联，不退回机构总余额。"
+              okText="确定解散"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => {
+                const r = removeInstitutionCampus(row.id)
+                if (!r.ok) {
+                  message.error(r.msg || '解散失败')
+                  return
+                }
+                message.success('已解散校区')
+                if (campusEditRow?.id === row.id) {
+                  setCampusEditOpen(false)
+                  setCampusEditRow(null)
+                }
+                refresh()
+              }}
+            >
+              <Button type="link" size="small" danger>
+                解散校区
+              </Button>
+            </Popconfirm>
+          )}
+        </Space>
       ),
     },
   ]

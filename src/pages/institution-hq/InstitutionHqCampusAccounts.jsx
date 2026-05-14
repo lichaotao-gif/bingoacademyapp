@@ -167,11 +167,14 @@ export default function InstitutionHqCampusAccounts() {
     refresh()
   }
 
-  const remove = (id) => {
-    if (!window.confirm('确定删除该校区记录？若尚未首次打开该校区的加盟商工作台，开业划拨额度将退回机构总账户；已打开过工作台的校区仅移除列表关联，不退回机构总余额。')) return
-    const r = removeInstitutionCampus(id)
+  const dissolveCampus = (c) => {
+    if (!c || c.isSeed) return
+    const name = String(c.campusName || '').trim() || '该校区'
+    const msg = `确定解散校区「${name}」吗？\n\n解散后将从机构校区列表中移除；若尚未首次打开该校区的加盟商工作台，开业划拨额度将退回机构总账户；已打开过工作台的校区仅移除列表关联，不退回机构总余额。`
+    if (!window.confirm(msg)) return
+    const r = removeInstitutionCampus(c.id)
     if (!r.ok) {
-      window.alert(r.msg || '删除失败')
+      window.alert(r.msg || '解散失败')
       return
     }
     refresh()
@@ -450,11 +453,26 @@ export default function InstitutionHqCampusAccounts() {
                   >
                     {busyId === c.id ? '打开中…' : '进入校区'}
                   </button>
-                  {!c.isSeed ? (
-                    <button type="button" onClick={() => remove(c.id)} className="text-xs text-rose-600 hover:underline whitespace-nowrap">
-                      删除
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (c.isSeed) {
+                        window.alert(
+                          '预置演示校区不可解散，仅供体验。若需练习解散流程，请先用「开设校区」新增正式校区后再操作。',
+                        )
+                        return
+                      }
+                      dissolveCampus(c)
+                    }}
+                    title={c.isSeed ? '预置演示校区不可解散' : undefined}
+                    className={
+                      c.isSeed
+                        ? 'rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-sm font-semibold px-3 py-2 whitespace-nowrap transition shadow-none hover:bg-slate-100'
+                        : 'rounded-lg border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-700 text-sm font-semibold px-3 py-2 whitespace-nowrap transition shadow-none'
+                    }
+                  >
+                    解散校区
+                  </button>
                 </div>
               </div>
             </li>

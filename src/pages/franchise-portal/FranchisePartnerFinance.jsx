@@ -32,13 +32,15 @@ export default function FranchisePartnerFinance() {
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm border-l-4 border-l-emerald-500 px-5 py-5 sm:py-6">
         <span className="text-[13px] text-slate-500 block mb-2">当前账户余额</span>
-        <p className="text-3xl font-bold text-emerald-600 tabular-nums tracking-tight">¥{ws.balance.toFixed(2)}</p>
-        <Link
-          to="/franchise-partner/balance"
-          className="inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-700/40 shadow-sm shadow-emerald-900/10 transition-colors"
-        >
-          去充值
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <p className="text-3xl font-bold text-emerald-600 tabular-nums tracking-tight min-w-0">¥{ws.balance.toFixed(2)}</p>
+          <Link
+            to="/franchise-partner/balance"
+            className="inline-flex items-center justify-center shrink-0 px-4 py-2.5 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-700/40 shadow-sm shadow-emerald-900/10 transition-colors"
+          >
+            去充值
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
