@@ -433,12 +433,6 @@ export default function FranchisePartnerLayout() {
                       {sidebarInstitution}
                     </dd>
                   </div>
-                  {session.refCode ? (
-                    <div className="flex justify-between gap-3">
-                      <dt className="shrink-0 text-slate-500">加盟编码</dt>
-                      <dd className="min-w-0 text-right font-mono text-xs text-slate-900">{session.refCode}</dd>
-                    </div>
-                  ) : null}
                   <div className="flex justify-between gap-3">
                     <dt className="shrink-0 text-slate-500">当前登录</dt>
                     <dd className="min-w-0 text-right text-slate-900">

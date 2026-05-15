@@ -111,10 +111,9 @@ export default function DualPortalSwitchModal({
                 onClick={() => onSelectCampus(c)}
                 className="w-full text-left rounded-md px-2 py-1.5 hover:bg-slate-50 transition"
               >
-                <span className="font-medium text-slate-800 block truncate">{c.campusName || '未命名校区'}</span>
-                <span className="text-[10px] text-slate-400 tabular-nums truncate block">
-                  {c.refCode}
-                  {isCurrent ? <span className="text-primary font-medium"> · 当前</span> : null}
+                <span className="font-medium text-slate-800 block truncate">
+                  {c.campusName || '未命名校区'}
+                  {isCurrent ? <span className="text-primary font-medium text-[10px] sm:text-xs"> · 当前</span> : null}
                 </span>
               </button>
             </li>

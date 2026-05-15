@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   addInstitutionCampus,
+  assignInstitutionCampusAdmin,
   changeInstitutionCampusAdminPhone,
   getInstitutionHqTreasury,
   listInstitutionCampuses,
@@ -9,7 +10,17 @@ import {
   setInstitutionCampusDisabled,
   updateInstitutionCampus,
 } from '../../utils/institutionHqStorage'
-import { adminSetPartnerMainLoginPassword, getWorkspace, normalizePartnerPhoneDigits } from '../../utils/franchisePartnerStorage'
+import { getWorkspace, normalizePartnerPhoneDigits } from '../../utils/franchisePartnerStorage'
+import {
+  FRANCHISE_INSTITUTION_ACCOUNTS_LS_KEY,
+  addInstitutionAccount,
+  deleteInstitutionAccount,
+  ensureDefaultInstitutionRoleIfEmpty,
+  listInstitutionAccounts,
+  listInstitutionRoles,
+  resetInstitutionAccountPassword,
+  setInstitutionAccountDisabled,
+} from '../../utils/franchiseInstitutionAccounts'
 import InstitutionHqCampusAllocateModal from './InstitutionHqCampusAllocateModal'
 
 function fmtMoney(n) {
@@ -33,12 +44,9 @@ const emptyForm = () => ({
   campusShortCode: '',
   region: '',
   address: '',
-  contactName: '',
-  adminPhone: '',
   plannedOpenDate: '',
   studentCapacity: '',
   remark: '',
-  passwordHint: '',
   openingBalanceAllocated: '',
 })
 
@@ -86,14 +94,16 @@ function btn(...parts) {
   return [BTN.base, ...parts].filter(Boolean).join(' ')
 }
 
-/** 表格行内操作：统一小号高度，避免与表体字号脱节 */
+/** 表格行内操作：独立描边小按钮 */
 const ROW_BTN = {
-  base: 'inline-flex min-h-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-45 px-2.5',
-  ghost: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+  base: 'inline-flex min-h-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-45 px-2',
+  ghost: 'border border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300/90',
   primary: 'border border-primary bg-primary text-white shadow-sm hover:bg-primary-600',
-  accent: 'border border-primary/35 bg-primary/[0.08] text-primary hover:bg-primary/12',
-  danger: 'border border-rose-200 bg-white text-rose-700 hover:bg-rose-50',
-  dangerMuted: 'border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100',
+  danger:
+    'border border-rose-300 bg-white text-rose-800 shadow-sm hover:bg-rose-50 hover:border-rose-400 hover:text-rose-900',
+  /** 预置校区：略淡的玫瑰红提示，避免与可解散行同样抢眼 */
+  dangerMuted:
+    'border border-rose-200/90 bg-rose-50/60 text-rose-600 shadow-sm hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700',
 }
 
 function rowBtn(variant) {
@@ -101,9 +111,42 @@ function rowBtn(variant) {
   return [ROW_BTN.base, v].join(' ')
 }
 
+function campusHasAssignedAdmin(c) {
+  return /^1\d{10}$/.test(normalizePartnerPhoneDigits(c?.adminPhone))
+}
+
 export default function InstitutionHqCampusAccounts() {
   const [tick, setTick] = useState(0)
   const refresh = useCallback(() => setTick((t) => t + 1), [])
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [allocateCampus, setAllocateCampus] = useState(null)
+  const [editCampus, setEditCampus] = useState(null)
+  const [editForm, setEditForm] = useState(() => emptyEditForm())
+  const [editErr, setEditErr] = useState('')
+  const [replaceCampus, setReplaceCampus] = useState(null)
+  const [replaceNewPhone, setReplaceNewPhone] = useState('')
+  const [replaceErr, setReplaceErr] = useState('')
+
+  const [adminConfigCampus, setAdminConfigCampus] = useState(null)
+  const [adminCfgPhone, setAdminCfgPhone] = useState('')
+  const [adminCfgContact, setAdminCfgContact] = useState('')
+  const [adminCfgHint, setAdminCfgHint] = useState('')
+  const [adminCfgErr, setAdminCfgErr] = useState('')
+
+  const [staffModalCampus, setStaffModalCampus] = useState(null)
+  const [staffTick, setStaffTick] = useState(0)
+  const staffRefresh = useCallback(() => setStaffTick((t) => t + 1), [])
+  const [staffAddOpen, setStaffAddOpen] = useState(false)
+  const [staffAddName, setStaffAddName] = useState('')
+  const [staffAddPhone, setStaffAddPhone] = useState('')
+  const [staffAddPassword, setStaffAddPassword] = useState('')
+  const [staffAddErr, setStaffAddErr] = useState('')
+
+  const [form, setForm] = useState(emptyForm)
+  const [err, setErr] = useState('')
+  const [busyId, setBusyId] = useState(null)
+
   const campuses = useMemo(() => {
     void tick
     return listInstitutionCampuses()
@@ -129,29 +172,34 @@ export default function InstitutionHqCampusAccounts() {
     return getInstitutionHqTreasury()
   }, [tick])
 
+  const staffAccounts = useMemo(() => {
+    void staffTick
+    const pid = staffModalCampus?.partnerId
+    if (!pid) return []
+    return listInstitutionAccounts(pid)
+  }, [staffTick, staffModalCampus?.partnerId])
+
+  const staffRoles = useMemo(() => {
+    void staffTick
+    const pid = staffModalCampus?.partnerId
+    if (!pid) return []
+    return listInstitutionRoles(pid)
+  }, [staffTick, staffModalCampus?.partnerId])
+
   useEffect(() => {
     const onTreasury = () => refresh()
     window.addEventListener('institution-hq-treasury-changed', onTreasury)
     return () => window.removeEventListener('institution-hq-treasury-changed', onTreasury)
   }, [refresh])
 
-  const [modalOpen, setModalOpen] = useState(false)
-  const [allocateCampus, setAllocateCampus] = useState(null)
-  const [editCampus, setEditCampus] = useState(null)
-  const [editForm, setEditForm] = useState(() => emptyEditForm())
-  const [editErr, setEditErr] = useState('')
-  const [replaceCampus, setReplaceCampus] = useState(null)
-  const [replaceNewPhone, setReplaceNewPhone] = useState('')
-  const [replaceErr, setReplaceErr] = useState('')
-
-  /** 预置校区：仅允许重置加盟商主号登录密码（不改存档资料） */
-  const [seedEditCampus, setSeedEditCampus] = useState(null)
-  const [seedPwd, setSeedPwd] = useState('')
-  const [seedPwd2, setSeedPwd2] = useState('')
-  const [seedPwdErr, setSeedPwdErr] = useState('')
-  const [form, setForm] = useState(emptyForm)
-  const [err, setErr] = useState('')
-  const [busyId, setBusyId] = useState(null)
+  useEffect(() => {
+    if (!staffModalCampus) return
+    const onStorage = (e) => {
+      if (e.key === FRANCHISE_INSTITUTION_ACCOUNTS_LS_KEY) staffRefresh()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [staffModalCampus, staffRefresh])
 
   const openModal = () => {
     setForm(emptyForm())
@@ -178,15 +226,12 @@ export default function InstitutionHqCampusAccounts() {
     }
     const r = addInstitutionCampus({
       campusName: form.campusName,
-      adminPhone: form.adminPhone,
-      contactName: form.contactName,
       region: form.region,
       address: form.address,
       campusShortCode: form.campusShortCode,
       plannedOpenDate: form.plannedOpenDate,
       studentCapacity: form.studentCapacity,
       remark: form.remark,
-      passwordHint: form.passwordHint,
       openingBalanceAllocated: alloc,
     })
     if (!r.ok) {
@@ -271,6 +316,154 @@ export default function InstitutionHqCampusAccounts() {
     setReplaceErr('')
   }
 
+  const openAdminConfig = (c) => {
+    setAdminConfigCampus(c)
+    setAdminCfgPhone('')
+    setAdminCfgContact(String(c?.contactName || '').trim())
+    setAdminCfgHint('')
+    setAdminCfgErr('')
+  }
+
+  const closeAdminConfig = () => {
+    setAdminConfigCampus(null)
+    setAdminCfgPhone('')
+    setAdminCfgContact('')
+    setAdminCfgHint('')
+    setAdminCfgErr('')
+  }
+
+  const submitAdminConfig = (e) => {
+    e.preventDefault()
+    setAdminCfgErr('')
+    if (!adminConfigCampus) return
+    const r = assignInstitutionCampusAdmin(adminConfigCampus.id, {
+      adminPhone: adminCfgPhone,
+      contactName: adminCfgContact,
+      passwordHint: adminCfgHint,
+    })
+    if (!r.ok) {
+      setAdminCfgErr(r.msg || '保存失败')
+      return
+    }
+    closeAdminConfig()
+    refresh()
+  }
+
+  const closeStaffManageModal = () => {
+    setStaffModalCampus(null)
+    setStaffAddOpen(false)
+    setStaffAddName('')
+    setStaffAddPhone('')
+    setStaffAddPassword('')
+    setStaffAddErr('')
+  }
+
+  const openStaffManageModal = (c) => {
+    ensureDefaultInstitutionRoleIfEmpty(c.partnerId)
+    setStaffModalCampus(c)
+    setStaffAddOpen(false)
+    setStaffAddErr('')
+    staffRefresh()
+  }
+
+  const closeStaffAddModal = () => {
+    setStaffAddOpen(false)
+    setStaffAddErr('')
+  }
+
+  const openStaffAddModal = () => {
+    if (!staffModalCampus) return
+    ensureDefaultInstitutionRoleIfEmpty(staffModalCampus.partnerId)
+    const roles = listInstitutionRoles(staffModalCampus.partnerId)
+    staffRefresh()
+    if (!roles.length) {
+      window.alert('暂无可用的机构角色，请先在加盟工作台「机构账号」中创建角色后再试')
+      return
+    }
+    setStaffAddName('')
+    setStaffAddPhone('')
+    setStaffAddPassword('')
+    setStaffAddErr('')
+    setStaffAddOpen(true)
+  }
+
+  const submitStaffAdd = (e) => {
+    e.preventDefault()
+    setStaffAddErr('')
+    if (!staffModalCampus) return
+    ensureDefaultInstitutionRoleIfEmpty(staffModalCampus.partnerId)
+    const roles = listInstitutionRoles(staffModalCampus.partnerId)
+    const roleId = roles[0]?.id || ''
+    if (!roleId) {
+      setStaffAddErr('暂无可分配角色，请先在加盟工作台「机构账号」中创建角色后再试')
+      return
+    }
+    const r = addInstitutionAccount(
+      staffModalCampus.partnerId,
+      staffModalCampus.refCode,
+      staffModalCampus.campusName,
+      {
+        name: staffAddName,
+        phone: staffAddPhone,
+        password: staffAddPassword,
+        roleId,
+      },
+    )
+    if (!r.ok) {
+      setStaffAddErr(r.msg || '添加失败')
+      return
+    }
+    closeStaffAddModal()
+    setStaffAddName('')
+    setStaffAddPhone('')
+    setStaffAddPassword('')
+    staffRefresh()
+  }
+
+  const toggleStaffDisabled = (acc) => {
+    if (!staffModalCampus) return
+    const next = !acc.disabled
+    const ok = next
+      ? window.confirm(`确定禁用子账号「${acc.name}」？禁用后该手机号将无法登录工作台。`)
+      : window.confirm(`确定启用子账号「${acc.name}」？`)
+    if (!ok) return
+    const r = setInstitutionAccountDisabled(staffModalCampus.partnerId, acc.id, next)
+    if (!r.ok) {
+      window.alert(r.msg || '操作失败')
+      return
+    }
+    staffRefresh()
+  }
+
+  const removeStaffAccount = (acc) => {
+    if (!staffModalCampus) return
+    if (!window.confirm(`确定删除子账号「${acc.name}」（${acc.phone}）？此操作不可恢复。`)) return
+    const r = deleteInstitutionAccount(staffModalCampus.partnerId, acc.id)
+    if (!r.ok) {
+      window.alert(r.msg || '删除失败')
+      return
+    }
+    staffRefresh()
+  }
+
+  const resetStaffPassword = (acc) => {
+    if (!staffModalCampus) return
+    const pw = window.prompt(`请为「${acc.name}」输入新登录密码（至少 6 位）`)
+    if (pw == null) return
+    const s = String(pw).trim()
+    if (s.length < 6) {
+      window.alert('密码至少 6 位')
+      return
+    }
+    const r = resetInstitutionAccountPassword(staffModalCampus.partnerId, acc.id, s)
+    if (!r.ok) {
+      window.alert(r.msg || '重置失败')
+      return
+    }
+    window.alert('密码已更新')
+    staffRefresh()
+  }
+
   const submitReplaceAdmin = (e) => {
     e.preventDefault()
     setReplaceErr('')
@@ -281,35 +474,6 @@ export default function InstitutionHqCampusAccounts() {
       return
     }
     closeReplaceAdmin()
-    refresh()
-  }
-
-  const closeSeedEditCampus = () => {
-    setSeedEditCampus(null)
-    setSeedPwd('')
-    setSeedPwd2('')
-    setSeedPwdErr('')
-  }
-
-  const submitSeedEditPwd = (e) => {
-    e.preventDefault()
-    setSeedPwdErr('')
-    if (!seedEditCampus) return
-    if (seedPwd.length < 6) {
-      setSeedPwdErr('新密码至少 6 位')
-      return
-    }
-    if (seedPwd !== seedPwd2) {
-      setSeedPwdErr('两次输入的密码不一致')
-      return
-    }
-    const phone = normalizePartnerPhoneDigits(seedEditCampus.adminPhone)
-    const r = adminSetPartnerMainLoginPassword(phone, seedPwd)
-    if (!r.ok) {
-      setSeedPwdErr(r.msg || '保存失败')
-      return
-    }
-    closeSeedEditCampus()
     refresh()
   }
 
@@ -351,7 +515,7 @@ export default function InstitutionHqCampusAccounts() {
             <div className="min-w-0">
               <h2 className="text-base font-semibold text-slate-900">开设校区</h2>
               <p className="text-sm text-slate-500 mt-1 leading-relaxed max-w-2xl">
-                新增校区并生成加盟商工作台；可选从机构总账户划拨开业余额（从右侧剩余额度扣减）。
+                先填写校区档案；开业划拨可选。管理员手机号请在保存后的列表中通过「校区管理员配置」单独绑定，绑定后方可进入加盟商工作台。
               </p>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-stretch gap-3 shrink-0 w-full lg:w-auto lg:items-center">
@@ -373,26 +537,26 @@ export default function InstitutionHqCampusAccounts() {
           <h2 className="text-base font-semibold text-slate-900">校区列表</h2>
           <p className="text-sm text-slate-500 tabular-nums">共 {campuses.length} 个校区</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm text-left min-w-[1120px]">
+        <div className="overflow-x-auto min-w-0">
+          <table className="border-collapse table-fixed w-full min-w-[760px] text-sm text-left">
             <colgroup>
-              <col className="w-[22%]" />
-              <col className="w-[7%]" />
-              <col className="w-[12%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[29%]" />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '27%' }} />
             </colgroup>
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/90 text-xs font-medium text-slate-600">
-                <th className="px-4 py-2.5 text-left align-middle">校区</th>
-                <th className="px-3 py-2.5 text-left align-middle whitespace-nowrap">状态</th>
-                <th className="px-3 py-2.5 text-left align-middle">管理员手机</th>
-                <th className="px-3 py-2.5 text-left align-middle">联系人</th>
-                <th className="px-3 py-2.5 text-right align-middle">开业划拨</th>
-                <th className="px-3 py-2.5 text-right align-middle">账户余额</th>
-                <th className="px-4 py-2.5 text-right align-middle whitespace-nowrap">操作</th>
+              <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-medium text-slate-600">
+                <th className="pl-3 pr-2 py-2.5 text-left align-middle min-w-0">校区</th>
+                <th className="px-2 py-2.5 text-left align-middle whitespace-nowrap">状态</th>
+                <th className="px-2 py-2.5 text-left align-middle whitespace-nowrap">管理员手机</th>
+                <th className="px-2 py-2.5 text-left align-middle whitespace-nowrap">联系人</th>
+                <th className="px-2 py-2.5 text-right align-middle whitespace-nowrap">开业划拨</th>
+                <th className="px-2 py-2.5 text-right align-middle whitespace-nowrap">账户余额</th>
+                <th className="pl-2 pr-3 py-2.5 text-right align-middle whitespace-nowrap">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -404,66 +568,60 @@ export default function InstitutionHqCampusAccounts() {
                 ].filter(Boolean)
                 return (
                   <tr key={c.id} className={`align-middle ${c.disabled ? 'bg-amber-50/40' : 'hover:bg-slate-50/60'}`}>
-                    <td className="px-4 py-3 align-middle min-w-0">
-                      <div className="text-sm font-semibold text-slate-900 leading-snug">{c.campusName}</div>
+                    <td className="pl-3 pr-2 py-2.5 align-middle min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 break-words" title={c.campusName || ''}>
+                        {c.campusName}
+                      </div>
                       {(c.campusShortCode || c.region || c.address) ? (
-                        <div className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                        <div className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">
                           {[c.campusShortCode, c.region, c.address].filter(Boolean).join(' · ')}
                         </div>
                       ) : null}
                       {planBits.length ? (
-                        <div className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2" title={planBits.join(' · ')}>
+                        <div className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2" title={planBits.join(' · ')}>
                           {planBits.join(' · ')}
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-3 py-3 align-middle whitespace-nowrap">
-                      <div className="inline-flex flex-nowrap items-center gap-1">
+                    <td className="px-2 py-2.5 align-middle whitespace-nowrap">
+                      <div className="inline-flex flex-nowrap items-center gap-0.5">
                         {c.isSeed ? (
-                          <span className="inline-flex shrink-0 text-xs font-medium rounded-md bg-sky-100 px-2 py-0.5 text-sky-900">预置</span>
+                          <span className="inline-flex shrink-0 text-[10px] font-medium rounded px-1.5 py-0.5 bg-sky-100 text-sky-900">预置</span>
                         ) : (
-                          <span className="inline-flex shrink-0 text-xs font-medium rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">已开设</span>
+                          <span className="inline-flex shrink-0 text-[10px] font-medium rounded px-1.5 py-0.5 bg-slate-100 text-slate-700">已开设</span>
                         )}
                         {c.disabled ? (
-                          <span className="inline-flex shrink-0 text-xs font-medium rounded-md bg-amber-100 px-2 py-0.5 text-amber-900">已禁用</span>
+                          <span className="inline-flex shrink-0 text-[10px] font-medium rounded px-1.5 py-0.5 bg-amber-100 text-amber-900">已禁用</span>
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-3 py-3 align-middle tabular-nums text-sm text-slate-800 font-medium whitespace-nowrap">
+                    <td className="px-2 py-2.5 align-middle tabular-nums text-sm text-slate-800 font-medium whitespace-nowrap">
                       {normalizePartnerPhoneDigits(c.adminPhone) || '—'}
                     </td>
-                    <td className="px-3 py-3 align-middle text-sm text-slate-700 min-w-0">
-                      <span className="block truncate" title={c.contactName || ''}>
+                    <td className="px-2 py-2.5 align-middle text-sm text-slate-700 min-w-0">
+                      <span className="block truncate whitespace-nowrap" title={c.contactName || ''}>
                         {c.contactName || '—'}
                       </span>
                     </td>
-                    <td className="px-3 py-3 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
+                    <td className="px-2 py-2.5 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
                       {!c.isSeed ? `¥${fmtMoney(Number(c.openingBalanceAllocated) || 0)}` : '—'}
                     </td>
-                    <td className="px-3 py-3 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
+                    <td className="px-2 py-2.5 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
                       {campusWalletPreview[c.id] != null ? `¥${fmtMoney(campusWalletPreview[c.id])}` : '—'}
                     </td>
-                    <td className="px-4 py-3 align-middle whitespace-nowrap">
-                      <div className="flex flex-nowrap items-center justify-end gap-1.5">
-                        {!c.disabled ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (c.isSeed) {
-                                setSeedEditCampus(c)
-                                setSeedPwd('')
-                                setSeedPwd2('')
-                                setSeedPwdErr('')
-                              } else {
-                                openEditCampus(c)
-                              }
-                            }}
-                            className={rowBtn('ghost')}
-                          >
-                            {c.isSeed ? '重置密码' : '编辑'}
+                    <td className="pl-2 pr-3 py-2 align-middle text-right">
+                      <div className="inline-flex max-w-full flex-wrap items-center justify-end gap-1.5">
+                        {!c.disabled && !c.isSeed ? (
+                          <button type="button" onClick={() => openEditCampus(c)} className={rowBtn('ghost')}>
+                            编辑
                           </button>
                         ) : null}
-                        {!c.isSeed && !c.disabled ? (
+                        {!c.isSeed && !c.disabled && !campusHasAssignedAdmin(c) ? (
+                          <button type="button" onClick={() => openAdminConfig(c)} className={rowBtn('ghost')}>
+                            校区管理员配置
+                          </button>
+                        ) : null}
+                        {!c.isSeed && !c.disabled && campusHasAssignedAdmin(c) ? (
                           <button type="button" onClick={() => openReplaceAdmin(c)} className={rowBtn('ghost')}>
                             换绑手机
                           </button>
@@ -477,15 +635,25 @@ export default function InstitutionHqCampusAccounts() {
                           type="button"
                           disabled={Boolean(c.disabled)}
                           onClick={() => !c.disabled && setAllocateCampus(c)}
-                          className={rowBtn('accent')}
+                          className={rowBtn('ghost')}
                         >
                           拨款
                         </button>
+                        {!c.disabled ? (
+                          <button type="button" onClick={() => openStaffManageModal(c)} className={rowBtn('ghost')}>
+                            配置管理员
+                          </button>
+                        ) : null}
                         <button
                           type="button"
-                          disabled={busyId === c.id || Boolean(c.disabled)}
+                          disabled={
+                            busyId === c.id ||
+                            Boolean(c.disabled) ||
+                            (!c.isSeed && !campusHasAssignedAdmin(c))
+                          }
                           onClick={() => openCampus(c)}
                           className={rowBtn('primary')}
+                          title={!c.isSeed && !campusHasAssignedAdmin(c) ? '请先完成校区管理员配置' : undefined}
                         >
                           {busyId === c.id ? '打开…' : '进入'}
                         </button>
@@ -567,59 +735,229 @@ export default function InstitutionHqCampusAccounts() {
         </div>
       ) : null}
 
-      {seedEditCampus ? (
-        <div className="fixed inset-0 z-[140] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="hq-campus-seed-edit-title">
+      {adminConfigCampus ? (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="hq-campus-admin-cfg-title">
           <button
             type="button"
             className="absolute inset-0 bg-slate-900/50 backdrop-blur-[1px]"
             aria-label="关闭"
-            onClick={closeSeedEditCampus}
+            onClick={closeAdminConfig}
           />
           <form
             className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 flex flex-col"
-            onSubmit={submitSeedEditPwd}
+            onSubmit={submitAdminConfig}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-5 sm:p-6 border-b border-slate-100 shrink-0">
-              <h2 id="hq-campus-seed-edit-title" className="text-base font-bold text-slate-900">
-                编辑校区主号 · {seedEditCampus.campusName}
+              <h2 id="hq-campus-admin-cfg-title" className="text-base font-bold text-slate-900">
+                校区管理员配置 · {adminConfigCampus.campusName}
               </h2>
               <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                预置校区不支持修改存档资料、更换登录手机或解散。如需完整管理，请使用「开设校区」新增校区。此处仅可重置当前管理员手机号对应的加盟商主号登录密码。
-              </p>
-              <p className="text-xs text-slate-600 mt-2 tabular-nums">
-                登录手机：<span className="font-medium text-slate-800">{normalizePartnerPhoneDigits(seedEditCampus.adminPhone) || '—'}</span>
+                绑定该校区的加盟商主账号登录手机号。保存后将生成工作台入口并与开业划拨数据对齐；更换手机号请使用列表中的「换绑手机」。
               </p>
             </div>
             <div className="p-5 sm:p-6 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">新密码（至少 6 位）</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">管理员手机（11 位，登录账号）*</label>
                 <input
-                  type="text"
-                  autoComplete="off"
-                  value={seedPwd}
-                  onChange={(e) => setSeedPwd(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  required
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  value={adminCfgPhone}
+                  onChange={(e) => setAdminCfgPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm tabular-nums"
+                  placeholder="11 位手机号"
+                  maxLength={11}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">确认新密码</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">联系人 / 展示姓名（选填）</label>
                 <input
-                  type="text"
-                  autoComplete="off"
-                  value={seedPwd2}
-                  onChange={(e) => setSeedPwd2(e.target.value)}
+                  value={adminCfgContact}
+                  onChange={(e) => setAdminCfgContact(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  placeholder="工作台展示用"
+                  maxLength={32}
                 />
               </div>
-              {seedPwdErr ? <p className="text-sm text-rose-600">{seedPwdErr}</p> : null}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">登录提示（选填）</label>
+                <textarea
+                  value={adminCfgHint}
+                  onChange={(e) => setAdminCfgHint(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-y"
+                  placeholder="留空则使用默认提示"
+                  maxLength={200}
+                />
+              </div>
+              {adminCfgErr ? <p className="text-sm text-rose-600">{adminCfgErr}</p> : null}
             </div>
             <div className="p-4 sm:px-6 border-t border-slate-100 flex justify-end gap-2 shrink-0 bg-slate-50/80 rounded-b-2xl">
-              <button type="button" onClick={closeSeedEditCampus} className={btn(BTN.secondary)}>
+              <button type="button" onClick={closeAdminConfig} className={btn(BTN.secondary)}>
                 取消
               </button>
               <button type="submit" className={btn(BTN.primary)}>
-                保存密码
+                保存
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {staffModalCampus ? (
+        <div className="fixed inset-0 z-[145] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="hq-staff-modal-title">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-[1px]"
+            aria-label="关闭"
+            onClick={closeStaffManageModal}
+          />
+          <div
+            className="relative w-full max-w-3xl max-h-[min(90vh,720px)] rounded-2xl border border-slate-200 bg-white shadow-xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-100 shrink-0 flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 id="hq-staff-modal-title" className="text-base font-bold text-slate-900">
+                  配置管理员 · {staffModalCampus.campusName}
+                </h2>
+              </div>
+              <button type="button" onClick={openStaffAddModal} className={btn(BTN.primary, 'shrink-0')}>
+                添加主要管理员
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 min-h-0 p-4 sm:p-6">
+              {staffAccounts.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-10">
+                  暂无子账号，请点击右上角「添加主要管理员」，在弹出窗口中填写并保存。
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-sm text-left min-w-[640px]">
+                    <thead className="bg-slate-50 text-xs font-medium text-slate-600 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-2.5">名称</th>
+                        <th className="px-4 py-2.5">角色</th>
+                        <th className="px-4 py-2.5 whitespace-nowrap">手机号</th>
+                        <th className="px-4 py-2.5 text-right whitespace-nowrap">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {staffAccounts.map((acc) => (
+                        <tr key={acc.id} className={acc.disabled ? 'bg-slate-50/80' : ''}>
+                          <td className="px-4 py-2.5 font-medium text-slate-900">
+                            {acc.name}
+                            {acc.disabled ? (
+                              <span className="ml-2 text-[10px] font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                已禁用
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-700">{acc.roleName || '—'}</td>
+                          <td className="px-4 py-2.5 tabular-nums text-slate-800">{acc.phone || '—'}</td>
+                          <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                            <div className="inline-flex flex-nowrap items-center justify-end gap-1">
+                              <button type="button" onClick={() => toggleStaffDisabled(acc)} className={rowBtn('ghost')}>
+                                {acc.disabled ? '启用' : '禁用'}
+                              </button>
+                              <button type="button" onClick={() => resetStaffPassword(acc)} className={rowBtn('ghost')}>
+                                重置密码
+                              </button>
+                              <button type="button" onClick={() => removeStaffAccount(acc)} className={rowBtn('danger')}>
+                                删除
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="p-4 sm:px-6 border-t border-slate-100 flex justify-end shrink-0 bg-slate-50/80">
+              <button type="button" onClick={closeStaffManageModal} className={btn(BTN.secondary)}>
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {staffModalCampus && staffAddOpen ? (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="hq-staff-add-modal-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/55 backdrop-blur-[1px]"
+            aria-label="关闭"
+            onClick={closeStaffAddModal}
+          />
+          <form
+            className="relative w-full max-w-lg max-h-[min(90vh,640px)] rounded-2xl border border-slate-200 bg-white shadow-xl flex flex-col overflow-hidden"
+            onSubmit={submitStaffAdd}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-100 shrink-0">
+              <h2 id="hq-staff-add-modal-title" className="text-base font-bold text-slate-900">
+                添加主要管理员
+              </h2>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                校区：{staffModalCampus.campusName}。填写登录姓名、手机号与初始密码即可；角色与权限请在加盟工作台「机构账号」中配置。
+              </p>
+            </div>
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">姓名 *</label>
+                  <input
+                    required
+                    value={staffAddName}
+                    onChange={(e) => setStaffAddName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                    maxLength={32}
+                  />
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-1">手机号（登录）*</label>
+                    <input
+                      required
+                      inputMode="numeric"
+                      value={staffAddPhone}
+                      onChange={(e) => setStaffAddPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm tabular-nums"
+                      maxLength={11}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-1">初始密码 *</label>
+                    <input
+                      required
+                      type="text"
+                      autoComplete="new-password"
+                      value={staffAddPassword}
+                      onChange={(e) => setStaffAddPassword(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      placeholder="至少 6 位"
+                    />
+                  </div>
+                </div>
+              </div>
+              {staffAddErr ? <p className="mt-3 text-sm text-rose-600">{staffAddErr}</p> : null}
+            </div>
+            <div className="p-4 sm:px-6 border-t border-slate-100 flex justify-end gap-2 shrink-0 bg-slate-50/80">
+              <button type="button" onClick={closeStaffAddModal} className={btn(BTN.secondary)}>
+                取消
+              </button>
+              <button type="submit" className={btn(BTN.primary)}>
+                保存
               </button>
             </div>
           </form>
@@ -771,9 +1109,9 @@ export default function InstitutionHqCampusAccounts() {
           >
             <div className="p-5 sm:p-6 border-b border-slate-100 shrink-0">
               <h2 id="hq-campus-modal-title" className="text-base font-bold text-slate-900">
-                开设校区 · 配置信息
+                开设校区 · 校区信息
               </h2>
-              <p className="text-xs text-slate-500 mt-1">带 * 为必填；保存后将出现在校区列表（渠道编码由系统自动生成，无需填写）。</p>
+              <p className="text-xs text-slate-500 mt-1">仅填写校区档案；管理员请在保存后于列表中使用「校区管理员配置」。带 * 为必填。</p>
             </div>
             <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -817,28 +1155,6 @@ export default function InstitutionHqCampusAccounts() {
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-y min-h-[2.5rem]"
                     placeholder="门牌、楼层、交通说明等"
                     maxLength={200}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">校区管理员姓名</label>
-                  <input
-                    value={form.contactName}
-                    onChange={(e) => setField('contactName', e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                    placeholder="用于工作台展示名"
-                    maxLength={32}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">管理员手机（登录账号）*</label>
-                  <input
-                    required
-                    inputMode="numeric"
-                    value={form.adminPhone}
-                    onChange={(e) => setField('adminPhone', e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm tabular-nums"
-                    placeholder="11 位手机号"
-                    maxLength={11}
                   />
                 </div>
                 <div className="sm:col-span-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3 space-y-2">
@@ -903,17 +1219,6 @@ export default function InstitutionHqCampusAccounts() {
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-y"
                     placeholder="仅机构总后台可见，如对接人、装修进度等"
                     maxLength={300}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">登录提示（选填）</label>
-                  <textarea
-                    value={form.passwordHint}
-                    onChange={(e) => setField('passwordHint', e.target.value)}
-                    rows={2}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-y"
-                    placeholder="留空则使用默认提示；可填写初始密码领取方式等"
-                    maxLength={200}
                   />
                 </div>
               </div>

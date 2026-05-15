@@ -328,7 +328,7 @@ function loadCustomCampuses() {
   if (typeof window === 'undefined') return []
   try {
     const arr = safeParse(localStorage.getItem(CAMPUSES_KEY), [])
-    return Array.isArray(arr) ? arr.filter((x) => x && x.partnerId && x.adminPhone) : []
+    return Array.isArray(arr) ? arr.filter((x) => x && x.partnerId) : []
   } catch {
     return []
   }
@@ -353,7 +353,7 @@ export function listInstitutionCampuses() {
 /**
  * @param {{
  *   campusName: string
- *   adminPhone: string
+ *   adminPhone?: string
  *   contactName?: string
  *   region?: string
  *   address?: string
@@ -384,16 +384,19 @@ export function addInstitutionCampus(input) {
   if (openingBalanceAllocated < 0) return { ok: false, msg: '划拨额度不能为负数' }
 
   if (!name) return { ok: false, msg: '请填写校区名称' }
-  if (!/^1\d{10}$/.test(phone)) return { ok: false, msg: '请输入11位校区管理员手机号' }
 
-  const partnerId = `p_${phone}`
-  const refCode = `FJ-${phone.slice(-4)}-${Date.now().toString(36).slice(-4).toUpperCase()}`
+  const id = `campus-${Date.now().toString(36)}`
+  const hasAdminPhone = /^1\d{10}$/.test(phone)
+  const partnerId = hasAdminPhone ? `p_${phone}` : `p_pending_${id}`
+  const refCode = hasAdminPhone
+    ? `FJ-${phone.slice(-4)}-${Date.now().toString(36).slice(-4).toUpperCase()}`
+    : `FJ-PEND-${Date.now().toString(36).slice(-4).toUpperCase()}`
   const row = {
-    id: `campus-${Date.now().toString(36)}`,
+    id,
     partnerId,
     refCode,
     campusName: name,
-    adminPhone: phone,
+    adminPhone: hasAdminPhone ? phone : '',
     passwordHint:
       passwordHintCustom ||
       '首次登录请使用「忘记密码」流程，或联系机构总管理员获取初始密码。',
@@ -408,7 +411,7 @@ export function addInstitutionCampus(input) {
   if (studentCapacity) row.studentCapacity = studentCapacity
   if (remark) row.remark = remark
   const existing = listInstitutionCampuses()
-  if (existing.some((x) => x.partnerId === partnerId || normalizePartnerPhoneDigits(x.adminPhone) === phone)) {
+  if (hasAdminPhone && existing.some((x) => x.partnerId === partnerId || normalizePartnerPhoneDigits(x.adminPhone) === phone)) {
     return { ok: false, msg: '该手机号已对应一个校区' }
   }
 
@@ -565,6 +568,67 @@ export function changeInstitutionCampusAdminPhone(campusId, newAdminPhoneInput) 
   return { ok: true, campus: row }
 }
 
+/**
+ * 首次绑定校区管理员手机（仅自建且尚未绑定 11 位主号时）。迁移工作台、pending 开业额度、机构子账号桶；不迁移登录密码（新号无旧密码）。
+ */
+export function assignInstitutionCampusAdmin(campusId, input) {
+  const id = String(campusId || '').trim()
+  const newPhone = normalizePartnerPhoneDigits(input?.adminPhone)
+  if (!id) return { ok: false, msg: '无效校区' }
+  if (SEED_CAMPUS.some((s) => s.id === id)) return { ok: false, msg: '预置校区不可绑定管理员' }
+  if (!/^1\d{10}$/.test(newPhone)) return { ok: false, msg: '请输入11位管理员手机号' }
+
+  const list = loadCustomCampuses()
+  const idx = list.findIndex((x) => x.id === id)
+  if (idx === -1) return { ok: false, msg: '未找到该校区记录' }
+  const row = { ...list[idx] }
+  const oldPhone = normalizePartnerPhoneDigits(row.adminPhone)
+  if (/^1\d{10}$/.test(oldPhone)) {
+    return { ok: false, msg: '该校区已绑定管理员，更换请使用「换绑手机」' }
+  }
+
+  const oldPid = String(row.partnerId || '').trim()
+  const oldRef = String(row.refCode || '').trim()
+  const newPid = `p_${newPhone}`
+  const dup = listInstitutionCampuses().some((x) => normalizePartnerPhoneDigits(x.adminPhone) === newPhone && x.id !== id)
+  if (dup) return { ok: false, msg: '该手机号已被其他校区使用' }
+  const newRef = `FJ-${newPhone.slice(-4)}-${Date.now().toString(36).slice(-4).toUpperCase()}`
+
+  const wsM = migrateFranchiseWorkspacePartnerId(oldPid, newPid, newRef)
+  if (!wsM.ok) return wsM
+
+  const iaM = migrateInstitutionAccountsPartnerId(oldPid, newPid, newRef)
+  if (!iaM.ok) {
+    migrateFranchiseWorkspacePartnerId(newPid, oldPid, oldRef)
+    return iaM
+  }
+
+  migratePendingWorkspacePartnerKey(oldPid, newPid, newRef)
+
+  if (/^1\d{10}$/.test(oldPhone)) {
+    const cr = migratePartnerLoginCredentialsToNewPhone(oldPhone, newPhone)
+    if (!cr.ok) {
+      migratePendingWorkspacePartnerKey(newPid, oldPid, oldRef)
+      migrateInstitutionAccountsPartnerId(newPid, oldPid, oldRef)
+      migrateFranchiseWorkspacePartnerId(newPid, oldPid, oldRef)
+      return cr
+    }
+  }
+
+  row.adminPhone = newPhone
+  row.partnerId = newPid
+  row.refCode = newRef
+  const cn = String(input?.contactName ?? '').trim()
+  if (cn) row.contactName = cn
+  else delete row.contactName
+  const ph = String(input?.passwordHint ?? '').trim()
+  row.passwordHint = ph || '首次登录请使用「忘记密码」流程，或联系机构总管理员获取初始密码。'
+
+  list[idx] = row
+  saveCustomCampuses(list)
+  return { ok: true, campus: row }
+}
+
 /** 加盟商主号登录：若该手机号在机构校区列表中且对应校区均为「禁用」，则不可登录 */
 export function isFranchiseCampusLoginDisabled(phoneDigits) {
   const p = normalizePartnerPhoneDigits(phoneDigits)
@@ -592,6 +656,11 @@ export function openCampusFranchisePartnerInNewTab(campus) {
   if (typeof window === 'undefined') return
   if (Boolean(campus?.disabled)) {
     window.alert('该校区已禁用，无法打开工作台')
+    return
+  }
+  const phone = normalizePartnerPhoneDigits(campus?.adminPhone)
+  if (!/^1\d{10}$/.test(phone)) {
+    window.alert('请先在列表中使用「校区管理员配置」绑定管理员手机号，再进入工作台。')
     return
   }
   const payload = buildPartnerSessionFromCampus(campus)

@@ -18,7 +18,7 @@ function safeParse(json, fallback) {
   }
 }
 
-/** 登录页预填演示主账号（无总部开户档案时机构名/加盟编码与此对齐） */
+/** 登录页预填演示主账号（无总部开户档案时机构名与 refCode 与此对齐） */
 export const FRANCHISE_PREVIEW_DEMO_MAIN_PHONE = '13800138000'
 
 /**
@@ -750,7 +750,7 @@ export function buildPartnerSessionPayloadForLogin(phoneDigits) {
       loginAt: new Date().toISOString(),
     }
   }
-  /** 预览默认号：固定机构名与加盟编码，便于学具/机构账号等演示数据与 localStorage 桶一致 */
+  /** 预览默认号：固定机构名与 refCode，便于学具/机构账号等数据与 localStorage 桶一致 */
   if (p === FRANCHISE_PREVIEW_DEMO_MAIN_PHONE) {
     return {
       partnerId: 'p_13800138000',

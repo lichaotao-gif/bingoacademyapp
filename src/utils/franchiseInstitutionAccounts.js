@@ -192,6 +192,29 @@ export function listInstitutionAccounts(partnerId) {
   return (g.bucket.accounts || []).map((a) => ({ ...a }))
 }
 
+/** 若该校下尚无角色，自动创建一个「校区员工」角色并分配常用菜单，便于总后台直接添加子账号 */
+export function ensureDefaultInstitutionRoleIfEmpty(partnerId) {
+  const g = getBucket(partnerId)
+  if (!g) return { ok: false, msg: '无效加盟商' }
+  const roles = g.bucket.roles || []
+  if (roles.length > 0) return { ok: true, roleId: roles[0].id }
+  const menuKeys = normalizeMenuKeys(FRANCHISE_PARTNER_MENUS_FOR_ROLE.map((x) => x.key))
+  return upsertInstitutionRole(partnerId, { name: '校区员工', menuKeys })
+}
+
+export function setInstitutionAccountDisabled(partnerId, accountId, disabled) {
+  const g = getBucket(partnerId)
+  if (!g) return { ok: false, msg: '无效加盟商' }
+  const id = String(accountId || '').trim()
+  const list = [...(g.bucket.accounts || [])]
+  const idx = list.findIndex((a) => a.id === id)
+  if (idx === -1) return { ok: false, msg: '账号不存在' }
+  list[idx] = { ...list[idx], disabled: Boolean(disabled) }
+  g.bucket.accounts = list
+  saveRoot(g.root)
+  return { ok: true }
+}
+
 function ownerPhonesFromProvision() {
   try {
     const raw = localStorage.getItem('bingo_franchise_partner_provision_v1')
@@ -235,6 +258,7 @@ export function addInstitutionAccount(partnerId, refCode, orgName, input) {
     roleId,
     roleName: role.name,
     menuKeys: normalizeMenuKeys(role.menuKeys),
+    disabled: false,
     createdAt: new Date().toISOString(),
   }
   g.bucket.accounts = [...(g.bucket.accounts || []), row]
@@ -317,6 +341,7 @@ export function tryInstitutionStaffLogin(phoneDigits, password) {
     const bucket = root.byPartnerId[partnerId]
     for (const acc of bucket.accounts || []) {
       if (String(acc.phone) !== p) continue
+      if (acc.disabled === true) return { ok: false, msg: '该账号已禁用' }
       if (acc.password !== pw) return { ok: false, msg: '密码错误' }
       const role = (bucket.roles || []).find((r) => r.id === acc.roleId)
       const menuKeys = normalizeMenuKeys(role?.menuKeys?.length ? role.menuKeys : acc.menuKeys)
