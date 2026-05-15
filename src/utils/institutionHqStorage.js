@@ -15,6 +15,7 @@ import {
   migratePartnerLoginCredentialsToNewPhone,
   normalizePartnerPhoneDigits,
   queuePartnerSessionForNewTab,
+  resolvePublicSitePath,
 } from './franchisePartnerStorage.js'
 import { migrateInstitutionAccountsPartnerId } from './franchiseInstitutionAccounts.js'
 
@@ -280,6 +281,11 @@ const SEED_CAMPUS = [
   },
 ]
 
+const REMOVED_DEFAULT_EDITABLE_CAMPUS_IDS = new Set([
+  'campus-default-bj-huixin',
+  'campus-default-sh-pudong',
+])
+
 export function getInstitutionHqSession() {
   if (typeof window === 'undefined') return null
   const raw = localStorage.getItem(SESSION_KEY)
@@ -328,7 +334,13 @@ function loadCustomCampuses() {
   if (typeof window === 'undefined') return []
   try {
     const arr = safeParse(localStorage.getItem(CAMPUSES_KEY), [])
-    return Array.isArray(arr) ? arr.filter((x) => x && x.partnerId) : []
+    const list = Array.isArray(arr) ? arr.filter((x) => x && x.partnerId) : []
+    const next = list.filter((x) => !REMOVED_DEFAULT_EDITABLE_CAMPUS_IDS.has(x.id))
+    if (next.length !== list.length) {
+      saveCustomCampuses(next)
+      return next
+    }
+    return list
   } catch {
     return []
   }
@@ -355,6 +367,7 @@ export function listInstitutionCampuses() {
  *   campusName: string
  *   adminPhone?: string
  *   contactName?: string
+ *   contactPhone?: string
  *   region?: string
  *   address?: string
  *   campusShortCode?: string
@@ -369,6 +382,10 @@ export function addInstitutionCampus(input) {
   const name = String(input?.campusName || '').trim()
   const phone = normalizePartnerPhoneDigits(input?.adminPhone)
   const contactName = String(input?.contactName || '').trim()
+  const contactPhone = String(input?.contactPhone || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 32)
   const region = String(input?.region || '').trim()
   const address = String(input?.address || '').trim()
   const campusShortCode = String(input?.campusShortCode || '').trim()
@@ -404,6 +421,7 @@ export function addInstitutionCampus(input) {
     openingBalanceAllocated,
   }
   if (contactName) row.contactName = contactName
+  if (contactPhone) row.contactPhone = contactPhone
   if (region) row.region = region
   if (address) row.address = address
   if (campusShortCode) row.campusShortCode = campusShortCode
@@ -448,7 +466,7 @@ export function removeInstitutionCampus(campusId) {
 /**
  * 更新已开设校区（不含管理员手机号、不含开业划拨；预置校区不可改）
  * @param {string} campusId
- * @param {Partial<{ campusName: string, contactName: string, region: string, address: string, campusShortCode: string, plannedOpenDate: string, studentCapacity: string|number, remark: string, passwordHint: string }>} input
+ * @param {Partial<{ campusName: string, contactName: string, contactPhone: string, region: string, address: string, campusShortCode: string, plannedOpenDate: string, studentCapacity: string|number, remark: string, passwordHint: string }>} input
  */
 export function updateInstitutionCampus(campusId, input) {
   const id = String(campusId || '').trim()
@@ -466,6 +484,15 @@ export function updateInstitutionCampus(campusId, input) {
   const contactName = String(input?.contactName ?? '').trim()
   if (contactName) cur.contactName = contactName
   else delete cur.contactName
+
+  if (Object.prototype.hasOwnProperty.call(input || {}, 'contactPhone')) {
+    const contactPhone = String(input?.contactPhone ?? '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .slice(0, 32)
+    if (contactPhone) cur.contactPhone = contactPhone
+    else delete cur.contactPhone
+  }
 
   const region = String(input?.region ?? '').trim()
   if (region) cur.region = region
@@ -665,8 +692,8 @@ export function openCampusFranchisePartnerInNewTab(campus) {
   }
   const payload = buildPartnerSessionFromCampus(campus)
   queuePartnerSessionForNewTab(payload)
-  const u = new URL('franchise-partner/dashboard', window.location.origin + import.meta.env.BASE_URL)
-  window.open(u.href, '_blank', 'noopener,noreferrer')
+  const u = resolvePublicSitePath('/franchise-partner/dashboard')
+  window.open(u, '_blank', 'noopener,noreferrer')
 }
 
 /**

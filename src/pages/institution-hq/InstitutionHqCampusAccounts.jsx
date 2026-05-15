@@ -44,6 +44,8 @@ const emptyForm = () => ({
   campusShortCode: '',
   region: '',
   address: '',
+  contactName: '',
+  contactPhone: '',
   plannedOpenDate: '',
   studentCapacity: '',
   remark: '',
@@ -56,6 +58,7 @@ const emptyEditForm = () => ({
   region: '',
   address: '',
   contactName: '',
+  contactPhone: '',
   adminPhone: '',
   plannedOpenDate: '',
   studentCapacity: '',
@@ -71,6 +74,7 @@ function editFormFromCampus(c) {
     region: c.region || '',
     address: c.address || '',
     contactName: c.contactName || '',
+    contactPhone: c.contactPhone || '',
     adminPhone: c.adminPhone || '',
     plannedOpenDate: c.plannedOpenDate || '',
     studentCapacity: c.studentCapacity != null && c.studentCapacity !== '' ? String(c.studentCapacity) : '',
@@ -113,6 +117,32 @@ function rowBtn(variant) {
 
 function campusHasAssignedAdmin(c) {
   return /^1\d{10}$/.test(normalizePartnerPhoneDigits(c?.adminPhone))
+}
+
+/** 校区列表：联系人「姓名/电话」整行完整展示 */
+function CampusListContactCell({ campus: c }) {
+  const name = String(c.contactName || '').trim()
+  const phone = String(c.contactPhone || '').trim()
+
+  let contactLine = '—'
+  if (name && phone) contactLine = `${name}/${phone}`
+  else if (name) contactLine = name
+  else if (phone) contactLine = phone
+
+  return (
+    <span className={`inline-block whitespace-nowrap ${contactLine === '—' ? 'text-slate-400' : 'text-slate-800'}`} title={contactLine}>
+      {name && phone ? (
+        <>
+          <span className="font-semibold">{name}</span>
+          <span className="text-slate-500 tabular-nums">/{phone}</span>
+        </>
+      ) : phone ? (
+        <span className="tabular-nums">{phone}</span>
+      ) : (
+        contactLine
+      )}
+    </span>
+  )
 }
 
 export default function InstitutionHqCampusAccounts() {
@@ -229,6 +259,8 @@ export default function InstitutionHqCampusAccounts() {
       region: form.region,
       address: form.address,
       campusShortCode: form.campusShortCode,
+      contactName: form.contactName,
+      contactPhone: form.contactPhone,
       plannedOpenDate: form.plannedOpenDate,
       studentCapacity: form.studentCapacity,
       remark: form.remark,
@@ -288,6 +320,7 @@ export default function InstitutionHqCampusAccounts() {
     const r = updateInstitutionCampus(editCampus.id, {
       campusName: editForm.campusName,
       contactName: editForm.contactName,
+      contactPhone: editForm.contactPhone,
       region: editForm.region,
       address: editForm.address,
       campusShortCode: editForm.campusShortCode,
@@ -515,7 +548,7 @@ export default function InstitutionHqCampusAccounts() {
             <div className="min-w-0">
               <h2 className="text-base font-semibold text-slate-900">开设校区</h2>
               <p className="text-sm text-slate-500 mt-1 leading-relaxed max-w-2xl">
-                先填写校区档案；开业划拨可选。管理员手机号请在保存后的列表中通过「校区管理员配置」单独绑定，绑定后方可进入加盟商工作台。
+                先填写校区档案；可选填对接联系人及联系电话。开业划拨可选。加盟商工作台登录手机号请在保存后的列表中通过「校区管理员配置」绑定，绑定后方可进入工作台。
               </p>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-stretch gap-3 shrink-0 w-full lg:w-auto lg:items-center">
@@ -538,25 +571,15 @@ export default function InstitutionHqCampusAccounts() {
           <p className="text-sm text-slate-500 tabular-nums">共 {campuses.length} 个校区</p>
         </div>
         <div className="overflow-x-auto min-w-0">
-          <table className="border-collapse table-fixed w-full min-w-[760px] text-sm text-left">
-            <colgroup>
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '27%' }} />
-            </colgroup>
+          <table className="border-collapse w-max min-w-full text-sm text-left text-slate-800 whitespace-nowrap">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-medium text-slate-600">
-                <th className="pl-3 pr-2 py-2.5 text-left align-middle min-w-0">校区</th>
-                <th className="px-2 py-2.5 text-left align-middle whitespace-nowrap">状态</th>
-                <th className="px-2 py-2.5 text-left align-middle whitespace-nowrap">管理员手机</th>
-                <th className="px-2 py-2.5 text-left align-middle whitespace-nowrap">联系人</th>
-                <th className="px-2 py-2.5 text-right align-middle whitespace-nowrap">开业划拨</th>
-                <th className="px-2 py-2.5 text-right align-middle whitespace-nowrap">账户余额</th>
-                <th className="pl-2 pr-3 py-2.5 text-right align-middle whitespace-nowrap">操作</th>
+              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600">
+                <th className="pl-4 pr-5 py-2.5 text-left align-middle">校区</th>
+                <th className="px-3 py-2.5 text-left align-middle">状态</th>
+                <th className="px-5 py-2.5 text-left align-middle">联系人 / 电话</th>
+                <th className="px-4 py-2.5 text-right align-middle">开业划拨</th>
+                <th className="px-4 py-2.5 text-right align-middle">账户余额</th>
+                <th className="pl-3 pr-4 py-2.5 text-left align-middle border-l border-slate-200/90 bg-slate-50/50">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -566,56 +589,54 @@ export default function InstitutionHqCampusAccounts() {
                   c.studentCapacity ? `容量 ${c.studentCapacity} 人` : '',
                   c.remark ? c.remark : '',
                 ].filter(Boolean)
+                const campusMeta = [c.campusShortCode, c.region, c.address].filter(Boolean).join(' · ')
+                const planLine = planBits.join(' · ')
+                const subLine = [campusMeta, planLine].filter(Boolean).join(' · ')
+                const campusTitle = [c.campusName, subLine].filter(Boolean).join('\n')
                 return (
-                  <tr key={c.id} className={`align-middle ${c.disabled ? 'bg-amber-50/40' : 'hover:bg-slate-50/60'}`}>
-                    <td className="pl-3 pr-2 py-2.5 align-middle min-w-0">
-                      <div className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 break-words" title={c.campusName || ''}>
-                        {c.campusName}
-                      </div>
-                      {(c.campusShortCode || c.region || c.address) ? (
-                        <div className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">
-                          {[c.campusShortCode, c.region, c.address].filter(Boolean).join(' · ')}
-                        </div>
-                      ) : null}
-                      {planBits.length ? (
-                        <div className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2" title={planBits.join(' · ')}>
-                          {planBits.join(' · ')}
-                        </div>
+                  <tr key={c.id} className={`align-middle ${c.disabled ? 'bg-amber-50/35' : 'hover:bg-slate-50/50'}`}>
+                    <td className="pl-4 pr-5 py-2.5 align-middle" title={campusTitle}>
+                      <span className="text-sm font-semibold text-slate-900">{c.campusName}</span>
+                      {subLine ? (
+                        <span className="ml-2 text-[11px] text-slate-500">{subLine}</span>
                       ) : null}
                     </td>
-                    <td className="px-2 py-2.5 align-middle whitespace-nowrap">
-                      <div className="inline-flex flex-nowrap items-center gap-0.5">
+                    <td className="px-3 py-2.5 align-middle">
+                      <div className="inline-flex flex-nowrap items-center gap-1">
                         {c.isSeed ? (
-                          <span className="inline-flex shrink-0 text-[10px] font-medium rounded px-1.5 py-0.5 bg-sky-100 text-sky-900">预置</span>
+                          <span className="inline-flex text-[10px] font-semibold rounded-md px-2 py-0.5 bg-sky-100 text-sky-900">预置</span>
                         ) : (
-                          <span className="inline-flex shrink-0 text-[10px] font-medium rounded px-1.5 py-0.5 bg-slate-100 text-slate-700">已开设</span>
+                          <span className="inline-flex text-[10px] font-semibold rounded-md px-2 py-0.5 bg-slate-100 text-slate-700">已开设</span>
                         )}
                         {c.disabled ? (
-                          <span className="inline-flex shrink-0 text-[10px] font-medium rounded px-1.5 py-0.5 bg-amber-100 text-amber-900">已禁用</span>
+                          <span className="inline-flex text-[10px] font-semibold rounded-md px-2 py-0.5 bg-amber-100 text-amber-900">已禁用</span>
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-2 py-2.5 align-middle tabular-nums text-sm text-slate-800 font-medium whitespace-nowrap">
-                      {normalizePartnerPhoneDigits(c.adminPhone) || '—'}
+                    <td className="px-5 py-2.5 align-middle">
+                      <CampusListContactCell campus={c} />
                     </td>
-                    <td className="px-2 py-2.5 align-middle text-sm text-slate-700 min-w-0">
-                      <span className="block truncate whitespace-nowrap" title={c.contactName || ''}>
-                        {c.contactName || '—'}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2.5 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
+                    <td className="px-4 py-2.5 align-middle text-right tabular-nums text-sm text-slate-800">
                       {!c.isSeed ? `¥${fmtMoney(Number(c.openingBalanceAllocated) || 0)}` : '—'}
                     </td>
-                    <td className="px-2 py-2.5 align-middle text-right tabular-nums text-sm text-slate-800 whitespace-nowrap">
+                    <td className="px-4 py-2.5 align-middle text-right tabular-nums text-sm text-slate-800">
                       {campusWalletPreview[c.id] != null ? `¥${fmtMoney(campusWalletPreview[c.id])}` : '—'}
                     </td>
-                    <td className="pl-2 pr-3 py-2 align-middle text-right">
-                      <div className="inline-flex max-w-full flex-wrap items-center justify-end gap-1.5">
-                        {!c.disabled && !c.isSeed ? (
-                          <button type="button" onClick={() => openEditCampus(c)} className={rowBtn('ghost')}>
-                            编辑
-                          </button>
-                        ) : null}
+                    <td className="pl-3 pr-4 py-2.5 align-middle border-l border-slate-100 bg-slate-50/20">
+                      <div className="inline-flex flex-nowrap items-center justify-start gap-1.5">
+                        <button
+                          type="button"
+                          disabled={Boolean(c.isSeed)}
+                          onClick={() => openEditCampus(c)}
+                          className={rowBtn('ghost')}
+                          title={
+                            c.isSeed
+                              ? '预置演示校区不可修改档案，请通过「开设校区」新增自建校区'
+                              : '修改校区名称、地址、联系人、计划开业等信息'
+                          }
+                        >
+                          编辑校区
+                        </button>
                         {!c.isSeed && !c.disabled && !campusHasAssignedAdmin(c) ? (
                           <button type="button" onClick={() => openAdminConfig(c)} className={rowBtn('ghost')}>
                             校区管理员配置
@@ -979,9 +1000,11 @@ export default function InstitutionHqCampusAccounts() {
           >
             <div className="p-5 sm:p-6 border-b border-slate-100 shrink-0">
               <h2 id="hq-campus-edit-title" className="text-base font-bold text-slate-900">
-                管理员修改 · {editCampus.campusName}
+                编辑校区 · {editCampus.campusName}
               </h2>
-              <p className="text-xs text-slate-500 mt-1">可修改校区资料与管理员展示信息。登录手机与渠道编码不可在此变更。</p>
+              <p className="text-xs text-slate-500 mt-1">
+                可修改校区名称、简称、地区与地址、联系人及电话、计划开业、容量、备注与登录提示。管理员登录手机号与渠道编码不可在此变更，请使用「换绑手机」或「校区管理员配置」。
+              </p>
             </div>
             <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -1024,12 +1047,23 @@ export default function InstitutionHqCampusAccounts() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">校区管理员姓名</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">联系人姓名（选填）</label>
                   <input
                     value={editForm.contactName}
                     onChange={(e) => setEditField('contactName', e.target.value)}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                     maxLength={32}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">联系电话（选填）</label>
+                  <input
+                    value={editForm.contactPhone}
+                    onChange={(e) => setEditField('contactPhone', e.target.value.replace(/\s+/g, ' ').slice(0, 32))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm tabular-nums"
+                    placeholder="手机或座机"
+                    maxLength={32}
+                    inputMode="tel"
                   />
                 </div>
                 <div>
@@ -1111,7 +1145,9 @@ export default function InstitutionHqCampusAccounts() {
               <h2 id="hq-campus-modal-title" className="text-base font-bold text-slate-900">
                 开设校区 · 校区信息
               </h2>
-              <p className="text-xs text-slate-500 mt-1">仅填写校区档案；管理员请在保存后于列表中使用「校区管理员配置」。带 * 为必填。</p>
+              <p className="text-xs text-slate-500 mt-1">
+                带 * 为必填。可选填对接联系人及联系电话；加盟商工作台登录手机号请在保存后于列表中使用「校区管理员配置」绑定。
+              </p>
             </div>
             <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -1124,6 +1160,27 @@ export default function InstitutionHqCampusAccounts() {
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                     placeholder="例如：滨江旗舰教学中心"
                     maxLength={80}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">联系人（选填）</label>
+                  <input
+                    value={form.contactName}
+                    onChange={(e) => setField('contactName', e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    placeholder="对接人、店长等"
+                    maxLength={32}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">联系电话（选填）</label>
+                  <input
+                    value={form.contactPhone}
+                    onChange={(e) => setField('contactPhone', e.target.value.replace(/\s+/g, ' ').slice(0, 32))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm tabular-nums"
+                    placeholder="手机或座机，可与登录管理员手机不同"
+                    maxLength={32}
+                    inputMode="tel"
                   />
                 </div>
                 <div>

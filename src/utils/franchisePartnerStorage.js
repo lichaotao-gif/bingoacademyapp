@@ -31,6 +31,19 @@ export function normalizePartnerPhoneDigits(raw) {
   return d
 }
 
+/**
+ * 与 `main.jsx` 中 BrowserRouter 的 basename（`import.meta.env.BASE_URL`）对齐，
+ * 生成可在 `window.open` 中使用的绝对 URL。避免 `new URL(relative, origin+base)` 在 base 无尾斜杠时解析到错误路径。
+ */
+export function resolvePublicSitePath(path) {
+  if (typeof window === 'undefined') return String(path || '')
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  const raw = String(import.meta.env.BASE_URL || '/')
+  const trimmed = raw.replace(/\/$/, '').replace(/^\//, '')
+  if (!trimmed) return `${window.location.origin}${cleanPath}`
+  return `${window.location.origin}/${trimmed}${cleanPath}`
+}
+
 /** 课程包（与站点课程 id 对齐） */
 export const FRANCHISE_PROMOTABLE_COURSES = [
   { id: 'ai-enlighten', name: '《AI启蒙：走进智能世界》', price: 299 },

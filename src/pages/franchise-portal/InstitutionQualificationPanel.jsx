@@ -284,30 +284,67 @@ export default function InstitutionQualificationPanel({
           <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/40">
             <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">待审核提交预览（未生效）</p>
             <p className="text-xs text-slate-500 mt-1">提交时间：{fmtTime(iq.pendingReview.submittedAt)}</p>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+              以下与本次提交表单一致；审核通过前对外仍以「当前生效资质」为准。
+            </p>
             <dl className="mt-3 w-full space-y-0">
-              <FieldRow label="机构名称">{iq.pendingReview.snapshot.orgName}</FieldRow>
-              <FieldRow label="法定代表人">{iq.pendingReview.snapshot.legalRepresentative}</FieldRow>
-              <FieldRow label="营业执照号">{iq.pendingReview.snapshot.businessLicenseNumber}</FieldRow>
-              <FieldRow label="负责人">
-                {iq.pendingReview.snapshot.principalName || '—'} ·{' '}
-                {iq.pendingReview.snapshot.principalPhone ? maskPhone(iq.pendingReview.snapshot.principalPhone) : '—'}
-              </FieldRow>
-              <FieldRow label="AI / 科技赛道">{yesNoLabel(iq.pendingReview.snapshot.isAiTechTrack)}</FieldRow>
-              <FieldRow label="现有生源">
-                {iq.pendingReview.snapshot.studentCount || '—'}
-                {iq.pendingReview.snapshot.studentAgeRange ? ` · ${iq.pendingReview.snapshot.studentAgeRange}` : ''}
-              </FieldRow>
-              {iq.pendingReview.snapshot.businessLicenseAttachment?.dataUrl ? (
-                <FieldRow label="营业执照电子版（待审）">
-                  <button
-                    type="button"
-                    onClick={() => downloadLicenseAttachment(iq.pendingReview.snapshot.businessLicenseAttachment)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-300 bg-white text-sky-800 text-xs font-semibold hover:bg-sky-50"
-                  >
-                    下载待审附件
-                  </button>
-                </FieldRow>
-              ) : null}
+              {(() => {
+                const ps = iq.pendingReview.snapshot
+                return (
+                  <>
+                    <FieldRow label="机构名称">{ps.orgName || '—'}</FieldRow>
+                    <FieldRow label="法定代表人">{ps.legalRepresentative || '—'}</FieldRow>
+                    <FieldRow label="机构地址">{ps.address || '—'}</FieldRow>
+                    <FieldRow label="联系人电话">{ps.contactPhone ? maskPhone(ps.contactPhone) : '—'}</FieldRow>
+                    <FieldRow label="营业执照号/统一社会信用代码">{ps.businessLicenseNumber || '—'}</FieldRow>
+                    <FieldRow label="营业执照">
+                      <div className="space-y-2 font-normal">
+                        {ps.businessLicenseAttachment?.dataUrl ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => downloadLicenseAttachment(ps.businessLicenseAttachment)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-300 bg-white text-sky-800 text-xs font-semibold hover:bg-sky-50"
+                            >
+                              下载待审电子版
+                            </button>
+                            <span className="text-xs text-slate-500 break-all">
+                              {ps.businessLicenseAttachment.fileName ||
+                                guessDownloadName(ps.businessLicenseAttachment.dataUrl)}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500">—</p>
+                        )}
+                        {ps.businessLicenseCopy ? (
+                          <p className="text-slate-700 text-sm leading-relaxed">{ps.businessLicenseCopy}</p>
+                        ) : null}
+                      </div>
+                    </FieldRow>
+                    <FieldRow label="经营范围">{ps.businessScope || '—'}</FieldRow>
+                    <FieldRow label="负责人姓名">{ps.principalName || '—'}</FieldRow>
+                    <FieldRow label="负责人电话">{ps.principalPhone ? maskPhone(ps.principalPhone) : '—'}</FieldRow>
+                    <FieldRow label="负责人身份证">{ps.principalIdNumber || '—'}</FieldRow>
+                    <FieldRow label="场地门头照片">
+                      <AttachmentPreview attachment={ps.venueFrontPhotoAttachment} label="门头照片（待审）" imageOnly />
+                    </FieldRow>
+                    <FieldRow label="教室照片">
+                      <AttachmentPreview attachment={ps.venueClassroomPhotoAttachment} label="教室照片（待审）" imageOnly />
+                    </FieldRow>
+                    <FieldRow label="AI / 科技赛道">{yesNoLabel(ps.isAiTechTrack)}</FieldRow>
+                    <FieldRow label="已开办项目">{ps.existingProjects || '—'}</FieldRow>
+                    <FieldRow label="现有生源">
+                      {ps.studentCount || '—'}
+                      {ps.studentAgeRange ? ` · ${ps.studentAgeRange}` : ''}
+                    </FieldRow>
+                    <FieldRow label="加盟专用教室">{yesNoLabel(ps.hasDedicatedClassroom)}</FieldRow>
+                    <FieldRow label="办学许可证">
+                      <AttachmentPreview attachment={ps.schoolPermitAttachment} label="办学许可证（待审）" />
+                      <p className="mt-1 text-xs text-slate-500 font-normal">非必录项，仅作资料留存，不作为强制审核项。</p>
+                    </FieldRow>
+                  </>
+                )
+              })()}
             </dl>
           </div>
         ) : null}
