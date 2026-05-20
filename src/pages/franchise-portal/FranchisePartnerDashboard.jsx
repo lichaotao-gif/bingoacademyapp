@@ -29,8 +29,6 @@ export default function FranchisePartnerDashboard() {
           {
             label: '当前账户余额（元）',
             value: fmtMoney(ws.balance),
-            sub: '+12.3% 较上月',
-            subClass: 'text-emerald-600',
             Icon: FlatIconCoins,
             iconBox: 'bg-amber-500/12 text-amber-600',
             bg: 'bg-gradient-to-br from-amber-50 to-white border-amber-100',
@@ -62,7 +60,9 @@ export default function FranchisePartnerDashboard() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] sm:text-xs text-slate-500 font-medium leading-tight line-clamp-2">{k.label}</p>
                   <p className="text-base sm:text-2xl font-bold text-slate-900 mt-1 sm:mt-2 tabular-nums break-all">{k.value}</p>
-                  <p className={`text-[10px] sm:text-xs mt-1 sm:mt-2 font-medium leading-tight ${k.subClass}`}>{k.sub}</p>
+                  {k.sub ? (
+                    <p className={`text-[10px] sm:text-xs mt-1 sm:mt-2 font-medium leading-tight ${k.subClass}`}>{k.sub}</p>
+                  ) : null}
                   {k.balanceActions ? (
                     <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 sm:gap-2">
                       <Link

@@ -58,7 +58,7 @@ export default function FranchisePartnerTeachingMaterialDetail() {
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] gap-0">
           <div className="relative bg-gradient-to-b from-slate-100 to-slate-50 flex items-center justify-center p-6 sm:p-10 min-h-[240px] lg:min-h-[360px]">
-            <div className="relative w-full max-w-lg aspect-[16/10] rounded-2xl overflow-hidden border border-slate-200/80 shadow-lg bg-slate-200/50">
+            <div className="relative w-full max-w-lg aspect-[4/3] rounded-2xl overflow-hidden border border-slate-200/80 shadow-lg bg-slate-200/50">
               <img src={coverSrc} alt={`${product.name} 主图`} className="absolute inset-0 w-full h-full object-cover" />
               {product.emoji ? (
                 <span className="absolute top-3 left-3 text-3xl drop-shadow-md bg-white/90 rounded-xl px-2 py-1" aria-hidden>

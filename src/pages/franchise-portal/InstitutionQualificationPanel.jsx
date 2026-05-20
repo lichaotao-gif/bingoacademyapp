@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   simulateInstitutionQualificationApprove,
   simulateInstitutionQualificationReject,
@@ -9,14 +9,17 @@ import {
   FieldRow,
   ReviewBadge,
   ReviewFileInput,
+  buildQualificationFormFromSnapshots,
   downloadLicenseAttachment,
-  emptyForm,
   fmtTime,
+  getChangedQualificationFieldKeys,
   guessDownloadName,
   isImageDataUrl,
   LICENSE_INPUT_ACCEPT,
   maskPhone,
   MAX_LICENSE_FILE_BYTES,
+  qualificationFieldsUnderReview,
+  validateQualificationFormForSubmit,
   yesNoLabel,
 } from './institutionQualificationShared'
 
@@ -39,72 +42,54 @@ export default function InstitutionQualificationPanel({
   modalTitle = '编辑机构资质',
 }) {
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState(() => buildQualificationFormFromSnapshots(null, null))
   const [submitErr, setSubmitErr] = useState('')
+  const submitErrRef = useRef(null)
   const [demoRejectReason, setDemoRejectReason] = useState('请上传更清晰的营业执照扫描件，四角完整可见。')
 
   const snap = iq?.approvedSnapshot
 
+  const fieldsUnderReview = useMemo(() => {
+    if (!iq?.pendingReview?.snapshot) return new Set()
+    return getChangedQualificationFieldKeys(snap, iq.pendingReview.snapshot)
+  }, [snap, iq?.pendingReview?.snapshot])
+
+  const fieldPending = (...keys) => qualificationFieldsUnderReview(fieldsUnderReview, keys)
+
   const openModal = useCallback(() => {
     if (!iq) return
-    const base = iq.pendingReview?.snapshot || snap || emptyForm
-    setForm({
-      orgName: base.orgName ?? '',
-      legalRepresentative: base.legalRepresentative ?? '',
-      address: base.address ?? '',
-      contactPhone: base.contactPhone ?? '',
-      businessLicenseNumber: base.businessLicenseNumber ?? '',
-      businessLicenseCopy: base.businessLicenseCopy ?? '',
-      businessScope: base.businessScope ?? '',
-      businessLicenseAttachment: base.businessLicenseAttachment?.dataUrl
-        ? {
-            fileName: base.businessLicenseAttachment.fileName,
-            dataUrl: base.businessLicenseAttachment.dataUrl,
-          }
-        : null,
-      principalName: base.principalName ?? '',
-      principalPhone: base.principalPhone ?? '',
-      principalIdNumber: base.principalIdNumber ?? '',
-      venueFrontPhotoAttachment: base.venueFrontPhotoAttachment?.dataUrl
-        ? {
-            fileName: base.venueFrontPhotoAttachment.fileName,
-            dataUrl: base.venueFrontPhotoAttachment.dataUrl,
-          }
-        : null,
-      venueClassroomPhotoAttachment: base.venueClassroomPhotoAttachment?.dataUrl
-        ? {
-            fileName: base.venueClassroomPhotoAttachment.fileName,
-            dataUrl: base.venueClassroomPhotoAttachment.dataUrl,
-          }
-        : null,
-      isAiTechTrack: base.isAiTechTrack ?? '',
-      existingProjects: base.existingProjects ?? '',
-      studentCount: base.studentCount ?? '',
-      studentAgeRange: base.studentAgeRange ?? '',
-      hasDedicatedClassroom: base.hasDedicatedClassroom ?? '',
-      schoolPermitAttachment: base.schoolPermitAttachment?.dataUrl
-        ? {
-            fileName: base.schoolPermitAttachment.fileName,
-            dataUrl: base.schoolPermitAttachment.dataUrl,
-          }
-        : null,
-    })
+    setForm(buildQualificationFormFromSnapshots(iq.pendingReview?.snapshot, snap))
     setSubmitErr('')
     setModalOpen(true)
   }, [iq, snap])
 
   useEffect(() => {
     if (!modalOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (e) => {
       if (e.key === 'Escape') setModalOpen(false)
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKey)
+    }
   }, [modalOpen])
+
+  useEffect(() => {
+    if (!submitErr) return
+    submitErrRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [submitErr])
 
   const handleSubmitForm = (e) => {
     e.preventDefault()
     setSubmitErr('')
+    const validationMsg = validateQualificationFormForSubmit(form)
+    if (validationMsg) {
+      setSubmitErr(validationMsg)
+      return
+    }
     const pid = String(partnerId || '').trim()
     const rc = String(refCode || '').trim()
     if (!pid || !rc) {
@@ -220,12 +205,25 @@ export default function InstitutionQualificationPanel({
             <p className="text-sm text-slate-500 py-8 text-center">正在加载机构档案…</p>
           ) : snap ? (
             <dl className="w-full">
-              <FieldRow label="机构名称">{snap.orgName || '—'}</FieldRow>
-              <FieldRow label="法定代表人">{snap.legalRepresentative || '—'}</FieldRow>
-              <FieldRow label="机构地址">{snap.address || '—'}</FieldRow>
-              <FieldRow label="联系人电话">{snap.contactPhone ? maskPhone(snap.contactPhone) : '—'}</FieldRow>
-              <FieldRow label="营业执照号/统一社会信用代码">{snap.businessLicenseNumber || '—'}</FieldRow>
-              <FieldRow label="营业执照">
+              <FieldRow label="机构名称" underReview={fieldPending('orgName')}>
+                {snap.orgName || '—'}
+              </FieldRow>
+              <FieldRow label="法定代表人" underReview={fieldPending('legalRepresentative')}>
+                {snap.legalRepresentative || '—'}
+              </FieldRow>
+              <FieldRow label="机构地址" underReview={fieldPending('address')}>
+                {snap.address || '—'}
+              </FieldRow>
+              <FieldRow label="联系人电话" underReview={fieldPending('contactPhone')}>
+                {snap.contactPhone ? maskPhone(snap.contactPhone) : '—'}
+              </FieldRow>
+              <FieldRow label="营业执照号/统一社会信用代码" underReview={fieldPending('businessLicenseNumber')}>
+                {snap.businessLicenseNumber || '—'}
+              </FieldRow>
+              <FieldRow
+                label="营业执照"
+                underReview={fieldPending('businessLicenseAttachment', 'businessLicenseCopy')}
+              >
                 <div className="space-y-2 font-normal">
                   {snap.businessLicenseAttachment?.dataUrl ? (
                     <div className="flex flex-wrap items-center gap-2">
@@ -248,24 +246,38 @@ export default function InstitutionQualificationPanel({
                   ) : null}
                 </div>
               </FieldRow>
-              <FieldRow label="经营范围">{snap.businessScope || '—'}</FieldRow>
-              <FieldRow label="负责人姓名">{snap.principalName || '—'}</FieldRow>
-              <FieldRow label="负责人电话">{snap.principalPhone ? maskPhone(snap.principalPhone) : '—'}</FieldRow>
-              <FieldRow label="负责人身份证">{snap.principalIdNumber || '—'}</FieldRow>
-              <FieldRow label="场地门头照片">
+              <FieldRow label="经营范围" underReview={fieldPending('businessScope')}>
+                {snap.businessScope || '—'}
+              </FieldRow>
+              <FieldRow label="负责人姓名" underReview={fieldPending('principalName')}>
+                {snap.principalName || '—'}
+              </FieldRow>
+              <FieldRow label="负责人电话" underReview={fieldPending('principalPhone')}>
+                {snap.principalPhone ? maskPhone(snap.principalPhone) : '—'}
+              </FieldRow>
+              <FieldRow label="负责人身份证" underReview={fieldPending('principalIdNumber')}>
+                {snap.principalIdNumber || '—'}
+              </FieldRow>
+              <FieldRow label="场地门头照片" underReview={fieldPending('venueFrontPhotoAttachment')}>
                 <AttachmentPreview attachment={snap.venueFrontPhotoAttachment} label="门头照片" imageOnly />
               </FieldRow>
-              <FieldRow label="教室照片">
+              <FieldRow label="教室照片" underReview={fieldPending('venueClassroomPhotoAttachment')}>
                 <AttachmentPreview attachment={snap.venueClassroomPhotoAttachment} label="教室照片" imageOnly />
               </FieldRow>
-              <FieldRow label="AI / 科技赛道">{yesNoLabel(snap.isAiTechTrack)}</FieldRow>
-              <FieldRow label="已开办项目">{snap.existingProjects || '—'}</FieldRow>
-              <FieldRow label="现有生源">
+              <FieldRow label="AI / 科技赛道" underReview={fieldPending('isAiTechTrack')}>
+                {yesNoLabel(snap.isAiTechTrack)}
+              </FieldRow>
+              <FieldRow label="已开办项目" underReview={fieldPending('existingProjects')}>
+                {snap.existingProjects || '—'}
+              </FieldRow>
+              <FieldRow label="现有生源" underReview={fieldPending('studentCount', 'studentAgeRange')}>
                 {snap.studentCount || '—'}
                 {snap.studentAgeRange ? ` · ${snap.studentAgeRange}` : ''}
               </FieldRow>
-              <FieldRow label="加盟专用教室">{yesNoLabel(snap.hasDedicatedClassroom)}</FieldRow>
-              <FieldRow label="办学许可证">
+              <FieldRow label="加盟专用教室" underReview={fieldPending('hasDedicatedClassroom')}>
+                {yesNoLabel(snap.hasDedicatedClassroom)}
+              </FieldRow>
+              <FieldRow label="办学许可证" underReview={fieldPending('schoolPermitAttachment')}>
                 <AttachmentPreview attachment={snap.schoolPermitAttachment} label="办学许可证" />
                 <p className="mt-1 text-xs text-slate-500 font-normal">非必录项，仅作资料留存，不作为强制审核项。</p>
               </FieldRow>
@@ -390,13 +402,13 @@ export default function InstitutionQualificationPanel({
       ) : null}
 
       {modalOpen && iq ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-[140] flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => setModalOpen(false)} role="presentation" />
           <div
-            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl border border-slate-200"
+            className="relative flex w-full max-w-lg max-h-[min(90vh,100dvh-2rem)] flex-col rounded-2xl bg-white shadow-xl border border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white z-10">
+            <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h3 className="text-base font-semibold text-slate-900">{modalTitle}</h3>
               <button
                 type="button"
@@ -407,8 +419,13 @@ export default function InstitutionQualificationPanel({
                 ×
               </button>
             </div>
-            <form onSubmit={handleSubmitForm} className="p-5 space-y-4">
-              {submitErr ? <p className="text-sm text-rose-600">{submitErr}</p> : null}
+            <form noValidate onSubmit={handleSubmitForm} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto p-5 space-y-4">
+              {submitErr ? (
+                <p ref={submitErrRef} className="text-sm text-rose-600 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
+                  {submitErr}
+                </p>
+              ) : null}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">机构名称</label>
                 <input
@@ -619,7 +636,6 @@ export default function InstitutionQualificationPanel({
                         }`}
                       >
                         <input
-                          required
                           type="radio"
                           name="isAiTechTrack"
                           value={value}
@@ -680,7 +696,6 @@ export default function InstitutionQualificationPanel({
                         }`}
                       >
                         <input
-                          required
                           type="radio"
                           name="hasDedicatedClassroom"
                           value={value}
@@ -703,7 +718,8 @@ export default function InstitutionQualificationPanel({
               <p className="text-xs text-slate-500 leading-relaxed">
                 提交后总部将尽快审核。若您此前已通过加盟审核，本次为资质变更复审，复审期间不影响售课与开班。
               </p>
-              <div className="flex flex-wrap justify-end gap-2 pt-2">
+              </div>
+              <div className="shrink-0 flex flex-wrap justify-end gap-2 border-t border-slate-100 bg-white px-5 py-4">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -715,7 +731,7 @@ export default function InstitutionQualificationPanel({
                   type="submit"
                   className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-600 text-white text-sm font-semibold"
                 >
-                  提交审核
+                  确定提交
                 </button>
               </div>
             </form>

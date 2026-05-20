@@ -52,7 +52,7 @@ function makeCoverDataUrl(product) {
   const rawTitle = String(product?.name || '学具商品').trim() || '学具商品'
   const title = escapeXmlText(rawTitle.length > 22 ? `${rawTitle.slice(0, 22)}…` : rawTitle)
   const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="720" height="404" viewBox="0 0 720 404">
+  <svg xmlns="http://www.w3.org/2000/svg" width="720" height="540" viewBox="0 0 720 540">
     <defs>
       <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stop-color="${theme.from}" />
@@ -63,16 +63,16 @@ function makeCoverDataUrl(product) {
         <stop offset="100%" stop-color="rgba(15,23,42,0.55)" />
       </linearGradient>
     </defs>
-    <rect width="720" height="404" fill="url(#g)" rx="20" stroke="rgba(255,255,255,0.22)" stroke-width="2" />
+    <rect width="720" height="540" fill="url(#g)" rx="20" stroke="rgba(255,255,255,0.22)" stroke-width="2" />
     <g opacity="0.22" fill="${theme.dot}">
       <circle cx="70" cy="56" r="4"/><circle cx="105" cy="56" r="4"/><circle cx="140" cy="56" r="4"/><circle cx="175" cy="56" r="4"/>
       <circle cx="70" cy="92" r="4"/><circle cx="105" cy="92" r="4"/><circle cx="140" cy="92" r="4"/><circle cx="175" cy="92" r="4"/>
       <circle cx="560" cy="290" r="4"/><circle cx="595" cy="290" r="4"/><circle cx="630" cy="290" r="4"/><circle cx="665" cy="290" r="4"/>
       <circle cx="560" cy="326" r="4"/><circle cx="595" cy="326" r="4"/><circle cx="630" cy="326" r="4"/><circle cx="665" cy="326" r="4"/>
     </g>
-    <rect x="0" y="260" width="720" height="144" fill="url(#bar)" rx="20" />
-    <text x="36" y="368" fill="rgba(255,255,255,0.95)" font-family="system-ui,-apple-system,sans-serif" font-size="26" font-weight="700">${title}</text>
-    <text x="36" y="392" fill="rgba(255,255,255,0.75)" font-family="system-ui,-apple-system,sans-serif" font-size="14">Bingo Academy · 学具配图</text>
+    <rect x="0" y="348" width="720" height="192" fill="url(#bar)" rx="20" />
+    <text x="36" y="468" fill="rgba(255,255,255,0.95)" font-family="system-ui,-apple-system,sans-serif" font-size="26" font-weight="700">${title}</text>
+    <text x="36" y="498" fill="rgba(255,255,255,0.75)" font-family="system-ui,-apple-system,sans-serif" font-size="14">Bingo Academy · 学具配图</text>
   </svg>`
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
 }
@@ -330,7 +330,7 @@ export default function FranchisePartnerTeachingMaterials() {
                     to={itemPath}
                     className="min-w-0 flex-1 flex flex-col text-left rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 -m-1 p-1 group"
                   >
-                    <div className="relative w-full h-40 rounded-xl border border-slate-100 overflow-hidden bg-slate-100 shadow-inner">
+                    <div className="relative w-full aspect-[4/3] rounded-xl border border-slate-100 overflow-hidden bg-slate-100 shadow-inner">
                       <img src={coverSrc} alt={`${p.name} 封面`} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
                       {p.emoji ? (
                         <span className="absolute top-2 left-2 text-2xl drop-shadow-sm bg-white/90 rounded-lg px-1.5 py-0.5" aria-hidden>

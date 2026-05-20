@@ -207,7 +207,7 @@ function escapeHtmlForTeachingFallback(s) {
 export function buildFallbackTeachingDetailHtml(name, desc, coverImageUrl) {
   const cover = coverImageUrl != null ? String(coverImageUrl).trim() : ''
   const img = cover
-    ? `<p><img src='${cover.replace(/'/g, '%27')}' alt="" style="max-width:100%;height:auto;border-radius:12px;border:1px solid #e2e8f0" /></p>`
+    ? `<p><img src='${cover.replace(/'/g, '%27')}' alt="" style="width:100%;max-width:560px;aspect-ratio:4/3;object-fit:cover;border-radius:12px;border:1px solid #e2e8f0" /></p>`
     : ''
   return `<div class="teaching-product-detail">${img}<h2 style="font-size:1.125rem;margin:0 0 0.5rem">${escapeHtmlForTeachingFallback(name)}</h2><p style="line-height:1.65;color:#334155">${escapeHtmlForTeachingFallback(desc)}</p><p style="color:#64748b;font-size:13px;margin-top:1rem">更多介绍可由总部在「学具商品配置」中编辑详情 HTML。</p></div>`
 }

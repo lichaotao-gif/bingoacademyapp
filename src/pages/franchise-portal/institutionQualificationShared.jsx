@@ -52,6 +52,68 @@ export function isImageDataUrl(dataUrl) {
   return /^data:image\//i.test(dataUrl || '')
 }
 
+/** 与待审快照对比时参与 diff 的字段（不含 lastApprovedAt 等元数据） */
+export const QUALIFICATION_SNAPSHOT_COMPARE_KEYS = [
+  'orgName',
+  'legalRepresentative',
+  'address',
+  'contactPhone',
+  'businessLicenseNumber',
+  'businessLicenseCopy',
+  'businessScope',
+  'businessLicenseAttachment',
+  'principalName',
+  'principalPhone',
+  'principalIdNumber',
+  'venueFrontPhotoAttachment',
+  'venueClassroomPhotoAttachment',
+  'isAiTechTrack',
+  'existingProjects',
+  'studentCount',
+  'studentAgeRange',
+  'hasDedicatedClassroom',
+  'schoolPermitAttachment',
+]
+
+function normQualificationScalar(value) {
+  return String(value ?? '').trim()
+}
+
+function qualificationAttachmentsEqual(a, b) {
+  const duA = a?.dataUrl ? String(a.dataUrl) : ''
+  const duB = b?.dataUrl ? String(b.dataUrl) : ''
+  if (!duA && !duB) return true
+  return duA === duB
+}
+
+/** 返回相对生效快照有变更、且仍在待审中的字段 key 集合 */
+export function getChangedQualificationFieldKeys(approved, pending) {
+  if (!pending || typeof pending !== 'object') return new Set()
+  const base = approved && typeof approved === 'object' ? approved : {}
+  const changed = new Set()
+  for (const key of QUALIFICATION_SNAPSHOT_COMPARE_KEYS) {
+    if (key.endsWith('Attachment')) {
+      if (!qualificationAttachmentsEqual(base[key], pending[key])) changed.add(key)
+    } else if (normQualificationScalar(base[key]) !== normQualificationScalar(pending[key])) {
+      changed.add(key)
+    }
+  }
+  return changed
+}
+
+export function qualificationFieldsUnderReview(changedKeys, keys) {
+  if (!changedKeys?.size || !keys?.length) return false
+  return keys.some((k) => changedKeys.has(k))
+}
+
+export function PendingReviewTag() {
+  return (
+    <span className="shrink-0 inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border border-sky-200 bg-sky-50 text-sky-800">
+      审核中
+    </span>
+  )
+}
+
 export function ReviewBadge({ status }) {
   const map = {
     approved: { cls: 'bg-emerald-100 text-emerald-800 border-emerald-200', text: '审核已通过' },
@@ -63,15 +125,102 @@ export function ReviewBadge({ status }) {
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${m.cls}`}>{m.text}</span>
 }
 
-export function FieldRow({ label, children, className = '' }) {
+export function FieldRow({ label, children, className = '', underReview = false }) {
   return (
     <div
       className={`grid w-full grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 items-start sm:gap-x-4 lg:gap-x-6 py-3 border-b border-slate-100 last:border-0 ${className}`}
     >
       <dt className="text-slate-500 text-sm shrink-0 max-w-[46%] sm:max-w-[12rem] lg:max-w-[14rem]">{label}</dt>
-      <dd className="text-slate-900 text-sm font-medium break-words min-w-0 w-full">{children}</dd>
+      <dd className="text-slate-900 text-sm font-medium break-words min-w-0 w-full">
+        <div className="flex flex-wrap items-start gap-2 min-w-0">
+          <div className="min-w-0 flex-1">{children}</div>
+          {underReview ? <PendingReviewTag /> : null}
+        </div>
+      </dd>
     </div>
   )
+}
+
+/** 待审快照缺附件时（如超大 base64 被清理），编辑表单回退到当前生效快照中的附件 */
+export function pickQualificationAttachmentForForm(pendingSnap, approvedSnap, key) {
+  const p = pendingSnap?.[key]
+  const a = approvedSnap?.[key]
+  if (p?.dataUrl) {
+    return { fileName: p.fileName, dataUrl: p.dataUrl }
+  }
+  if (a?.dataUrl) {
+    return { fileName: a.fileName, dataUrl: a.dataUrl }
+  }
+  return null
+}
+
+export function buildQualificationFormFromSnapshots(pendingSnap, approvedSnap) {
+  const base = pendingSnap || approvedSnap || emptyForm
+  const pending = pendingSnap && typeof pendingSnap === 'object' ? pendingSnap : {}
+  const approved = approvedSnap && typeof approvedSnap === 'object' ? approvedSnap : {}
+  const yesNo = (v, fallback) => (v === 'yes' || v === 'no' ? v : fallback === 'yes' || fallback === 'no' ? fallback : '')
+
+  return {
+    orgName: base.orgName ?? '',
+    legalRepresentative: base.legalRepresentative ?? '',
+    address: base.address ?? '',
+    contactPhone: base.contactPhone ?? '',
+    businessLicenseNumber: base.businessLicenseNumber ?? '',
+    businessLicenseCopy: base.businessLicenseCopy ?? '',
+    businessScope: base.businessScope ?? '',
+    businessLicenseAttachment: pickQualificationAttachmentForForm(pending, approved, 'businessLicenseAttachment'),
+    principalName: base.principalName ?? '',
+    principalPhone: base.principalPhone ?? '',
+    principalIdNumber: base.principalIdNumber ?? '',
+    venueFrontPhotoAttachment: pickQualificationAttachmentForForm(pending, approved, 'venueFrontPhotoAttachment'),
+    venueClassroomPhotoAttachment: pickQualificationAttachmentForForm(pending, approved, 'venueClassroomPhotoAttachment'),
+    isAiTechTrack: yesNo(base.isAiTechTrack, approved.isAiTechTrack),
+    existingProjects: base.existingProjects ?? '',
+    studentCount: base.studentCount ?? '',
+    studentAgeRange: base.studentAgeRange ?? '',
+    hasDedicatedClassroom: yesNo(base.hasDedicatedClassroom, approved.hasDedicatedClassroom),
+    schoolPermitAttachment: pickQualificationAttachmentForForm(pending, approved, 'schoolPermitAttachment'),
+  }
+}
+
+const QUALIFICATION_FORM_REQUIRED_LABELS = {
+  orgName: '机构名称',
+  legalRepresentative: '法定代表人',
+  address: '机构地址',
+  contactPhone: '联系人电话',
+  businessLicenseNumber: '营业执照注册号/统一社会信用代码',
+  businessScope: '经营范围',
+  principalName: '负责人姓名',
+  principalPhone: '负责人电话',
+  principalIdNumber: '负责人身份证号',
+  existingProjects: '已开办项目',
+  studentCount: '现有生源数量',
+  studentAgeRange: '现有生源年龄段',
+}
+
+/** 提交前校验（替代浏览器默认校验，避免静默拦截） */
+export function validateQualificationFormForSubmit(form) {
+  for (const [key, label] of Object.entries(QUALIFICATION_FORM_REQUIRED_LABELS)) {
+    if (!String(form[key] ?? '').trim()) {
+      return `请填写「${label}」`
+    }
+  }
+  if (form.isAiTechTrack !== 'yes' && form.isAiTechTrack !== 'no') {
+    return '请选择是否属于 AI / 科技赛道'
+  }
+  if (form.hasDedicatedClassroom !== 'yes' && form.hasDedicatedClassroom !== 'no') {
+    return '请选择是否设立加盟专用教室'
+  }
+  if (!form.businessLicenseAttachment?.dataUrl) {
+    return '请上传营业执照电子版（PDF 或图片）'
+  }
+  if (!form.venueFrontPhotoAttachment?.dataUrl) {
+    return '请上传场地门头照片'
+  }
+  if (!form.venueClassroomPhotoAttachment?.dataUrl) {
+    return '请上传教室照片'
+  }
+  return null
 }
 
 export const emptyForm = {

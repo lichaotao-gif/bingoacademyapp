@@ -224,8 +224,8 @@ export default function FranchiseTeachingProducts() {
       render: (_, row) => {
         const src = row.coverImageUrl?.trim() || DEFAULT_TEACHING_PRODUCT_COVER_DATA_URL
         return (
-          <div style={{ width: 96 }}>
-            <Image src={src} alt="" width={96} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} />
+          <div style={{ width: 96, aspectRatio: '4 / 3', overflow: 'hidden', borderRadius: 6 }}>
+            <Image src={src} alt="" width={96} height={72} style={{ objectFit: 'cover', display: 'block' }} />
           </div>
         )
       },
@@ -521,11 +521,13 @@ export default function FranchiseTeachingProducts() {
           >
             <Input.TextArea rows={10} placeholder='<p>学具图文介绍…</p><p><img src="封面或图片地址" alt="" style="max-width:100%" /></p>' />
           </Form.Item>
-          <Form.Item label="封面图片">
+          <Form.Item label="封面图片" extra="建议比例 4:3（如 800×600），展示与列表将按 4:3 裁切">
             <div style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: 16, background: '#fafafa' }}>
               <Row gutter={[16, 16]} align="middle">
                 <Col flex="none">
-                  <Image src={coverPreviewSrc} alt="封面预览" width={180} height={102} style={{ objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+                  <div style={{ width: 180, aspectRatio: '4 / 3', overflow: 'hidden', borderRadius: 8 }}>
+                    <Image src={coverPreviewSrc} alt="封面预览" width={180} height={135} style={{ objectFit: 'cover', display: 'block' }} />
+                  </div>
                 </Col>
                 <Col flex="auto" style={{ minWidth: 200 }}>
                   <Space direction="vertical" size="small" style={{ width: '100%' }}>
@@ -535,7 +537,7 @@ export default function FranchiseTeachingProducts() {
                       </Button>
                     </Upload>
                     <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                      单张不超过 1MB；保存后加盟商端可见。
+                      单张不超过 1MB；建议 4:3 横图，保存后加盟商端按 4:3 展示。
                     </Typography.Text>
                     <Form.Item name="coverImageUrl" hidden>
                       <Input />

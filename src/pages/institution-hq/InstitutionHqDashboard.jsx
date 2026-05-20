@@ -55,8 +55,6 @@ export default function InstitutionHqDashboard() {
       {
         label: '机构总账户余额（元）',
         value: fmtMoney(hqTreasury.balance),
-        sub: '+12.3% 较上月',
-        subClass: 'text-emerald-600',
         Icon: FlatIconCoins,
         iconBox: 'bg-amber-500/12 text-amber-600',
         bg: 'bg-gradient-to-br from-amber-50 to-white border-amber-100',
@@ -105,7 +103,7 @@ export default function InstitutionHqDashboard() {
                   <div>
                     <p className="text-xs text-slate-500 font-medium">{k.label}</p>
                     <p className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">{k.value}</p>
-                    <p className={`text-xs mt-2 font-medium ${k.subClass}`}>{k.sub}</p>
+                    {k.sub ? <p className={`text-xs mt-2 font-medium ${k.subClass}`}>{k.sub}</p> : null}
                   </div>
                   <div
                     className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${k.iconBox}`}
