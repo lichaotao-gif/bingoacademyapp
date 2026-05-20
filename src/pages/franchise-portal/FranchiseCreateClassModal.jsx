@@ -3,7 +3,6 @@ import {
   createClass,
   FRANCHISE_CLASS_CREATE_OFFLINE_DEMO_PACKS,
   FRANCHISE_OFFLINE_LESSON_CATALOG,
-  getFranchiseOfflinePackMeta,
 } from '../../utils/franchisePartnerStorage'
 
 function defaultOfflineCourseIds() {
@@ -12,7 +11,6 @@ function defaultOfflineCourseIds() {
 
 export default function FranchiseCreateClassModal({ open, onClose, session, refresh, afterCreate }) {
   const [name, setName] = useState('')
-  const [courseType, setCourseType] = useState('')
   const [startDate, setStartDate] = useState('')
   const [offlineCourseIds, setOfflineCourseIds] = useState(defaultOfflineCourseIds)
   const [classErr, setClassErr] = useState('')
@@ -20,7 +18,6 @@ export default function FranchiseCreateClassModal({ open, onClose, session, refr
   const reset = useCallback(() => {
     setClassErr('')
     setName('')
-    setCourseType('')
     setStartDate('')
     setOfflineCourseIds(defaultOfflineCourseIds())
   }, [])
@@ -49,7 +46,6 @@ export default function FranchiseCreateClassModal({ open, onClose, session, refr
       return
     }
     const r = createClass(session.partnerId, session.refCode, n, {
-      courseType,
       startDate,
       offlineCourseIds,
     })
@@ -123,12 +119,6 @@ export default function FranchiseCreateClassModal({ open, onClose, session, refr
                             if (on) return prev.includes(c.id) ? prev : [...prev, c.id]
                             return prev.filter((x) => x !== c.id)
                           })
-                          if (on) {
-                            const p = getFranchiseOfflinePackMeta(c.id)
-                            if (p && !courseType.trim()) {
-                              setCourseType(String(p.name).replace(/^《|》$/g, '').slice(0, 40))
-                            }
-                          }
                         }}
                         className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
                       />
@@ -144,15 +134,6 @@ export default function FranchiseCreateClassModal({ open, onClose, session, refr
             <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
               可先不选，后续进入班级详情添加；多课程包课时按列表顺序合并，与线上学习进度独立。
             </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">备注</label>
-            <input
-              value={courseType}
-              onChange={(e) => setCourseType(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-              placeholder="如：周末班、暑期集训（可选）"
-            />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">开课日期</label>

@@ -333,10 +333,6 @@ export default function FranchisePartnerClassDetail() {
               <p className="mt-1 text-slate-800 leading-snug">{fc.offlineCourseName || '—'}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
-              <p className="text-xs text-slate-500 font-medium">课程类型（备注）</p>
-              <p className="mt-1 text-slate-800">{fc.courseType || '—'}</p>
-            </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
               <p className="text-xs text-slate-500 font-medium">学员人数</p>
               <p className="mt-1 text-slate-800 tabular-nums">{nStu} 人</p>
             </div>

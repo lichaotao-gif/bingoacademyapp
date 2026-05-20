@@ -83,12 +83,6 @@ export default function FranchisePartnerClasses() {
                     <dd className="mt-0.5 text-slate-700 tabular-nums">{fmtDate(cls.createdAt)}</dd>
                   </div>
                   <div className="min-w-0 col-span-2">
-                    <dt className="text-xs text-slate-500">课程类型</dt>
-                    <dd className="mt-0.5 text-slate-700 truncate" title={cls.courseType || ''}>
-                      {cls.courseType || '—'}
-                    </dd>
-                  </div>
-                  <div className="min-w-0 col-span-2">
                     <dt className="text-xs text-slate-500">开课日期</dt>
                     <dd className="mt-0.5 text-slate-700 tabular-nums">{cls.startDate || '—'}</dd>
                   </div>
