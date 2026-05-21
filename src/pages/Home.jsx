@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import LeadCaptureModal from '../components/LeadCaptureModal'
+import { resolveLeadAssetKey } from '../utils/leadCaptureAssets'
 
 // ─── 数据 ────────────────────────────────────────────────
 
@@ -135,37 +137,6 @@ function PainScroller() {
   )
 }
 
-// ─── 留资弹窗 ────────────────────────────────────────────
-function LeadModal({ title, onClose }) {
-  const [submitted, setSubmitted] = useState(false)
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
-        {submitted ? (
-          <div className="text-center py-4">
-            <div className="text-4xl mb-3">✅</div>
-            <h3 className="font-bold text-bingo-dark text-xl mb-2">已提交！</h3>
-            <p className="text-slate-500 text-sm mb-5">资料将在5分钟内发送至您的手机，请注意查收</p>
-            <button onClick={onClose} className="btn-primary px-8 py-2.5 text-sm">关闭</button>
-          </div>
-        ) : (
-          <>
-            <h3 className="font-bold text-bingo-dark text-xl mb-1">{title}</h3>
-            <p className="text-slate-500 text-sm mb-5">填写手机号，立即免费领取</p>
-            <form onSubmit={e => { e.preventDefault(); setSubmitted(true) }} className="space-y-3">
-              <input required type="text" placeholder="孩子姓名（或机构名称）"
-                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary" />
-              <input required type="tel" placeholder="家长/负责人手机号"
-                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary" />
-              <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold text-sm transition">立即免费领取</button>
-            </form>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // ─── 主组件 ───────────────────────────────────────────────
 export default function Home() {
   const [leadModal, setLeadModal] = useState(null)
@@ -173,7 +144,13 @@ export default function Home() {
   return (
     <div>
       <CheckInFloat />
-      {leadModal && <LeadModal title={leadModal} onClose={() => setLeadModal(null)} />}
+      {leadModal ? (
+        <LeadCaptureModal
+          leadKey={resolveLeadAssetKey(leadModal) || leadModal}
+          title={leadModal}
+          onClose={() => setLeadModal(null)}
+        />
+      ) : null}
 
       {/* ══════════════════════════════════════════════════
           一、首屏英雄区 — 痛点 + 价值 + B/C分流
@@ -310,17 +287,22 @@ export default function Home() {
           </div>
 
           {/* B端：独立卡片 */}
-          <Link to="/franchise" className="block card p-6 bg-gradient-to-r from-slate-800 to-sky-900 text-white border-sky-700/30 hover:border-sky-500/60 transition">
+          <div className="card p-6 bg-gradient-to-r from-slate-800 to-sky-900 text-white border-sky-700/30 hover:border-sky-500/60 transition">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
+              <Link to="/franchise" className="min-w-0 flex-1 hover:opacity-95 transition">
                 <span className="text-[11px] bg-sky-400/20 text-sky-300 px-2 py-0.5 rounded-full font-medium">B端 · 机构/加盟商</span>
                 <h3 className="text-xl font-bold mt-2 mb-1">教培机构缺AI课程、师资、赛事资源？</h3>
                 <p className="text-slate-300 text-sm">缤果AI学院全链条产教融合合作体系，品牌+课程+师资+赛事<strong className="text-white">一站式赋能</strong></p>
                 <p className="text-xs text-sky-300 font-medium mt-2">全国合作机构500+ · 加盟商100+ · 合作机构营收平均提升60%</p>
-              </div>
-              <span className="shrink-0 bg-sky-500 hover:bg-sky-400 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition">免费获取合作方案 →</span>
+              </Link>
+              <Link
+                to="/franchise-partner/login"
+                className="shrink-0 bg-sky-500 hover:bg-sky-400 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition"
+              >
+                加盟商管理登录 →
+              </Link>
             </div>
-          </Link>
+          </div>
         </section>
 
         {/* ══════════════════════════════════════════════════

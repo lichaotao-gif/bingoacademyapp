@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import FranchiseLegacyLeadModal from '../components/FranchiseLegacyLeadModal'
 
 const B_SOLUTIONS = [
   { icon: '🏫', title: '线下机构课程合作', desc: '授牌+课程+师训+运营，一站式赋能', tag: '机构合作' },
@@ -49,16 +50,10 @@ export default function Franchise() {
             <p className="text-slate-300 text-sm leading-relaxed mb-3">教培机构缺AI课程、师资、赛事资源？<br />缤果AI学院全链条产教融合合作体系，品牌+课程+师资+赛事<strong className="text-white">一站式赋能</strong></p>
             <p className="text-xs text-sky-300 font-medium">全国合作机构500+ · 加盟商100+ · 合作机构营收平均提升60%</p>
           </div>
-          <div className="flex flex-col gap-3 shrink-0">
-            <button
-              onClick={() => setLeadModal('免费获取机构合作方案')}
-              className="bg-sky-500 hover:bg-sky-400 text-white px-8 py-3 rounded-xl text-sm font-bold transition"
-            >
-              免费获取合作方案
-            </button>
+          <div className="shrink-0">
             <Link
               to="/franchise-partner/login"
-              className="bg-white/15 hover:bg-white/25 text-white px-8 py-3 rounded-xl text-sm font-semibold transition text-center ring-1 ring-white/25"
+              className="inline-block bg-sky-500 hover:bg-sky-400 text-white px-8 py-3 rounded-xl text-sm font-bold transition text-center"
             >
               加盟商管理登录
             </Link>
@@ -143,12 +138,7 @@ export default function Franchise() {
               <div className="text-2xl mb-2">{item.icon}</div>
               <p className="font-semibold text-sm text-bingo-dark">{item.title}</p>
               <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
-              <button
-                onClick={() => setLeadModal(item.title + ' - 咨询')}
-                className="mt-3 text-xs text-sky-600 hover:underline font-medium"
-              >
-                了解详情 →
-              </button>
+              <span className="mt-3 inline-block text-xs text-sky-600 font-medium">活动详情请咨询商务顾问</span>
             </div>
           ))}
         </div>
@@ -208,6 +198,7 @@ export default function Franchise() {
               ))}
             </ul>
             <button
+              type="button"
               onClick={() => setLeadModal('免费获取机构AI教育转型资料包')}
               className="w-full bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-xl font-bold text-sm transition"
             >
@@ -239,6 +230,7 @@ export default function Franchise() {
               ))}
             </div>
             <button
+              type="button"
               onClick={() => setLeadModal('免费获取机构合作方案')}
               className="w-full bg-sky-600 hover:bg-sky-700 text-white py-2.5 rounded-xl text-sm font-bold transition"
             >
@@ -248,25 +240,7 @@ export default function Franchise() {
         </div>
       </section>
 
-      {/* 留资弹窗 */}
-      {leadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setLeadModal(null)}>
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-bingo-dark text-lg mb-1">{leadModal}</h3>
-            <p className="text-slate-500 text-sm mb-5">请留下您的联系方式，商务顾问将在24小时内与您联系</p>
-            <input type="text" placeholder="您的姓名" className="w-full border rounded-xl px-4 py-2.5 text-sm mb-3 outline-none focus:border-sky-400" />
-            <input type="tel" placeholder="手机号码" className="w-full border rounded-xl px-4 py-2.5 text-sm mb-3 outline-none focus:border-sky-400" />
-            <input type="text" placeholder="机构名称（选填）" className="w-full border rounded-xl px-4 py-2.5 text-sm mb-4 outline-none focus:border-sky-400" />
-            <button
-              onClick={() => setLeadModal(null)}
-              className="w-full bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-xl font-bold text-sm transition"
-            >
-              立即提交
-            </button>
-            <button onClick={() => setLeadModal(null)} className="mt-3 w-full text-slate-400 text-sm hover:text-slate-600">取消</button>
-          </div>
-        </div>
-      )}
+      {leadModal ? <FranchiseLegacyLeadModal title={leadModal} onClose={() => setLeadModal(null)} /> : null}
     </div>
   )
 }
