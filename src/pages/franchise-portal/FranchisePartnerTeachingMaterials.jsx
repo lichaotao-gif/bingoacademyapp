@@ -108,12 +108,13 @@ export default function FranchisePartnerTeachingMaterials() {
     return getTeachingMaterialDiscountPolicy()
   }, [catalogTick])
 
-  const policySummaryText = useMemo(() => {
+  const policySummary = useMemo(() => {
     const lineParts = (discountPolicy.lineQuantityTiers || []).map(formatTeachingDiscountTier).filter(Boolean)
     const orderParts = (discountPolicy.orderTotalQuantityTiers || []).map(formatTeachingDiscountTier).filter(Boolean)
-    const a = lineParts.length ? `单行：${lineParts.join('；')}` : ''
-    const b = orderParts.length ? `整单：${orderParts.join('；')}` : ''
-    return [a, b].filter(Boolean).join(' · ') || '暂无总部配置的件数优惠'
+    const lineText = lineParts.length ? `单行：${lineParts.join('；')}` : ''
+    const orderText = orderParts.length ? `整单：${orderParts.join('；')}` : ''
+    if (!lineText && !orderText) return { lineText: '', orderText: '', empty: true }
+    return { lineText, orderText, empty: false }
   }, [discountPolicy])
 
   useEffect(() => {
@@ -317,7 +318,19 @@ export default function FranchisePartnerTeachingMaterials() {
       {tab === 'shop' ? (
         <>
           <div className="rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-            <span className="min-w-0 leading-snug">{policySummaryText}</span>
+            <span className="min-w-0 leading-snug">
+              {policySummary.empty ? (
+                '暂无总部配置的件数优惠'
+              ) : (
+                <>
+                  {policySummary.lineText ? <span>{policySummary.lineText}</span> : null}
+                  {policySummary.lineText && policySummary.orderText ? <span className="text-slate-400"> · </span> : null}
+                  {policySummary.orderText ? (
+                    <span className="text-red-600 font-semibold">{policySummary.orderText}</span>
+                  ) : null}
+                </>
+              )}
+            </span>
             <span className="shrink-0 tabular-nums font-medium text-slate-800">购物车 {cartTotalQty} 件</span>
           </div>
           <div

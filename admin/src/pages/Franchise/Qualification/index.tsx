@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, Descriptions, Input, Modal, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import FranchiseQualificationEditModal from '@/components/FranchiseQualificationEditModal'
 import {
   QUALIFICATION_FIELD_LABELS,
   approveQualification,
+  hqUpdatePartnerQualificationDirect,
   listPartners,
   rejectQualification,
   type FranchisePartnerDetail,
@@ -66,6 +68,20 @@ export default function FranchiseQualification() {
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editPartner, setEditPartner] = useState<FranchisePartnerDetail | null>(null)
+  const [editInitialSnap, setEditInitialSnap] = useState<QualificationSnapshot | null>(null)
+
+  const openEdit = (row: FranchisePartnerDetail) => {
+    setEditPartner(row)
+    setEditInitialSnap(
+      row.qualification.pendingReview?.snapshot ||
+        (Object.keys(row.qualification.approvedSnapshot || {}).length > 0
+          ? row.qualification.approvedSnapshot
+          : null),
+    )
+    setEditOpen(true)
+  }
 
   const openReject = (partnerId: string) => {
     setRejectTargetId(partnerId)
@@ -128,11 +144,14 @@ export default function FranchiseQualification() {
       title: '操作',
       key: 'act',
       fixed: 'right',
-      width: 220,
+      width: 300,
       render: (_, r) => (
-        <Space size="small">
+        <Space size="small" wrap>
           <Button type="link" size="small" onClick={() => navigate(`/franchise/detail?id=${encodeURIComponent(r.partnerId)}`)}>
             查看详情
+          </Button>
+          <Button size="small" onClick={() => openEdit(r)}>
+            编辑
           </Button>
           <Button type="primary" size="small" onClick={() => doApprove(r.partnerId)}>
             通过
@@ -149,7 +168,7 @@ export default function FranchiseQualification() {
     <div>
       <h2 style={{ marginBottom: 8 }}>加盟商资质审核</h2>
       <p style={{ color: '#666', marginBottom: 16 }}>
-        处理首次入网与资质变更提交；通过后生效至「已通过」快照，驳回需加盟商修改后重新提交。
+        处理首次入网与资质变更提交；通过后生效至「已通过」快照，驳回需加盟商修改后重新提交。也可点击「编辑」由总部直接改资质并立即生效（免审核）。
       </p>
       <Table<FranchisePartnerDetail>
         rowKey="partnerId"
@@ -176,6 +195,27 @@ export default function FranchiseQualification() {
         <p style={{ marginBottom: 8 }}>请填写驳回原因（加盟商端可见）：</p>
         <Input.TextArea rows={4} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="例如：营业执照模糊，请上传清晰彩色扫描件。" />
       </Modal>
+      <FranchiseQualificationEditModal
+        open={editOpen}
+        partner={editPartner}
+        initialSnapshot={editInitialSnap}
+        onClose={() => {
+          setEditOpen(false)
+          setEditPartner(null)
+          setEditInitialSnap(null)
+        }}
+        onSaved={async (snap) => {
+          if (!editPartner) return
+          const res = hqUpdatePartnerQualificationDirect(editPartner.partnerId, snap)
+          if (res.ok) {
+            message.success('资质已保存并立即生效（免审核）')
+            setEditOpen(false)
+            setEditPartner(null)
+            setEditInitialSnap(null)
+            refresh()
+          } else message.error(res.msg || '保存失败')
+        }}
+      />
     </div>
   )
 }

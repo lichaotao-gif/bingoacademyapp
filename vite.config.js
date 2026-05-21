@@ -25,17 +25,17 @@ export default defineConfig(({ mode }) => {
       include: ['react', 'react-dom', 'react-router-dom', 'antd', '@ant-design/icons'],
     },
     server: {
-      /** Vite 常用默认端口；被占用时会自动顺延，终端会打印实际 Local 地址 */
+      /** 固定开发地址：http://127.0.0.1:5173/（端口被占用时会报错，不会悄悄换成 5174） */
       port: 5173,
-      strictPort: false,
-      /** 固定 IPv4，避免部分环境下 localhost 解析异常导致「打不开」 */
+      strictPort: true,
       host: '127.0.0.1',
       proxy: { '/api': { target: 'http://localhost:8080', changeOrigin: true } },
     },
     preview: {
+      /** 固定预览地址：http://127.0.0.1:4173/ */
       host: '127.0.0.1',
       port: 4173,
-      strictPort: false,
+      strictPort: true,
     },
   }
 })

@@ -24,8 +24,10 @@ import {
   rateToZhLabel,
   savePartnerHqCourseDiscounts,
 } from '@/mock/franchiseHqCourseDiscounts'
+import FranchiseQualificationEditModal from '@/components/FranchiseQualificationEditModal'
 import {
   getPartner,
+  hqUpdatePartnerQualificationDirect,
   QUALIFICATION_FIELD_LABELS,
   setPartnerAccountStatus,
   syncAllPartnerAccountStatusToLocalStorage,
@@ -99,7 +101,15 @@ function renderQualificationValue(snap: QualificationSnapshot, key: keyof Qualif
   return String(value)
 }
 
-function QualificationPanel({ p, onGoReview }: { p: FranchisePartnerDetail; onGoReview: () => void }) {
+function QualificationPanel({
+  p,
+  onGoReview,
+  onEdit,
+}: {
+  p: FranchisePartnerDetail
+  onGoReview: () => void
+  onEdit: () => void
+}) {
   const q = p.qualification
   const rows = (snap: QualificationSnapshot) =>
     QUALIFICATION_FIELD_LABELS.map((field) => ({
@@ -110,6 +120,14 @@ function QualificationPanel({ p, onGoReview }: { p: FranchisePartnerDetail; onGo
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space wrap>
+        <Button type="primary" onClick={onEdit}>
+          编辑资质
+        </Button>
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+          总部直接修改并立即生效，无需走审核流程
+        </Typography.Text>
+      </Space>
       <Descriptions bordered size="small" column={1}>
         <Descriptions.Item label="资质状态">
           <Tag color={QUAL_TAG[p.qualificationStatus]?.color}>{QUAL_TAG[p.qualificationStatus]?.text}</Tag>
@@ -277,6 +295,7 @@ export default function FranchisePartnerDetailPage() {
   }, [tick])
 
   const [conclusionDraft, setConclusionDraft] = useState('')
+  const [qualEditOpen, setQualEditOpen] = useState(false)
   useEffect(() => {
     syncAllPartnerAccountStatusToLocalStorage()
   }, [])
@@ -482,6 +501,7 @@ export default function FranchisePartnerDetailPage() {
               <QualificationPanel
                 p={p}
                 onGoReview={() => navigate(`/franchise/qualification?focus=${encodeURIComponent(p.partnerId)}`)}
+                onEdit={() => setQualEditOpen(true)}
               />
             ),
           },
@@ -511,6 +531,19 @@ export default function FranchisePartnerDetailPage() {
             ),
           },
         ]}
+      />
+      <FranchiseQualificationEditModal
+        open={qualEditOpen}
+        partner={p}
+        onClose={() => setQualEditOpen(false)}
+        onSaved={async (snap) => {
+          const res = hqUpdatePartnerQualificationDirect(p.partnerId, snap)
+          if (res.ok) {
+            message.success('资质已保存并立即生效（免审核）')
+            setQualEditOpen(false)
+            setTick((t) => t + 1)
+          } else message.error(res.msg || '保存失败')
+        }}
       />
     </div>
   )

@@ -9,7 +9,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "preview:local": "vite build && vite preview --port 4173"
+    "preview:local": "vite build && vite preview",
+    "preview:restart": "lsof -tiTCP:4173 -sTCP:LISTEN | xargs kill -9 2>/dev/null; npm run preview:local"
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",

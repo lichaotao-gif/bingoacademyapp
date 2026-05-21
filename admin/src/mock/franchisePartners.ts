@@ -358,6 +358,87 @@ export function approveQualification(partnerId: string): boolean {
   return true
 }
 
+function syncProvisionQualificationPatch(
+  phoneDigits: string,
+  patch: {
+    orgName?: string
+    qualificationSnapshot?: QualificationSnapshot
+    qualificationStatus?: QualificationReviewStatus
+  },
+): void {
+  if (typeof localStorage === 'undefined' || phoneDigits.length !== 11) return
+  try {
+    const rawProv = localStorage.getItem(PARTNER_PROVISION_KEY)
+    const map = rawProv ? (JSON.parse(rawProv) as Record<string, Record<string, unknown>>) : {}
+    if (typeof map !== 'object' || map === null || Array.isArray(map)) return
+    const entry = map[phoneDigits]
+    if (!entry || typeof entry !== 'object') return
+    map[phoneDigits] = {
+      ...entry,
+      ...(patch.orgName != null ? { orgName: patch.orgName } : {}),
+      ...(patch.qualificationSnapshot != null ? { qualificationSnapshot: patch.qualificationSnapshot } : {}),
+      ...(patch.qualificationStatus != null ? { qualificationStatus: patch.qualificationStatus } : {}),
+    }
+    localStorage.setItem(PARTNER_PROVISION_KEY, JSON.stringify(map))
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 总部直接维护加盟商资质（免审核）：写入已通过快照并同步加盟/机构端演示数据 */
+export function hqUpdatePartnerQualificationDirect(
+  partnerId: string,
+  snapshot: QualificationSnapshot,
+): { ok: boolean; msg?: string } {
+  const idx = cache.findIndex((p) => p.partnerId === partnerId)
+  if (idx === -1) return { ok: false, msg: '未找到该加盟商' }
+  const p = cache[idx]
+  const orgName = String(snapshot.orgName || '').trim() || p.orgName
+  const phoneFromSnap = String(snapshot.contactPhone || '').replace(/\D/g, '')
+  const contactPhone = phoneFromSnap.length === 11 ? phoneFromSnap : p.contactPhone
+  const now = new Date().toISOString()
+  const nextSnap: QualificationSnapshot = { ...snapshot, orgName, contactPhone }
+
+  cache[idx] = {
+    ...p,
+    orgName,
+    contactPhone,
+    accountStatus: p.accountStatus === 'pending_qualification' ? 'normal' : p.accountStatus,
+    qualificationStatus: 'approved',
+    qualification: {
+      reviewStatus: 'approved',
+      lastApprovedAt: now,
+      rejectReason: null,
+      approvedSnapshot: nextSnap,
+      pendingReview: null,
+    },
+  }
+
+  mergeWriteHqPartnerAccount(partnerId, cache[idx].accountStatus)
+  syncWorkspaceQualificationSnapshot(partnerId, p.refCode, nextSnap, now, true)
+
+  const oldPhone = p.contactPhone.replace(/\D/g, '')
+  if (oldPhone.length === 11) {
+    syncProvisionQualificationPatch(oldPhone, {
+      orgName,
+      qualificationSnapshot: nextSnap,
+      qualificationStatus: 'approved',
+    })
+  }
+  if (contactPhone !== p.contactPhone && contactPhone.length === 11) {
+    syncProvisionQualificationPatch(contactPhone, {
+      orgName,
+      qualificationSnapshot: nextSnap,
+      qualificationStatus: 'approved',
+    })
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('franchise-partner-session-changed'))
+  }
+  return { ok: true }
+}
+
 export function rejectQualification(partnerId: string, reason: string): boolean {
   const idx = cache.findIndex((p) => p.partnerId === partnerId)
   if (idx === -1) return false

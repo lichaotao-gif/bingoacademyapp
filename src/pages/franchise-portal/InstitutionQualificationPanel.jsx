@@ -18,10 +18,9 @@ import {
   LICENSE_INPUT_ACCEPT,
   maskPhone,
   MAX_LICENSE_FILE_BYTES,
-  qualificationFieldsUnderReview,
   validateQualificationFormForSubmit,
-  yesNoLabel,
 } from './institutionQualificationShared'
+import { QualificationSnapshotFields } from './InstitutionQualificationSnapshot'
 
 /**
  * 机构资质：编辑 / 提交审核 / 演示通过驳回。
@@ -53,8 +52,6 @@ export default function InstitutionQualificationPanel({
     if (!iq?.pendingReview?.snapshot) return new Set()
     return getChangedQualificationFieldKeys(snap, iq.pendingReview.snapshot)
   }, [snap, iq?.pendingReview?.snapshot])
-
-  const fieldPending = (...keys) => qualificationFieldsUnderReview(fieldsUnderReview, keys)
 
   const openModal = useCallback(() => {
     if (!iq) return
@@ -204,85 +201,12 @@ export default function InstitutionQualificationPanel({
           {!ready ? (
             <p className="text-sm text-slate-500 py-8 text-center">正在加载机构档案…</p>
           ) : snap ? (
-            <dl className="w-full">
-              <FieldRow label="机构名称" underReview={fieldPending('orgName')}>
-                {snap.orgName || '—'}
-              </FieldRow>
-              <FieldRow label="法定代表人" underReview={fieldPending('legalRepresentative')}>
-                {snap.legalRepresentative || '—'}
-              </FieldRow>
-              <FieldRow label="机构地址" underReview={fieldPending('address')}>
-                {snap.address || '—'}
-              </FieldRow>
-              <FieldRow label="联系人电话" underReview={fieldPending('contactPhone')}>
-                {snap.contactPhone ? maskPhone(snap.contactPhone) : '—'}
-              </FieldRow>
-              <FieldRow label="营业执照号/统一社会信用代码" underReview={fieldPending('businessLicenseNumber')}>
-                {snap.businessLicenseNumber || '—'}
-              </FieldRow>
-              <FieldRow
-                label="营业执照"
-                underReview={fieldPending('businessLicenseAttachment', 'businessLicenseCopy')}
-              >
-                <div className="space-y-2 font-normal">
-                  {snap.businessLicenseAttachment?.dataUrl ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => downloadLicenseAttachment(snap.businessLicenseAttachment)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/40 bg-primary/5 text-primary text-xs font-semibold hover:bg-primary/10"
-                      >
-                        下载电子版
-                      </button>
-                      <span className="text-xs text-slate-500 break-all">
-                        {snap.businessLicenseAttachment.fileName || guessDownloadName(snap.businessLicenseAttachment.dataUrl)}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-500">尚未上传电子版，可填写下方说明或进入编辑上传。</p>
-                  )}
-                  {snap.businessLicenseCopy ? (
-                    <p className="text-slate-700 text-sm leading-relaxed">{snap.businessLicenseCopy}</p>
-                  ) : null}
-                </div>
-              </FieldRow>
-              <FieldRow label="经营范围" underReview={fieldPending('businessScope')}>
-                {snap.businessScope || '—'}
-              </FieldRow>
-              <FieldRow label="负责人姓名" underReview={fieldPending('principalName')}>
-                {snap.principalName || '—'}
-              </FieldRow>
-              <FieldRow label="负责人电话" underReview={fieldPending('principalPhone')}>
-                {snap.principalPhone ? maskPhone(snap.principalPhone) : '—'}
-              </FieldRow>
-              <FieldRow label="负责人身份证" underReview={fieldPending('principalIdNumber')}>
-                {snap.principalIdNumber || '—'}
-              </FieldRow>
-              <FieldRow label="场地门头照片" underReview={fieldPending('venueFrontPhotoAttachment')}>
-                <AttachmentPreview attachment={snap.venueFrontPhotoAttachment} label="门头照片" imageOnly />
-              </FieldRow>
-              <FieldRow label="教室照片" underReview={fieldPending('venueClassroomPhotoAttachment')}>
-                <AttachmentPreview attachment={snap.venueClassroomPhotoAttachment} label="教室照片" imageOnly />
-              </FieldRow>
-              <FieldRow label="AI / 科技赛道" underReview={fieldPending('isAiTechTrack')}>
-                {yesNoLabel(snap.isAiTechTrack)}
-              </FieldRow>
-              <FieldRow label="已开办项目" underReview={fieldPending('existingProjects')}>
-                {snap.existingProjects || '—'}
-              </FieldRow>
-              <FieldRow label="现有生源" underReview={fieldPending('studentCount', 'studentAgeRange')}>
-                {snap.studentCount || '—'}
-                {snap.studentAgeRange ? ` · ${snap.studentAgeRange}` : ''}
-              </FieldRow>
-              <FieldRow label="加盟专用教室" underReview={fieldPending('hasDedicatedClassroom')}>
-                {yesNoLabel(snap.hasDedicatedClassroom)}
-              </FieldRow>
-              <FieldRow label="办学许可证" underReview={fieldPending('schoolPermitAttachment')}>
-                <AttachmentPreview attachment={snap.schoolPermitAttachment} label="办学许可证" />
-                <p className="mt-1 text-xs text-slate-500 font-normal">非必录项，仅作资料留存，不作为强制审核项。</p>
-              </FieldRow>
-              <FieldRow label="最近通过审核时间">{fmtTime(iq.lastApprovedAt)}</FieldRow>
-            </dl>
+            <>
+              <QualificationSnapshotFields snap={snap} highlightChangedKeys={fieldsUnderReview} />
+              <dl className="w-full">
+                <FieldRow label="最近通过审核时间">{fmtTime(iq.lastApprovedAt)}</FieldRow>
+              </dl>
+            </>
           ) : (
             <p className="text-sm text-slate-500 py-6">
               {readOnly
@@ -293,71 +217,30 @@ export default function InstitutionQualificationPanel({
         </div>
 
         {ready && iq?.pendingReview?.snapshot ? (
-          <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/40">
-            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">待审核提交预览（未生效）</p>
-            <p className="text-xs text-slate-500 mt-1">提交时间：{fmtTime(iq.pendingReview.submittedAt)}</p>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              以下与本次提交表单一致；审核通过前对外仍以「当前生效资质」为准。
+          <div className="px-5 py-4 border-t border-sky-200 bg-sky-50/50">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <p className="text-sm font-semibold text-sky-900">审核中资料</p>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-sky-300 bg-white text-sky-800">
+                待总部审核
+              </span>
+            </div>
+            <p className="text-xs text-sky-800/90 mt-1">提交时间：{fmtTime(iq.pendingReview.submittedAt)}</p>
+            <p className="text-xs text-sky-900/80 mt-2 leading-relaxed">
+              以下为本次变更内容，审核通过前对外仍以「当前生效资质」为准；总部通过后生效资质将自动更新，本区资料随即消失。
             </p>
-            <dl className="mt-3 w-full space-y-0">
-              {(() => {
-                const ps = iq.pendingReview.snapshot
-                return (
-                  <>
-                    <FieldRow label="机构名称">{ps.orgName || '—'}</FieldRow>
-                    <FieldRow label="法定代表人">{ps.legalRepresentative || '—'}</FieldRow>
-                    <FieldRow label="机构地址">{ps.address || '—'}</FieldRow>
-                    <FieldRow label="联系人电话">{ps.contactPhone ? maskPhone(ps.contactPhone) : '—'}</FieldRow>
-                    <FieldRow label="营业执照号/统一社会信用代码">{ps.businessLicenseNumber || '—'}</FieldRow>
-                    <FieldRow label="营业执照">
-                      <div className="space-y-2 font-normal">
-                        {ps.businessLicenseAttachment?.dataUrl ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => downloadLicenseAttachment(ps.businessLicenseAttachment)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-300 bg-white text-sky-800 text-xs font-semibold hover:bg-sky-50"
-                            >
-                              下载待审电子版
-                            </button>
-                            <span className="text-xs text-slate-500 break-all">
-                              {ps.businessLicenseAttachment.fileName ||
-                                guessDownloadName(ps.businessLicenseAttachment.dataUrl)}
-                            </span>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-500">—</p>
-                        )}
-                        {ps.businessLicenseCopy ? (
-                          <p className="text-slate-700 text-sm leading-relaxed">{ps.businessLicenseCopy}</p>
-                        ) : null}
-                      </div>
-                    </FieldRow>
-                    <FieldRow label="经营范围">{ps.businessScope || '—'}</FieldRow>
-                    <FieldRow label="负责人姓名">{ps.principalName || '—'}</FieldRow>
-                    <FieldRow label="负责人电话">{ps.principalPhone ? maskPhone(ps.principalPhone) : '—'}</FieldRow>
-                    <FieldRow label="负责人身份证">{ps.principalIdNumber || '—'}</FieldRow>
-                    <FieldRow label="场地门头照片">
-                      <AttachmentPreview attachment={ps.venueFrontPhotoAttachment} label="门头照片（待审）" imageOnly />
-                    </FieldRow>
-                    <FieldRow label="教室照片">
-                      <AttachmentPreview attachment={ps.venueClassroomPhotoAttachment} label="教室照片（待审）" imageOnly />
-                    </FieldRow>
-                    <FieldRow label="AI / 科技赛道">{yesNoLabel(ps.isAiTechTrack)}</FieldRow>
-                    <FieldRow label="已开办项目">{ps.existingProjects || '—'}</FieldRow>
-                    <FieldRow label="现有生源">
-                      {ps.studentCount || '—'}
-                      {ps.studentAgeRange ? ` · ${ps.studentAgeRange}` : ''}
-                    </FieldRow>
-                    <FieldRow label="加盟专用教室">{yesNoLabel(ps.hasDedicatedClassroom)}</FieldRow>
-                    <FieldRow label="办学许可证">
-                      <AttachmentPreview attachment={ps.schoolPermitAttachment} label="办学许可证（待审）" />
-                      <p className="mt-1 text-xs text-slate-500 font-normal">非必录项，仅作资料留存，不作为强制审核项。</p>
-                    </FieldRow>
-                  </>
-                )
-              })()}
-            </dl>
+            {fieldsUnderReview.size > 0 ? (
+              <div className="mt-3 rounded-xl border border-sky-200/80 bg-white/90 px-1">
+                <QualificationSnapshotFields
+                  snap={iq.pendingReview.snapshot}
+                  filterToChangedKeys={fieldsUnderReview}
+                  markAllUnderReview
+                />
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-slate-600 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+                本次提交与当前生效资质字段一致，暂无单独变更项展示；请等待总部审核结论。
+              </p>
+            )}
           </div>
         ) : null}
       </section>
