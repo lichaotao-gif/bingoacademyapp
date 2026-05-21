@@ -53,6 +53,9 @@ import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import FranchisePartnerLogin from './pages/franchise-portal/FranchisePartnerLogin'
 import FranchisePartnerLayout from './pages/franchise-portal/FranchisePartnerLayout'
+import FranchisePartnerDemoStartRedirect from './pages/franchise-portal/FranchisePartnerDemoStartRedirect'
+import InstitutionHqNewOrgDemoLayout from './pages/institution-hq/InstitutionHqNewOrgDemoLayout'
+import InstitutionHqOnboardingQualification from './pages/institution-hq/InstitutionHqOnboardingQualification'
 import FranchisePartnerDashboard from './pages/franchise-portal/FranchisePartnerDashboard'
 import FranchisePartnerPromote from './pages/franchise-portal/FranchisePartnerPromote'
 import FranchisePartnerOrders from './pages/franchise-portal/FranchisePartnerOrders'
@@ -65,6 +68,7 @@ import FranchisePartnerRecharge from './pages/franchise-portal/FranchisePartnerR
 import FranchisePartnerDiscounts from './pages/franchise-portal/FranchisePartnerDiscounts'
 import FranchisePartnerBalance from './pages/franchise-portal/FranchisePartnerBalance'
 import FranchisePartnerSettings from './pages/franchise-portal/FranchisePartnerSettings'
+import FranchisePartnerOrgApply from './pages/franchise-portal/FranchisePartnerOrgApply'
 import FranchisePartnerStaffAccounts from './pages/franchise-portal/FranchisePartnerStaffAccounts'
 import FranchisePartnerTeachingMaterials from './pages/franchise-portal/FranchisePartnerTeachingMaterials'
 import FranchisePartnerTeachingMaterialDetail from './pages/franchise-portal/FranchisePartnerTeachingMaterialDetail'
@@ -119,6 +123,19 @@ export default function App() {
         <Route path="/mall/materials" element={<Materials />} />
         <Route path="/franchise" element={<Franchise />} />
         <Route path="/franchise-partner/login" element={<FranchisePartnerLogin />} />
+        <Route path="/franchise-partner/demo-new-org/start" element={<Navigate to="/institution-hq/demo-new-org/start" replace />} />
+        <Route path="/franchise-partner/demo-new-org/*" element={<Navigate to="/institution-hq/demo-new-org" replace />} />
+        <Route path="/institution-hq/demo-new-org/start" element={<FranchisePartnerDemoStartRedirect />} />
+        <Route path="/institution-hq/demo-new-org" element={<InstitutionHqNewOrgDemoLayout />}>
+          <Route index element={<Navigate to="onboarding/apply" replace />} />
+          <Route path="onboarding/apply" element={<FranchisePartnerOrgApply />} />
+          <Route path="onboarding/qualification" element={<InstitutionHqOnboardingQualification />} />
+          <Route path="dashboard" element={<InstitutionHqDashboard />} />
+          <Route path="finance" element={<InstitutionHqFinance />} />
+          <Route path="settings" element={<InstitutionHqSettings />} />
+          <Route path="campus-accounts" element={<InstitutionHqCampusAccounts />} />
+          <Route path="hq-staff-accounts" element={<InstitutionHqStaffAccounts />} />
+        </Route>
         <Route path="/institution-hq/login" element={<InstitutionHqLogin />} />
         <Route path="/institution-hq" element={<InstitutionHqLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />

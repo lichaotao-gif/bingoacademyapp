@@ -16,7 +16,7 @@ function ledgerRowMeta(type) {
 }
 
 export default function FranchisePartnerFinance() {
-  const { session, ws } = useFranchiseWorkspace()
+  const { session, ws, p } = useFranchiseWorkspace()
   const [ledgerType, setLedgerType] = useState('')
 
   const filteredLedger = useMemo(() => {
@@ -35,7 +35,7 @@ export default function FranchisePartnerFinance() {
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <p className="text-3xl font-bold text-emerald-600 tabular-nums tracking-tight min-w-0">¥{ws.balance.toFixed(2)}</p>
           <Link
-            to="/franchise-partner/balance"
+            to={p('balance')}
             className="inline-flex items-center justify-center shrink-0 px-4 py-2.5 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-700/40 shadow-sm shadow-emerald-900/10 transition-colors"
           >
             去充值
@@ -86,6 +86,15 @@ export default function FranchisePartnerFinance() {
               </tr>
             </thead>
             <tbody>
+              {filteredLedger.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-10 text-center text-slate-500">
+                    {session.isolatedNewOrgDemo
+                      ? '暂无资金流水。请先完成机构资质审核通过后使用财务功能。'
+                      : '暂无资金流水记录。'}
+                  </td>
+                </tr>
+              ) : null}
               {filteredLedger.map((l) => {
                 const meta = ledgerRowMeta(l.type)
                 const pos = l.amount >= 0

@@ -492,7 +492,7 @@ export default function FranchisePartnerLayout() {
               <h1 className="text-xl font-bold text-slate-900 truncate">{pageTitle}</h1>
             </div>
           ) : null}
-          <Outlet context={{ session }} />
+          <Outlet context={{ session, portalBase: '/franchise-partner' }} />
         </main>
       </div>
 

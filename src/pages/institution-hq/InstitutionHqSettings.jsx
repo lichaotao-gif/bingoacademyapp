@@ -54,8 +54,10 @@ export default function InstitutionHqSettings() {
     </div>
   )
 
+  const allowQualEdit = session.isolatedNewOrgDemo === true
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-2">
+    <div className="mx-auto max-w-5xl space-y-6 pb-2" data-onboarding-allow={allowQualEdit ? true : undefined}>
       {!keys ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
           尚未配置校区账号，无法关联机构资质存储。请先在「校区账号」中添加至少一个校区后再维护机构资料。
@@ -67,7 +69,8 @@ export default function InstitutionHqSettings() {
           iq={iq}
           ready={Boolean(iqSourceWs)}
           readOnly={readOnlyQual}
-          showDemoAudit={!isStaff}
+          showDemoAudit={!isStaff && !allowQualEdit}
+          productionPresentation={allowQualEdit}
           onAfterMutation={refresh}
           intro={introHq}
           sectionTitle="机构资料"

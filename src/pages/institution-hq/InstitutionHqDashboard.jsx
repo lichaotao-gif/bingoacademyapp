@@ -120,6 +120,11 @@ export default function InstitutionHqDashboard() {
 
       <div>
         <h2 className="text-base font-bold text-slate-900 mb-3">校区列表</h2>
+        {rows.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center text-sm text-slate-500 shadow-sm">
+            暂无校区。机构资质审核通过后可前往「校区账号」开设校区。
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {rows.map(({ campus, students, classes, campusBalance }) => (
             <div
@@ -179,6 +184,7 @@ export default function InstitutionHqDashboard() {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       <InstitutionHqCampusAllocateModal

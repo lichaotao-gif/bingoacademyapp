@@ -8,11 +8,13 @@ import {
   AttachmentPreview,
   FieldRow,
   ReviewBadge,
+  resolveQualificationDisplayStatus,
   ReviewFileInput,
   buildQualificationFormFromSnapshots,
   downloadLicenseAttachment,
   fmtTime,
   getChangedQualificationFieldKeys,
+  qualificationSnapshotHasContent,
   guessDownloadName,
   isImageDataUrl,
   LICENSE_INPUT_ACCEPT,
@@ -33,6 +35,7 @@ export default function InstitutionQualificationPanel({
   ready = true,
   readOnly = false,
   showDemoAudit = true,
+  productionPresentation = false,
   onAfterMutation,
   intro = null,
   onRetryLoad,
@@ -111,7 +114,11 @@ export default function InstitutionQualificationPanel({
     if (!r.ok) window.alert(r.msg)
     else {
       onAfterMutation?.()
-      window.alert('（演示）总部已通过审核，下方「当前生效资质」已更新。')
+      window.alert(
+        productionPresentation
+          ? '总部已通过审核，机构信息已更新。'
+          : '（演示）总部已通过审核，下方「当前生效资质」已更新。',
+      )
     }
   }
 
@@ -123,7 +130,11 @@ export default function InstitutionQualificationPanel({
     if (!r.ok) window.alert(r.msg)
     else {
       onAfterMutation?.()
-      window.alert('（演示）总部已驳回，生效资质未变，请修改后重新提交。')
+      window.alert(
+        productionPresentation
+          ? '总部已驳回，请根据反馈修改机构信息后重新提交。'
+          : '（演示）总部已驳回，生效资质未变，请修改后重新提交。',
+      )
     }
   }
 
@@ -144,7 +155,7 @@ export default function InstitutionQualificationPanel({
       <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
         <p className="font-semibold">首次资质已提交（{t}）</p>
         <p className="mt-1.5 text-amber-900/90 leading-relaxed">
-          加盟 <strong>缤果 AI 学院</strong> 需经总部资质审核；审核通过后方可被系统标记为「正式合作机构」并完整开通相关能力（演示环境仍可使用工作台主要功能）。请留意审核结果通知。
+          加盟 <strong>缤果 AI 学院</strong> 需经总部资质审核；审核通过后方可被系统标记为「正式合作机构」并完整开通相关能力。请留意审核结果通知。
         </p>
       </div>
     )
@@ -183,7 +194,7 @@ export default function InstitutionQualificationPanel({
             <p className="text-xs text-slate-500 mt-1">{sectionSubtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {ready && iq ? <ReviewBadge status={iq.reviewStatus} /> : null}
+            {ready && iq ? <ReviewBadge status={resolveQualificationDisplayStatus(iq)} /> : null}
             {!readOnly ? (
               <button
                 type="button"
@@ -200,7 +211,7 @@ export default function InstitutionQualificationPanel({
         <div className="w-full px-5 py-2">
           {!ready ? (
             <p className="text-sm text-slate-500 py-8 text-center">正在加载机构档案…</p>
-          ) : snap ? (
+          ) : qualificationSnapshotHasContent(snap) ? (
             <>
               <QualificationSnapshotFields snap={snap} highlightChangedKeys={fieldsUnderReview} />
               <dl className="w-full">
@@ -245,7 +256,7 @@ export default function InstitutionQualificationPanel({
         ) : null}
       </section>
 
-      {showDemoAudit ? (
+      {showDemoAudit && !productionPresentation ? (
         <details className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-3 text-sm text-slate-600">
           <summary className="cursor-pointer font-medium text-slate-700 select-none">演示 · 模拟总部审核</summary>
           {!ready ? <p className="mt-2 text-xs text-slate-500">请先完成工作台数据加载后再试。</p> : null}
@@ -394,7 +405,11 @@ export default function InstitutionQualificationPanel({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">营业执照电子版 <span className="text-rose-500">*</span></label>
-                <p className="text-xs text-slate-500 mb-2">支持 PDF 或 JPG / PNG / WebP / GIF，单文件不超过 4MB（本地演示存入浏览器，正式环境将上传至总部服务器）。</p>
+                <p className="text-xs text-slate-500 mb-2">
+                  {productionPresentation
+                    ? '支持 PDF 或 JPG / PNG / WebP / GIF，单文件不超过 4MB。'
+                    : '支持 PDF 或 JPG / PNG / WebP / GIF，单文件不超过 4MB（本地演示存入浏览器，正式环境将上传至总部服务器）。'}
+                </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <label className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50 cursor-pointer shrink-0">
                     选择文件

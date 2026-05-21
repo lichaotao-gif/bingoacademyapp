@@ -14,7 +14,7 @@ function fmtDateTime(iso) {
 }
 
 export default function FranchisePartnerProgress() {
-  const { ws } = useFranchiseWorkspace()
+  const { ws, p } = useFranchiseWorkspace()
   const [searchParams] = useSearchParams()
   const studentParam = searchParams.get('studentId')
   const [classFilter, setClassFilter] = useState('all')
@@ -87,7 +87,7 @@ export default function FranchisePartnerProgress() {
           </select>
           {studentFilter !== 'all' ? (
             <Link
-              to="/franchise-partner/progress"
+              to={p('progress')}
               className="text-xs font-medium text-sky-700 hover:underline"
             >
               查看全部

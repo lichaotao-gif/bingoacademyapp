@@ -42,7 +42,7 @@ function lessonPackCourseId(lesson) {
 export default function FranchisePartnerClassDetail() {
   const { classId } = useParams()
   const navigate = useNavigate()
-  const { session, ws, refresh } = useFranchiseWorkspace()
+  const { session, ws, refresh, p } = useFranchiseWorkspace()
 
   /** 当前「更新课时进度」弹窗对应的课程包 key（与 offlineProgressGroups[].packKey 一致），null 为关闭 */
   const [progressModalKey, setProgressModalKey] = useState(null)
@@ -98,7 +98,7 @@ export default function FranchisePartnerClassDetail() {
     if (!ws || !classId) return
     const list = Array.isArray(ws.classes) ? ws.classes : []
     if (!list.some((c) => c.id === classId)) {
-      navigate('/franchise-partner/classes', { replace: true })
+      navigate(p('classes'), { replace: true })
     }
   }, [ws, classId, navigate])
 
@@ -222,7 +222,7 @@ export default function FranchisePartnerClassDetail() {
     if (!window.confirm(tip)) return
     const r = deleteClass(session.partnerId, session.refCode, fc.id)
     if (!r.ok) window.alert(r.msg || '删除失败')
-    else navigate('/franchise-partner/classes', { replace: true })
+    else navigate(p('classes'), { replace: true })
   }
 
   const handleAddStudent = (e) => {
@@ -411,7 +411,7 @@ export default function FranchisePartnerClassDetail() {
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
             <h2 className="text-[15px] font-semibold text-slate-900">本班学员</h2>
             <Link
-              to={`/franchise-partner/students?classId=${encodeURIComponent(classId)}`}
+              to={`${p('students')}?classId=${encodeURIComponent(classId)}`}
               className="text-xs font-medium text-primary hover:text-primary-600 hover:underline shrink-0"
             >
               学生管理（本班）
@@ -465,13 +465,13 @@ export default function FranchisePartnerClassDetail() {
                     <td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-5 py-3 align-middle shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)] group-hover:bg-slate-50/80">
                       <div className="flex flex-row flex-nowrap items-center gap-2">
                         <Link
-                          to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}
+                          to={`${p('recharge')}?studentId=${encodeURIComponent(row.studentId)}`}
                           className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 hover:bg-slate-200"
                         >
                           充课
                         </Link>
                         <Link
-                          to={`/franchise-partner/progress?studentId=${encodeURIComponent(row.studentId)}`}
+                          to={`${p('progress')}?studentId=${encodeURIComponent(row.studentId)}`}
                           className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200 hover:bg-slate-50"
                         >
                           学情

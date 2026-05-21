@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { getWorkspace } from '../../utils/franchisePartnerStorage'
+import { useFranchisePortalPaths } from './franchisePortalPaths'
 
 export function useFranchiseWorkspace() {
   /** 避免未传 context 时解构报错导致整页白屏 */
   const outletCtx = useOutletContext()
   const session = outletCtx && typeof outletCtx === 'object' ? outletCtx.session : undefined
+  const { portalBase, p } = useFranchisePortalPaths()
   const [ws, setWs] = useState(null)
 
   const refresh = useCallback(() => {
@@ -43,5 +45,11 @@ export function useFranchiseWorkspace() {
     }
   }, [session?.partnerId, session?.refCode])
 
-  return { session, ws, refresh }
+  useEffect(() => {
+    const onWsChange = () => refresh()
+    window.addEventListener('franchise-partner-workspace-changed', onWsChange)
+    return () => window.removeEventListener('franchise-partner-workspace-changed', onWsChange)
+  }, [refresh])
+
+  return { session, ws, refresh, portalBase, p }
 }

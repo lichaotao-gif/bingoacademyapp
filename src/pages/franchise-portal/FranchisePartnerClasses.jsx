@@ -9,9 +9,11 @@ function fmtDate(iso) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+const DEMO_EMPTY_HINT = '暂无班级数据。请先完成机构资质审核通过后，再创建班级。'
+
 export default function FranchisePartnerClasses() {
   const navigate = useNavigate()
-  const { session, ws, refresh } = useFranchiseWorkspace()
+  const { session, ws, refresh, p } = useFranchiseWorkspace()
   const [classModalOpen, setClassModalOpen] = useState(false)
 
   if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
@@ -43,14 +45,14 @@ export default function FranchisePartnerClasses() {
 
       {classes.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center text-sm text-slate-500 shadow-sm">
-          暂无班级，点击右上角「创建班级」添加。
+          {session.isolatedNewOrgDemo ? DEMO_EMPTY_HINT : '暂无班级，点击右上角「创建班级」添加。'}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {classes.map((cls) => {
             const n = cls.studentIds?.length || 0
             const active = n > 0
-            const detailTo = `/franchise-partner/classes/${encodeURIComponent(cls.id)}`
+            const detailTo = p(`classes/${encodeURIComponent(cls.id)}`)
             return (
               <article
                 key={cls.id}
@@ -107,7 +109,7 @@ export default function FranchisePartnerClasses() {
         session={session}
         refresh={refresh}
         afterCreate={(newId) => {
-          if (newId) queueMicrotask(() => navigate(`/franchise-partner/classes/${encodeURIComponent(newId)}`, { replace: true }))
+          if (newId) queueMicrotask(() => navigate(p(`classes/${encodeURIComponent(newId)}`), { replace: true }))
         }}
       />
     </div>

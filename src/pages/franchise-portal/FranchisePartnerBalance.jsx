@@ -6,7 +6,7 @@ import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 const PRESETS = [5000, 10000, 20000]
 
 export default function FranchisePartnerBalance() {
-  const { session, ws, refresh } = useFranchiseWorkspace()
+  const { session, ws, refresh, p } = useFranchiseWorkspace()
   const [amount, setAmount] = useState('5000')
   const [msg, setMsg] = useState('')
   const [msgOk, setMsgOk] = useState(true)
@@ -35,7 +35,7 @@ export default function FranchisePartnerBalance() {
           <p className="text-3xl sm:text-4xl font-bold text-primary mt-2 tabular-nums">
             ¥{ws.balance.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
           </p>
-          <Link to="/franchise-partner/finance" className="text-sm text-primary font-medium hover:underline mt-4 inline-block">
+          <Link to={p('finance')} className="text-sm text-primary font-medium hover:underline mt-4 inline-block">
             查看余额变动记录 →
           </Link>
         </div>

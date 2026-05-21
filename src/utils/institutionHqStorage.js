@@ -72,6 +72,10 @@ function saveTreasury(data) {
 
 /** 机构总账户余额与流水（演示；正式环境对接支付/财务中台） */
 export function getInstitutionHqTreasury() {
+  const sess = getInstitutionHqSession()
+  if (sess?.isolatedNewOrgDemo === true) {
+    return { balance: 0, ledger: [] }
+  }
   return loadTreasury()
 }
 
@@ -353,6 +357,8 @@ function saveCustomCampuses(list) {
 
 /** 合并内置演示校区与用户开设校区 */
 export function listInstitutionCampuses() {
+  const sess = getInstitutionHqSession()
+  if (sess?.isolatedNewOrgDemo === true) return []
   const custom = loadCustomCampuses()
   const byId = new Map()
   for (const c of SEED_CAMPUS) byId.set(c.id, c)
@@ -701,6 +707,10 @@ export function openCampusFranchisePartnerInNewTab(campus) {
  * 机构总在设置中编辑并提交审核；各校加盟商端仅展示只读，与主校区数据一致。
  */
 export function getInstitutionOrgQualificationWorkspaceKeys() {
+  const sess = getInstitutionHqSession()
+  if (sess?.isolatedNewOrgDemo && sess.qualPartnerId && sess.qualRefCode) {
+    return { partnerId: String(sess.qualPartnerId), refCode: String(sess.qualRefCode) }
+  }
   const camps = listInstitutionCampuses()
   if (!camps.length) return null
   const primary =

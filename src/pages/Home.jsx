@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import LeadCaptureModal from '../components/LeadCaptureModal'
 import { resolveLeadAssetKey } from '../utils/leadCaptureAssets'
+import { NEW_ORG_DEMO_START_PATH } from '../utils/franchiseNewOrgOnboarding'
 
 // ─── 数据 ────────────────────────────────────────────────
 
@@ -224,6 +225,13 @@ export default function Home() {
                   <span>🏢 机构总管理员登录</span>
                   <span className="text-indigo-100 text-xs">多校区 · 集团汇总 →</span>
                 </Link>
+                <Link
+                  to={NEW_ORG_DEMO_START_PATH}
+                  className="flex items-center justify-between w-full bg-violet-600/90 hover:bg-violet-500 text-white px-5 py-3 rounded-xl text-sm font-semibold transition border border-violet-400/40"
+                >
+                  <span>✨ 新机构入驻</span>
+                  <span className="text-violet-100 text-xs">机构总管理 · 立即体验 →</span>
+                </Link>
               </div>
             </div>
           </div>
@@ -295,12 +303,20 @@ export default function Home() {
                 <p className="text-slate-300 text-sm">缤果AI学院全链条产教融合合作体系，品牌+课程+师资+赛事<strong className="text-white">一站式赋能</strong></p>
                 <p className="text-xs text-sky-300 font-medium mt-2">全国合作机构500+ · 加盟商100+ · 合作机构营收平均提升60%</p>
               </Link>
-              <Link
-                to="/franchise-partner/login"
-                className="shrink-0 bg-sky-500 hover:bg-sky-400 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition"
-              >
-                加盟商管理登录 →
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                <Link
+                  to="/franchise-partner/login"
+                  className="bg-sky-500 hover:bg-sky-400 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition text-center"
+                >
+                  加盟商管理登录 →
+                </Link>
+                <Link
+                  to={NEW_ORG_DEMO_START_PATH}
+                  className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition text-center border border-violet-400/50"
+                >
+                  新机构入驻 →
+                </Link>
+              </div>
             </div>
           </div>
         </section>

@@ -247,7 +247,7 @@ function fmtDateTime(iso) {
 }
 
 export default function FranchisePartnerStudents() {
-  const { session, ws, refresh } = useFranchiseWorkspace()
+  const { session, ws, refresh, p } = useFranchiseWorkspace()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const classIdFromQuery = searchParams.get('classId')
@@ -427,7 +427,7 @@ export default function FranchisePartnerStudents() {
           {classIdFromQuery ? (
             <button
               type="button"
-              onClick={() => navigate('/franchise-partner/classes')}
+              onClick={() => navigate(p('classes'))}
               className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-colors"
               aria-label="返回班级管理"
             >
@@ -464,7 +464,7 @@ export default function FranchisePartnerStudents() {
             <>
               <span className="text-sm text-slate-600">当前查看本班成员</span>
               <Link
-                to="/franchise-partner/students"
+                to={p('students')}
                 className="text-xs font-medium text-primary hover:text-primary-600 hover:underline"
               >
                 全部学员（全表）
@@ -495,8 +495,9 @@ export default function FranchisePartnerStudents() {
 
       {(showPinnedClassRoster ? classRosterRows.length === 0 : allRows.length === 0) ? (
         <p className="text-sm text-slate-500">
-          当前筛选下暂无学员。点击右上角「添加学生」
-          {showPinnedClassRoster ? '。' : '，或调整班级筛选。'}
+          {session.isolatedNewOrgDemo
+            ? '暂无学员数据。请先完成机构资质审核通过后，再添加学员。'
+            : `当前筛选下暂无学员。点击右上角「添加学生」${showPinnedClassRoster ? '。' : '，或调整班级筛选。'}`}
         </p>
       ) : showPinnedClassRoster ? (
         <div className="overflow-x-auto card rounded-2xl border border-slate-200">
@@ -542,13 +543,13 @@ export default function FranchisePartnerStudents() {
                   <td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-5 py-3 align-middle text-left shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)] group-hover:bg-slate-50/80">
                     <div className="flex flex-row flex-nowrap items-center gap-2">
                       <Link
-                        to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}
+                        to={`${p('recharge')}?studentId=${encodeURIComponent(row.studentId)}`}
                         className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 hover:bg-slate-200 hover:border-slate-400 transition-colors"
                       >
                         充课
                       </Link>
                       <Link
-                        to={`/franchise-partner/progress?studentId=${encodeURIComponent(row.studentId)}`}
+                        to={`${p('progress')}?studentId=${encodeURIComponent(row.studentId)}`}
                         className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
                       >
                         学情
@@ -614,13 +615,13 @@ export default function FranchisePartnerStudents() {
                   <td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-5 py-3 align-middle text-left shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.2)] group-hover:bg-slate-50/80">
                     <div className="flex flex-row flex-nowrap items-center gap-2">
                       <Link
-                        to={`/franchise-partner/recharge?studentId=${encodeURIComponent(row.studentId)}`}
+                        to={`${p('recharge')}?studentId=${encodeURIComponent(row.studentId)}`}
                         className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 hover:bg-slate-200 hover:border-slate-400 transition-colors"
                       >
                         充课
                       </Link>
                       <Link
-                        to={`/franchise-partner/progress?studentId=${encodeURIComponent(row.studentId)}`}
+                        to={`${p('progress')}?studentId=${encodeURIComponent(row.studentId)}`}
                         className="inline-flex shrink-0 items-center justify-center px-3 py-2 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
                       >
                         查看学情

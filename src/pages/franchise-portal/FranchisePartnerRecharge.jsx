@@ -12,7 +12,7 @@ import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 const STEPS = ['选择学员', '选择课程', '确认扣费', '完成']
 
 export default function FranchisePartnerRecharge() {
-  const { session, ws, refresh } = useFranchiseWorkspace()
+  const { session, ws, refresh, p } = useFranchiseWorkspace()
   const [searchParams] = useSearchParams()
   const studentParam = searchParams.get('studentId')
   const [step, setStep] = useState(1)
@@ -94,11 +94,11 @@ export default function FranchisePartnerRecharge() {
     <div className="space-y-6 max-w-[600px]">
       <p className="text-sm text-slate-500">
         按步骤完成充课：系统将按
-        <Link to="/franchise-partner/discounts" className="text-primary hover:underline mx-0.5">
+        <Link to={p('discounts')} className="text-primary hover:underline mx-0.5">
           专属折扣
         </Link>
         从
-        <Link to="/franchise-partner/balance" className="text-primary hover:underline mx-0.5">
+        <Link to={p('balance')} className="text-primary hover:underline mx-0.5">
           账户余额
         </Link>
         扣款并生成订单。
@@ -129,7 +129,7 @@ export default function FranchisePartnerRecharge() {
               </select>
               <p className="text-xs text-slate-400 mt-2">
                 没有学员？先到
-                <Link to="/franchise-partner/students" className="text-primary hover:underline">
+                <Link to={p('students')} className="text-primary hover:underline">
                   学员管理
                 </Link>
                 添加。

@@ -3,7 +3,7 @@ import { FRANCHISE_PROMOTABLE_COURSES, getDiscountLabel, getDiscountRate } from 
 import { useFranchiseWorkspace } from './useFranchiseWorkspace'
 
 export default function FranchisePartnerDiscounts() {
-  const { ws } = useFranchiseWorkspace()
+  const { ws, p } = useFranchiseWorkspace()
   if (!ws) return <p className="text-slate-500 text-sm">加载中…</p>
 
   return (
@@ -46,7 +46,7 @@ export default function FranchisePartnerDiscounts() {
 
       <p className="text-xs text-slate-400">
         充课扣款时系统按上表自动匹配折扣，详见
-        <Link to="/franchise-partner/recharge" className="text-primary hover:underline">
+        <Link to={p('recharge')} className="text-primary hover:underline">
           充课中心
         </Link>
         。

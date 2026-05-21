@@ -303,7 +303,9 @@ export default function InstitutionHqFinance() {
             </tbody>
           </table>
           {!filteredLedger.length ? (
-            <p className="py-10 text-center text-sm text-slate-400">暂无流水</p>
+            <p className="py-10 text-center text-sm text-slate-400">
+              暂无流水
+            </p>
           ) : null}
         </div>
       </div>

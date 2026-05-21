@@ -53,7 +53,7 @@ function ModalBackdrop({ onClose, children }) {
 }
 
 export default function FranchisePartnerStaffAccounts() {
-  const { session } = useFranchiseWorkspace()
+  const { session, p } = useFranchiseWorkspace()
   const [tick, setTick] = useState(0)
   const partnerId = session?.partnerId
 
@@ -218,7 +218,7 @@ export default function FranchisePartnerStaffAccounts() {
           当前为子账号登录。请使用机构主账号手机号登录工作台后，再配置角色与员工账号。
         </p>
         <Link
-          to="/franchise-partner/dashboard"
+          to={p('dashboard')}
           className="mt-5 inline-flex items-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primary shadow-sm ring-1 ring-slate-200/80 hover:bg-slate-50"
         >
           返回首页

@@ -15,7 +15,7 @@ function dayKey(iso) {
 }
 
 export default function FranchisePartnerOrders() {
-  const { session, ws } = useFranchiseWorkspace()
+  const { session, ws, p } = useFranchiseWorkspace()
   const [filterName, setFilterName] = useState('')
   const [filterCourse, setFilterCourse] = useState('')
   const [filterDate, setFilterDate] = useState('')
@@ -42,7 +42,7 @@ export default function FranchisePartnerOrders() {
     <div className="space-y-6">
       <p className="text-sm text-slate-500">
         支持按学员、课程、日期筛选。扣款规则见
-        <Link to="/franchise-partner/discounts" className="text-primary hover:underline mx-0.5">
+        <Link to={p('discounts')} className="text-primary hover:underline mx-0.5">
           专属折扣
         </Link>
         。
@@ -129,6 +129,15 @@ export default function FranchisePartnerOrders() {
               </tr>
             </thead>
             <tbody>
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-10 text-center text-slate-500">
+                    {session.isolatedNewOrgDemo
+                      ? '暂无订单。请先完成机构资质审核通过后使用订单功能。'
+                      : '暂无订单记录。'}
+                  </td>
+                </tr>
+              ) : null}
               {filteredOrders.map((o) => (
                 <tr key={o.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                   <td className="px-5 py-3 font-mono text-slate-600">{o.id}</td>

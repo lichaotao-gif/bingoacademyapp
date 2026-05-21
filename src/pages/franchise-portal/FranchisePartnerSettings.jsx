@@ -111,7 +111,7 @@ export default function FranchisePartnerSettings() {
         </div>
       ) : null}
 
-      <div className="min-w-0 max-w-4xl">
+      <div className="min-w-0 max-w-4xl" data-onboarding-allow>
         <InstitutionQualificationPanel
           partnerId={panelPartnerId}
           refCode={panelRefCode}
@@ -119,7 +119,10 @@ export default function FranchisePartnerSettings() {
           ready={panelReady}
           readOnly={readOnlyOrg}
           showDemoAudit={!readOnlyOrg && Boolean(ws)}
-          onAfterMutation={refresh}
+          onAfterMutation={() => {
+            refresh()
+            window.dispatchEvent(new Event('franchise-new-org-onboarding-changed'))
+          }}
           onRetryLoad={refresh}
           intro={introFranchise}
           sectionTitle={readOnlyOrg ? '机构资料（集团）' : '我的机构'}

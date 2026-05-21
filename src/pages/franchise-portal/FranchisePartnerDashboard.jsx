@@ -12,14 +12,18 @@ function fmtDate(iso) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+const DEMO_EMPTY_HINT = '暂无数据。请先完成机构资质审核通过后使用此功能。'
+
 export default function FranchisePartnerDashboard() {
-  const { session, ws } = useFranchiseWorkspace()
+  const { session, ws, p } = useFranchiseWorkspace()
 
   if (!ws || !session) return <p className="text-slate-500 text-sm">加载中…</p>
 
+  const isDemo = session.isolatedNewOrgDemo === true
   const studentCount = ws.students.length
   const classCount = ws.classes.length
   const classesPreview = [...ws.classes].slice(0, 4)
+  const ordersPreview = [...(ws.orders || [])].slice(0, 8)
 
   return (
     <div className="space-y-6">
@@ -66,13 +70,13 @@ export default function FranchisePartnerDashboard() {
                   {k.balanceActions ? (
                     <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 sm:gap-2">
                       <Link
-                        to="/franchise-partner/balance"
+                        to={p('balance')}
                         className="inline-flex items-center justify-center px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-semibold bg-primary hover:bg-primary-600 text-white shadow-sm transition text-center"
                       >
                         余额充值
                       </Link>
                       <Link
-                        to="/franchise-partner/finance"
+                        to={p('finance')}
                         className="text-[10px] sm:text-xs text-slate-500 hover:text-primary font-medium truncate"
                       >
                         余额变动记录 →
@@ -96,10 +100,15 @@ export default function FranchisePartnerDashboard() {
       <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
           <h2 className="font-semibold text-slate-900">班级列表</h2>
-          <Link to="/franchise-partner/classes" className="text-xs text-primary font-medium hover:underline shrink-0">
+          <Link to={p('classes')} className="text-xs text-primary font-medium hover:underline shrink-0">
             全部班级 →
           </Link>
         </div>
+        {classesPreview.length === 0 ? (
+          <p className="text-sm text-slate-500 text-center py-8 px-4">
+            {isDemo ? DEMO_EMPTY_HINT : '暂无班级，请前往班级管理创建。'}
+          </p>
+        ) : (
         <ul className="space-y-3">
           {classesPreview.map((cls) => {
             const n = cls.studentIds?.length || 0
@@ -120,6 +129,7 @@ export default function FranchisePartnerDashboard() {
             )
           })}
         </ul>
+        )}
       </div>
 
       {/* 最新订单 */}
@@ -131,11 +141,16 @@ export default function FranchisePartnerDashboard() {
               后续版本
             </span>
           </div>
-          <Link to="/franchise-partner/orders" className="text-xs text-primary font-medium hover:underline shrink-0">
+          <Link to={p('orders')} className="text-xs text-primary font-medium hover:underline shrink-0">
             全部订单 →
           </Link>
         </div>
         <div className="overflow-x-auto">
+          {ordersPreview.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-10 px-5">
+              {isDemo ? DEMO_EMPTY_HINT : '暂无订单记录。'}
+            </p>
+          ) : (
           <table className="w-full text-sm text-left min-w-[720px]">
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
@@ -150,7 +165,7 @@ export default function FranchisePartnerDashboard() {
               </tr>
             </thead>
             <tbody>
-              {ws.orders.slice(0, 8).map((o) => (
+              {ordersPreview.map((o) => (
                 <tr key={o.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                   <td className="px-5 py-3 font-mono text-slate-600">{o.id}</td>
                   <td className="px-5 py-3 font-semibold text-slate-900">{o.studentName}</td>
@@ -177,6 +192,7 @@ export default function FranchisePartnerDashboard() {
               ))}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 

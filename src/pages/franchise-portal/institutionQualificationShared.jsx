@@ -106,6 +106,17 @@ export function qualificationFieldsUnderReview(changedKeys, keys) {
   return keys.some((k) => changedKeys.has(k))
 }
 
+/** 资质快照是否已有实质内容（空对象 {} 视为未填写） */
+export function qualificationSnapshotHasContent(snap) {
+  if (!snap || typeof snap !== 'object') return false
+  for (const v of Object.values(snap)) {
+    if (v == null || v === '') continue
+    if (typeof v === 'object' && v.dataUrl) return true
+    if (String(v).trim()) return true
+  }
+  return false
+}
+
 export function PendingReviewTag() {
   return (
     <span className="shrink-0 inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border border-sky-200 bg-sky-50 text-sky-800">
@@ -114,14 +125,30 @@ export function PendingReviewTag() {
   )
 }
 
+/** 无生效档案时不展示「已通过」，避免空数据误显示审核状态 */
+export function resolveQualificationDisplayStatus(iq) {
+  if (!iq || typeof iq !== 'object') return null
+  if (iq.pendingReview) {
+    return iq.reviewStatus === 'pending_update' ? 'pending_update' : 'pending_initial'
+  }
+  if (qualificationSnapshotHasContent(iq.approvedSnapshot)) {
+    return iq.reviewStatus || 'incomplete'
+  }
+  if (iq.reviewStatus === 'rejected') return 'rejected'
+  return 'incomplete'
+}
+
 export function ReviewBadge({ status }) {
+  if (!status) return null
   const map = {
     approved: { cls: 'bg-emerald-100 text-emerald-800 border-emerald-200', text: '审核已通过' },
+    incomplete: { cls: 'bg-slate-100 text-slate-600 border-slate-200', text: '待提交机构信息' },
     pending_initial: { cls: 'bg-amber-100 text-amber-900 border-amber-200', text: '资质待初审' },
     pending_update: { cls: 'bg-sky-100 text-sky-900 border-sky-200', text: '资质变更审核中' },
     rejected: { cls: 'bg-rose-100 text-rose-800 border-rose-200', text: '上次提交未通过' },
   }
-  const m = map[status] || map.approved
+  const m = map[status]
+  if (!m) return null
   return <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${m.cls}`}>{m.text}</span>
 }
 

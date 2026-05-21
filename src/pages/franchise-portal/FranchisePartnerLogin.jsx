@@ -11,6 +11,7 @@ import {
   verifyOrRegisterPartnerLogin,
   verifyPartnerLoginSmsCode,
 } from '../../utils/franchisePartnerStorage'
+import { NEW_ORG_DEMO_START_PATH, resolveDemoPostLoginPath } from '../../utils/franchiseNewOrgOnboarding'
 import { tryInstitutionStaffLogin } from '../../utils/franchiseInstitutionAccounts'
 import { isFranchiseCampusLoginDisabled } from '../../utils/institutionHqStorage'
 
@@ -52,6 +53,10 @@ export default function FranchisePartnerLogin() {
     consumeQueuedPartnerSessionIfPresent()
     const s = getPartnerSession()
     if (s && !isPartnerAccountFrozen(s.partnerId)) {
+      if (s.isolatedNewOrgDemo) {
+        navigate(resolveDemoPostLoginPath(s.phone), { replace: true })
+        return
+      }
       navigate('/franchise-partner/dashboard', { replace: true })
     }
   }, [navigate])
@@ -94,7 +99,6 @@ export default function FranchisePartnerLogin() {
       }
       try {
         setPartnerSession(sessionPayload || buildPartnerSessionPayloadForLogin(digits))
-        /** 使用路由跳转，由 BrowserRouter basename 统一处理子路径部署，避免手写 URL 与 BASE_URL 不一致 */
         navigate('/franchise-partner/dashboard', { replace: true })
       } catch (e) {
         console.error(e)
@@ -379,7 +383,13 @@ export default function FranchisePartnerLogin() {
           )}
         </div>
 
-        <p className="text-center mt-6 text-sm text-slate-500">
+        <p className="text-center mt-4 text-sm text-slate-500">
+          <Link to={NEW_ORG_DEMO_START_PATH} className="text-violet-700 font-semibold hover:underline">
+            新机构入驻 →
+          </Link>
+        </p>
+
+        <p className="text-center mt-4 text-sm text-slate-500">
           <Link to="/" className="text-primary hover:underline">
             ← 返回官网首页
           </Link>

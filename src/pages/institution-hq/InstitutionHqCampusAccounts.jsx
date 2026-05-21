@@ -583,6 +583,13 @@ export default function InstitutionHqCampusAccounts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {campuses.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">
+                    暂无校区。机构资质审核通过后可点击上方「开设校区」添加。
+                  </td>
+                </tr>
+              ) : null}
               {campuses.map((c) => {
                 const planBits = [
                   c.plannedOpenDate ? `计划开业 ${c.plannedOpenDate}` : '',

@@ -1737,6 +1737,100 @@ function workspaceShellForInstitutionNewCampus(partnerId, refCode, openingBalanc
   }
 }
 
+/** 新机构入驻独立演示：空工作台（无班级/学员/订单等种子数据） */
+export function createIsolatedNewOrgEmptyWorkspace(partnerId, refCode) {
+  const courseDiscounts = [
+    { courseId: 'ai-enlighten', rate: 0.8, label: '8折' },
+    { courseId: 'ai-advance-basic', rate: 0.75, label: '75折' },
+    { courseId: 'ai-advance-ml', rate: 0.75, label: '75折' },
+    { courseId: 'ai-programming', rate: 0.85, label: '85折' },
+  ]
+  const ws = {
+    schemaVersion: 2,
+    partnerId,
+    refCode,
+    isolatedNewOrgDemo: true,
+    balance: 0,
+    frozen: 0,
+    courseDiscounts,
+    announcements: [
+      {
+        id: 'a-demo-qual-hint',
+        title: '请先完善机构信息并提交总部审核，审核通过后可使用全部功能。',
+        date: new Date().toISOString().slice(0, 10),
+        isNew: true,
+      },
+    ],
+    orders: [],
+    ledger: [],
+    withdrawals: [],
+    classes: [],
+    students: [],
+    materialOrders: [],
+    institutionQualification: {
+      reviewStatus: 'incomplete',
+      rejectReason: null,
+      approvedSnapshot: null,
+      pendingReview: null,
+    },
+  }
+  saveWorkspace(partnerId, ws)
+  return ws
+}
+
+/** 演示工作台是否被写入了默认机构种子资质（勿影响正式机构） */
+function isolatedDemoQualificationLooksSeeded(iq) {
+  const snap = iq?.approvedSnapshot
+  if (!snap || typeof snap !== 'object') return false
+  if (iq.reviewStatus === 'approved' && snap.legalRepresentative === '王小明') return true
+  if (snap.legalRepresentative === '王小明' && snap.businessLicenseNumber === '91310000MA1FLXXXXX') return true
+  return false
+}
+
+export function ensureIsolatedDemoEmptyQualification(partnerId, refCode) {
+  if (typeof window === 'undefined') return false
+  const raw = localStorage.getItem(workspaceKey(partnerId))
+  if (!raw) return false
+  const ws = safeParse(raw, null)
+  if (!ws?.isolatedNewOrgDemo || !isolatedDemoQualificationLooksSeeded(ws.institutionQualification)) return false
+  ws.institutionQualification = {
+    reviewStatus: 'incomplete',
+    rejectReason: null,
+    approvedSnapshot: null,
+    pendingReview: null,
+  }
+  saveWorkspace(partnerId, ws)
+  return true
+}
+
+/** 将旧演示种子数据迁移为独立空工作台（保留已填资质进度） */
+export function migrateIsolatedNewOrgWorkspaceIfNeeded(partnerId, refCode) {
+  if (typeof window === 'undefined') return false
+  const raw = localStorage.getItem(workspaceKey(partnerId))
+  if (!raw) {
+    createIsolatedNewOrgEmptyWorkspace(partnerId, refCode)
+    return true
+  }
+  const ws = safeParse(raw, null)
+  if (!ws || typeof ws !== 'object') {
+    createIsolatedNewOrgEmptyWorkspace(partnerId, refCode)
+    return true
+  }
+  const needsReset =
+    ws.isolatedNewOrgDemo !== true ||
+    (Array.isArray(ws.classes) && ws.classes.length > 0) ||
+    (Array.isArray(ws.students) && ws.students.length > 0) ||
+    (Array.isArray(ws.orders) && ws.orders.length > 0) ||
+    (Array.isArray(ws.materialOrders) && ws.materialOrders.length > 0) ||
+    (Array.isArray(ws.ledger) && ws.ledger.length > 0) ||
+    isolatedDemoQualificationLooksSeeded(ws.institutionQualification)
+  if (!needsReset) {
+    return ensureIsolatedDemoEmptyQualification(partnerId, refCode)
+  }
+  createIsolatedNewOrgEmptyWorkspace(partnerId, refCode)
+  return true
+}
+
 export function getWorkspace(partnerId, refCode) {
   if (typeof window === 'undefined') return defaultWorkspace(partnerId, refCode)
   const raw = localStorage.getItem(workspaceKey(partnerId))
@@ -1751,6 +1845,37 @@ export function getWorkspace(partnerId, refCode) {
   const ws = safeParse(raw, defaultWorkspace(partnerId, refCode))
   if (!ws.partnerId) ws.partnerId = partnerId
   if (ws.refCode == null) ws.refCode = refCode
+
+  if (ws.isolatedNewOrgDemo === true) {
+    ws.classes = Array.isArray(ws.classes) ? ws.classes : []
+    ws.students = Array.isArray(ws.students) ? ws.students : []
+    ws.orders = Array.isArray(ws.orders) ? ws.orders : []
+    ws.materialOrders = Array.isArray(ws.materialOrders) ? ws.materialOrders : []
+    ws.ledger = Array.isArray(ws.ledger) ? ws.ledger : []
+    ws.withdrawals = Array.isArray(ws.withdrawals) ? ws.withdrawals : []
+    if (!ws.institutionQualification || typeof ws.institutionQualification !== 'object') {
+      ws.institutionQualification = {
+        reviewStatus: 'incomplete',
+        rejectReason: null,
+        approvedSnapshot: null,
+        pendingReview: null,
+      }
+    }
+    let qualDirty = false
+    if (isolatedDemoQualificationLooksSeeded(ws.institutionQualification)) {
+      ws.institutionQualification = {
+        reviewStatus: 'incomplete',
+        rejectReason: null,
+        approvedSnapshot: null,
+        pendingReview: null,
+      }
+      qualDirty = true
+    }
+    if (stripOversizedLicenseAttachments(ws)) qualDirty = true
+    if (qualDirty) saveWorkspace(partnerId, ws)
+    return ws
+  }
+
   const firstOrder = ws.orders?.[0]
   const isLegacyOrders = firstOrder && ('commission' in firstOrder || !('discountLabel' in firstOrder))
   if (!ws.schemaVersion || isLegacyOrders) {
