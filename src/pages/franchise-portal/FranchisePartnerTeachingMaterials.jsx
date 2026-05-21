@@ -20,6 +20,10 @@ function fmtDateTime(iso) {
 
 const PAY_LABEL = { balance: '账户余额', wechat: '微信支付' }
 
+/** 学具商城商品卡固定尺寸；外层 grid 用 auto-fill 按容器宽度自动排列 */
+const TEACHING_PRODUCT_CARD_WIDTH = '14rem' // 224px
+const TEACHING_PRODUCT_COVER_HEIGHT = '10.5rem' // 168px，4:3
+
 const COVER_THEME = {
   'kit-ai-starter': { from: '#6366f1', to: '#22d3ee', dot: '#ffffff' },
   'robot-microbit': { from: '#0ea5e9', to: '#14b8a6', dot: '#dcfce7' },
@@ -316,7 +320,10 @@ export default function FranchisePartnerTeachingMaterials() {
             <span className="min-w-0 leading-snug">{policySummaryText}</span>
             <span className="shrink-0 tabular-nums font-medium text-slate-800">购物车 {cartTotalQty} 件</span>
           </div>
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+          <div
+            className="grid gap-3 sm:gap-4 justify-start"
+            style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${TEACHING_PRODUCT_CARD_WIDTH}, ${TEACHING_PRODUCT_CARD_WIDTH}))` }}
+          >
             {teachingProducts.map((p) => {
               const q = cart[p.id] || 0
               const coverSrc = getTeachingProductCoverSrc(p)
@@ -324,43 +331,46 @@ export default function FranchisePartnerTeachingMaterials() {
               return (
                 <div
                   key={p.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col hover:border-primary/35 transition-colors overflow-hidden"
+                  className="w-full max-w-[14rem] rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm flex flex-col hover:border-primary/35 transition-colors overflow-hidden"
                 >
                   <Link
                     to={itemPath}
-                    className="min-w-0 flex-1 flex flex-col text-left rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 -m-1 p-1 group"
+                    className="min-w-0 flex flex-col text-left rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 group"
                   >
-                    <div className="relative w-full aspect-[4/3] rounded-xl border border-slate-100 overflow-hidden bg-slate-100 shadow-inner">
+                    <div
+                      className="relative w-full shrink-0 rounded-lg border border-slate-100 overflow-hidden bg-slate-100 shadow-inner"
+                      style={{ height: TEACHING_PRODUCT_COVER_HEIGHT }}
+                    >
                       <img src={coverSrc} alt={`${p.name} 封面`} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
                       {p.emoji ? (
-                        <span className="absolute top-2 left-2 text-2xl drop-shadow-sm bg-white/90 rounded-lg px-1.5 py-0.5" aria-hidden>
+                        <span className="absolute top-1.5 left-1.5 text-lg drop-shadow-sm bg-white/90 rounded-md px-1 py-0.5" aria-hidden>
                           {p.emoji}
                         </span>
                       ) : null}
                       {p.tag ? (
-                        <span className="absolute top-2 right-2 text-[11px] font-semibold text-white bg-primary rounded-full px-2 py-0.5 shadow-sm">
+                        <span className="absolute top-1.5 right-1.5 text-[10px] font-semibold text-white bg-primary rounded-full px-1.5 py-0.5 shadow-sm">
                           {p.tag}
                         </span>
                       ) : null}
                     </div>
-                    <h3 className="mt-3 font-semibold text-slate-900 text-[15px] leading-snug group-hover:text-primary transition-colors">
+                    <h3 className="mt-2 font-semibold text-slate-900 text-sm leading-snug line-clamp-2 min-h-[2.5rem] group-hover:text-primary transition-colors">
                       {p.name}
                     </h3>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed line-clamp-3">{p.desc}</p>
-                    <p className="text-lg font-bold text-primary mt-3 tabular-nums">¥{p.price.toLocaleString('zh-CN')}</p>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-snug line-clamp-2 min-h-[2.25rem]">{p.desc}</p>
+                    <p className="text-base font-bold text-primary mt-1.5 tabular-nums">¥{p.price.toLocaleString('zh-CN')}</p>
                   </Link>
-                  <div className="relative z-10 flex items-center gap-2 mt-4 pt-4 border-t border-slate-100 bg-white">
+                  <div className="relative z-10 flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 bg-white">
                     <button
                       type="button"
                       onClick={() => addToCart(p.id)}
-                      className="flex-1 px-3 py-2.5 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50"
+                      className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50"
                     >
-                      {q > 0 ? `加入购物车（已${q}件）` : '加入购物车'}
+                      {q > 0 ? `购物车（${q}）` : '加入购物车'}
                     </button>
                     <button
                       type="button"
                       onClick={() => buyNow(p.id)}
-                      className="flex-1 px-3 py-2.5 rounded-lg bg-primary hover:bg-primary-600 text-white text-sm font-semibold"
+                      className="flex-1 min-w-0 px-2 py-1.5 rounded-md bg-primary hover:bg-primary-600 text-white text-xs font-semibold"
                     >
                       立即购买
                     </button>
