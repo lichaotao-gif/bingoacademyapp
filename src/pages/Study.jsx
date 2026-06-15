@@ -407,10 +407,37 @@ function ProgressBar({ value, color = 'bg-primary' }) {
   )
 }
 
+function formatMediaTime(seconds) {
+  const safe = Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : 0
+  const mins = Math.floor(safe / 60)
+  const secs = safe % 60
+  return `${mins}:${String(secs).padStart(2, '0')}`
+}
+
 // ─── 环节块组件（视频/选择题/填空/连线/拖拽/游戏/AI实验），支持 dark 沉浸主题 ─────────────────
-function SegmentVideo({ segment, index, controlledPlaying, onPlay, dark }) {
+function SegmentVideo({
+  segment,
+  index,
+  controlledPlaying,
+  onPlay,
+  onReplayLearning,
+  onContinueLearning,
+  onPreviousStep,
+  onNextStep,
+  disablePreviousStep,
+  disableNextStep,
+  stepProgressLabel,
+  dark,
+}) {
   const p = segment.payload
   const [internalPlaying, setInternalPlaying] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showContinueLearning, setShowContinueLearning] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+  const [volume, setVolume] = useState(1)
+  const [playbackRate, setPlaybackRate] = useState(1)
   const playing = onPlay != null ? controlledPlaying : internalPlaying
   const setPlaying = onPlay != null ? () => onPlay() : setInternalPlaying
   const posterUrl = p.posterUrl || p.poster
@@ -421,22 +448,80 @@ function SegmentVideo({ segment, index, controlledPlaying, onPlay, dark }) {
   const hasStreamableUrl = /^https?:\/\//i.test(src)
 
   const enterVideoFullscreen = () => {
-    const v = videoRef.current
-    if (v) {
-      if (v.requestFullscreen) {
-        v.requestFullscreen().catch(() => {})
-        return
-      }
-      if (v.webkitEnterFullscreen) {
-        v.webkitEnterFullscreen()
-        return
-      }
-    }
     const w = wrapRef.current
     if (!w) return
     if (w.requestFullscreen) w.requestFullscreen().catch(() => {})
     else if (w.webkitRequestFullscreen) w.webkitRequestFullscreen()
   }
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      const wrap = wrapRef.current
+      const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
+      setIsFullscreen(Boolean(wrap && fullscreenElement === wrap))
+    }
+    document.addEventListener('fullscreenchange', syncFullscreenState)
+    document.addEventListener('webkitfullscreenchange', syncFullscreenState)
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState)
+      document.removeEventListener('webkitfullscreenchange', syncFullscreenState)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!playing) {
+      setShowContinueLearning(false)
+      setIsPaused(false)
+    }
+  }, [playing])
+
+  const togglePlayPause = () => {
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused || video.ended) {
+      video.play().catch(() => {})
+    } else {
+      video.pause()
+    }
+  }
+
+  const handleSeek = (event) => {
+    const video = videoRef.current
+    const nextTime = Number(event.target.value)
+    setCurrentTime(nextTime)
+    if (!video) return
+    video.currentTime = nextTime
+  }
+
+  const handleVolumeChange = (event) => {
+    const video = videoRef.current
+    const nextVolume = Number(event.target.value)
+    setVolume(nextVolume)
+    if (!video) return
+    video.volume = nextVolume
+    video.muted = nextVolume === 0
+  }
+
+  const handlePlaybackRateChange = (event) => {
+    const video = videoRef.current
+    const nextRate = Number(event.target.value)
+    setPlaybackRate(nextRate)
+    if (!video) return
+    video.playbackRate = nextRate
+  }
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {})
+      return
+    }
+    if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+      document.webkitExitFullscreen()
+    }
+  }
+
+  const showInlineControlBar = hasStreamableUrl && !isFullscreen
+  const showFullscreenControlBar = isFullscreen && hasStreamableUrl
 
   return (
     <div className={`rounded-xl overflow-hidden border ${dark ? 'border-slate-600 bg-slate-800' : 'border-slate-200 bg-slate-900'}`}>
@@ -444,21 +529,18 @@ function SegmentVideo({ segment, index, controlledPlaying, onPlay, dark }) {
         <span className={dark ? 'bg-cyan-500/80 px-2 py-0.5 rounded text-white' : 'bg-primary/80 px-2 py-0.5 rounded text-white'}>环节 {index + 1}</span>
         <span>{SEGMENT_LABELS.video}</span>
         {p.title && <span className="text-slate-300 flex-1 min-w-[6rem] truncate">· {p.title}</span>}
-        <button
-          type="button"
-          onClick={enterVideoFullscreen}
-          className={`ml-auto shrink-0 px-2 py-1 rounded-md text-[11px] font-medium ${dark ? 'bg-slate-600 hover:bg-slate-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
-        >
-          全屏
-        </button>
       </div>
-      <div ref={wrapRef} className="aspect-video relative flex flex-col items-center justify-center text-white bg-slate-900">
+      <div ref={wrapRef} className={`relative flex flex-col text-white bg-slate-900 ${showInlineControlBar ? '' : 'aspect-video'} ${isFullscreen ? 'h-full' : ''}`}>
+        <div className={`relative flex-1 flex flex-col items-center justify-center bg-slate-900 ${showInlineControlBar ? 'aspect-video' : ''}`}>
         {!playing ? (
           <div className="absolute inset-0">
             <img src={effectivePoster} alt="" className="w-full h-full object-cover" />
             <button
               type="button"
-              onClick={() => setPlaying(true)}
+              onClick={() => {
+                setShowContinueLearning(false)
+                setPlaying(true)
+              }}
               aria-label="播放视频"
               className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/35 transition-colors"
             >
@@ -472,10 +554,31 @@ function SegmentVideo({ segment, index, controlledPlaying, onPlay, dark }) {
             ref={videoRef}
             src={src}
             className="absolute inset-0 w-full h-full object-contain bg-black"
-            controls
+            controls={false}
             playsInline
             controlsList="nodownload"
             poster={effectivePoster}
+            onLoadedMetadata={(e) => {
+              setDuration(e.currentTarget.duration || 0)
+              setCurrentTime(e.currentTarget.currentTime || 0)
+              setVolume(e.currentTarget.volume ?? 1)
+              setPlaybackRate(e.currentTarget.playbackRate || 1)
+            }}
+            onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime || 0)}
+            onVolumeChange={(e) => setVolume(e.currentTarget.muted ? 0 : e.currentTarget.volume ?? 1)}
+            onRateChange={(e) => setPlaybackRate(e.currentTarget.playbackRate || 1)}
+            onPlay={() => {
+              setIsPaused(false)
+              setShowContinueLearning(false)
+            }}
+            onPause={(e) => {
+              if (!e.currentTarget.ended) setIsPaused(true)
+            }}
+            onEnded={(e) => {
+              setCurrentTime(e.currentTarget.duration || 0)
+              setIsPaused(true)
+              setShowContinueLearning(true)
+            }}
           >
             您的浏览器不支持视频播放
           </video>
@@ -486,6 +589,203 @@ function SegmentVideo({ segment, index, controlledPlaying, onPlay, dark }) {
             {!hasStreamableUrl && src && (
               <p className="text-xs text-slate-400 mt-2">当前为演示地址，配置有效 http(s) 视频地址后可全屏观看</p>
             )}
+          </div>
+        )}
+        </div>
+        {showInlineControlBar && (
+          <div className="shrink-0 bg-[#1e293b]/94 backdrop-blur px-3 pb-3 pt-2 border-t border-white/8">
+            <input
+              type="range"
+              min={0}
+              max={Math.max(duration, 0)}
+              step="0.1"
+              value={Math.min(currentTime, duration || 0)}
+              onChange={handleSeek}
+              className="w-full h-1.5 appearance-none rounded-full border-0 bg-slate-600/80 accent-cyan-400 focus:outline-none"
+              aria-label="视频进度"
+            />
+            <div className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-3 text-white">
+              <button
+                type="button"
+                onClick={togglePlayPause}
+                className="h-11 w-11 shrink-0 rounded-2xl bg-white/10 text-base font-semibold hover:bg-white/15"
+                aria-label={isPaused ? '播放视频' : '暂停视频'}
+              >
+                {isPaused ? '▶' : '❚❚'}
+              </button>
+              <span className="min-w-[6.5rem] text-sm font-medium tabular-nums text-slate-200">
+                {formatMediaTime(currentTime)} / {formatMediaTime(duration)}
+              </span>
+              <div className="flex items-center justify-end gap-3">
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="text-base leading-none text-slate-200">{volume > 0 ? '🔊' : '🔇'}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step="0.05"
+                    value={volume}
+                    onChange={handleVolumeChange}
+                    className="w-20 accent-cyan-400"
+                    aria-label="音量"
+                  />
+                </div>
+                <label className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-medium text-slate-100 hover:bg-white/15">
+                  <span className="sr-only">播放倍速</span>
+                  <select
+                    value={playbackRate}
+                    onChange={handlePlaybackRateChange}
+                    className="bg-transparent outline-none"
+                    aria-label="播放倍速"
+                  >
+                    {[0.75, 1, 1.25, 1.5, 2].map((rate) => (
+                      <option key={rate} value={rate} className="text-slate-900">
+                        {rate}x
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={enterVideoFullscreen}
+                  className="h-11 w-11 shrink-0 rounded-2xl bg-white/10 text-base font-semibold hover:bg-white/15"
+                  aria-label="进入全屏"
+                >
+                  ⛶
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {isFullscreen && playing && !showContinueLearning && onContinueLearning && (
+          <button
+            type="button"
+            onClick={onContinueLearning}
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-sm font-medium text-white backdrop-blur hover:bg-black/60"
+          >
+            下一环节
+          </button>
+        )}
+        {isFullscreen && showContinueLearning && onContinueLearning && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 px-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowContinueLearning(false)
+                  onReplayLearning?.()
+                }}
+                className="rounded-2xl border border-white/20 bg-black/45 px-6 py-3 text-base font-semibold text-white backdrop-blur hover:bg-black/60"
+              >
+                再次学习
+              </button>
+              <button
+                type="button"
+                onClick={onContinueLearning}
+                className="rounded-2xl bg-white/95 px-6 py-3 text-base font-semibold text-slate-900 shadow-xl hover:bg-white"
+              >
+                继续学习
+              </button>
+            </div>
+          </div>
+        )}
+        {showFullscreenControlBar && (
+          <div className="absolute inset-x-0 bottom-0 bg-[#1e293b]/96 backdrop-blur px-3 pb-3 pt-2 border-t border-white/8">
+            <input
+              type="range"
+              min={0}
+              max={Math.max(duration, 0)}
+              step="0.1"
+              value={Math.min(currentTime, duration || 0)}
+              onChange={handleSeek}
+              className="w-full h-1.5 appearance-none rounded-full border-0 bg-slate-600/80 accent-cyan-400 focus:outline-none"
+              aria-label="视频进度"
+            />
+            <div className="mt-2 relative text-white">
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={togglePlayPause}
+                    className="h-12 w-12 shrink-0 rounded-2xl bg-white/10 text-lg font-semibold hover:bg-white/15"
+                    aria-label={isPaused ? '播放视频' : '暂停视频'}
+                  >
+                    {isPaused ? '▶' : '❚❚'}
+                  </button>
+                  <span className="min-w-[6.5rem] text-sm font-medium tabular-nums text-slate-200">
+                    {formatMediaTime(currentTime)} / {formatMediaTime(duration)}
+                  </span>
+                </div>
+                <div />
+                <div className="flex items-center justify-end gap-3">
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span className="text-base leading-none text-slate-200">{volume > 0 ? '🔊' : '🔇'}</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step="0.05"
+                      value={volume}
+                      onChange={handleVolumeChange}
+                      className="w-24 accent-cyan-400"
+                      aria-label="音量"
+                    />
+                  </div>
+                  <label className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-medium text-slate-100 hover:bg-white/15">
+                    <span className="sr-only">播放倍速</span>
+                    <select
+                      value={playbackRate}
+                      onChange={handlePlaybackRateChange}
+                      className="bg-transparent outline-none"
+                      aria-label="播放倍速"
+                    >
+                      {[0.75, 1, 1.25, 1.5, 2].map((rate) => (
+                        <option key={rate} value={rate} className="text-slate-900">
+                          {rate}x
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={exitFullscreen}
+                    className="h-12 w-12 shrink-0 rounded-2xl bg-white/10 text-lg font-semibold hover:bg-white/15"
+                    aria-label="退出全屏"
+                  >
+                    ⛶
+                  </button>
+                </div>
+              </div>
+              <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={onPreviousStep}
+                  disabled={disablePreviousStep}
+                  className={`rounded-2xl px-4 py-2 text-sm font-medium ${
+                    disablePreviousStep
+                      ? 'bg-white/5 text-slate-500 cursor-not-allowed'
+                      : 'bg-white/10 text-slate-100 hover:bg-white/15'
+                  }`}
+                >
+                  上一步
+                </button>
+                <span className="min-w-[8rem] text-center text-sm font-medium tabular-nums text-slate-200">
+                  {stepProgressLabel || `环节 ${index + 1}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={onNextStep || onContinueLearning}
+                  disabled={disableNextStep}
+                  className={`rounded-2xl px-4 py-2 text-sm font-medium ${
+                    disableNextStep
+                      ? 'bg-white/5 text-slate-500 cursor-not-allowed'
+                      : 'bg-cyan-500 text-white hover:bg-cyan-400'
+                  }`}
+                >
+                  下一步
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1288,7 +1588,22 @@ function SegmentAudioChoice({ segment, index, dark, onSegmentResult, quizResetKe
   )
 }
 
-function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegmentResult, quizResetKey }) {
+function SegmentBlock({
+  segment,
+  index,
+  dark,
+  videoPlaying,
+  onVideoPlay,
+  onReplayLearning,
+  onContinueLearning,
+  onPreviousStep,
+  onNextStep,
+  disablePreviousStep,
+  disableNextStep,
+  stepProgressLabel,
+  onSegmentResult,
+  quizResetKey,
+}) {
   const common = { segment, index, dark, onSegmentResult, quizResetKey }
   switch (segment.type) {
     case 'video':
@@ -1297,6 +1612,13 @@ function SegmentBlock({ segment, index, dark, videoPlaying, onVideoPlay, onSegme
           {...common}
           controlledPlaying={videoPlaying}
           onPlay={onVideoPlay}
+          onReplayLearning={onReplayLearning}
+          onContinueLearning={onContinueLearning}
+          onPreviousStep={onPreviousStep}
+          onNextStep={onNextStep}
+          disablePreviousStep={disablePreviousStep}
+          disableNextStep={disableNextStep}
+          stepProgressLabel={stepProgressLabel}
         />
       )
     case 'choice':
@@ -1943,6 +2265,20 @@ function LessonPlayer({ lesson, onClose }) {
     setCurrentStep(summaryStepIndex)
   }
 
+  const handleContinueLearning = () => {
+    if (isSummary) return
+    if (isLastSegment) {
+      handleFinish()
+      return
+    }
+    goStep('next')
+  }
+
+  const handleReplayLearning = () => {
+    setVideoPlaying(false)
+    window.setTimeout(() => setVideoPlaying(true), 0)
+  }
+
   /** 总结页：从头再学一遍（环节归零 + 清空本课答题记录） */
   const handleStudyAgain = () => {
     setSegmentResults({})
@@ -2029,10 +2365,23 @@ function LessonPlayer({ lesson, onClose }) {
       >
         {/* 顶部栏 - 深色（环节目录在顶栏，与主作答区分离，避免误触） */}
         <header className="shrink-0 h-14 px-3 border-b border-slate-600/80 flex items-center justify-between gap-2 bg-slate-800/90">
-          <h3 className="font-bold text-white text-sm m-0 overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0 min-w-[3rem]">
-            {lesson.title}
-          </h3>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => setShowExitConfirm(true)}
+              aria-label="返回学习中心"
+              className="shrink-0 px-3 py-1.5 rounded-lg font-medium bg-slate-700/90 hover:bg-slate-600 text-slate-200 border border-slate-500/60 text-xs"
+            >
+              返回
+            </button>
+            <h3 className="font-bold text-white text-sm m-0 overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0 min-w-[3rem]">
+              {lesson.title}
+            </h3>
+          </div>
           <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-slate-400 tabular-nums">
+              {isSummary ? '课时总结' : `环节 ${currentStep + 1}/${segments.length}`}
+            </span>
             {totalSteps > 1 && (
               <button
                 type="button"
@@ -2045,18 +2394,7 @@ function LessonPlayer({ lesson, onClose }) {
                 {directoryOpen ? '收起目录' : '目录'}
               </button>
             )}
-            <span className="text-xs text-slate-400 tabular-nums">
-              {isSummary ? '课时总结' : `环节 ${currentStep + 1}/${segments.length}`}
-            </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowExitConfirm(true)}
-            aria-label="关闭"
-            className="w-9 h-9 rounded-full bg-slate-600/80 hover:bg-slate-500 text-slate-200 shrink-0 flex items-center justify-center text-base"
-          >
-            ✕
-          </button>
         </header>
 
         {/* 主区 + 底部栏（左） / 桌面端右侧常驻环节目录（右） */}
@@ -2078,6 +2416,13 @@ function LessonPlayer({ lesson, onClose }) {
                       dark
                       videoPlaying={currentSegment.type === 'video' ? videoPlaying : undefined}
                       onVideoPlay={currentSegment.type === 'video' ? () => setVideoPlaying(true) : undefined}
+                      onReplayLearning={currentSegment.type === 'video' ? handleReplayLearning : undefined}
+                      onContinueLearning={currentSegment.type === 'video' ? handleContinueLearning : undefined}
+                      onPreviousStep={currentSegment.type === 'video' ? () => goStep('prev') : undefined}
+                      onNextStep={currentSegment.type === 'video' ? handleContinueLearning : undefined}
+                      disablePreviousStep={currentSegment.type === 'video' ? isFirst : undefined}
+                      disableNextStep={currentSegment.type === 'video' ? false : undefined}
+                      stepProgressLabel={currentSegment.type === 'video' ? `环节 ${currentStep + 1}/${segments.length}` : undefined}
                       onSegmentResult={onSegmentResult}
                       quizResetKey={quizFooterResetKeyBySegment[currentSegment.id] || 0}
                     />
@@ -2189,18 +2534,18 @@ function LessonPlayer({ lesson, onClose }) {
               }`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="shrink-0 px-4 py-3 border-b border-slate-600 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white">环节目录</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">点左侧空白或「收起目录」仍留在此环节</p>
+              <div className="shrink-0 px-4 py-3 border-b border-slate-600">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-white min-w-0">环节目录</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowSegmentPicker(false)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 shrink-0"
+                  >
+                    收起目录
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowSegmentPicker(false)}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 shrink-0"
-                >
-                  收起目录
-                </button>
+                <p className="text-[11px] text-slate-400 mt-1">点左侧空白或「收起目录」仍留在此环节</p>
               </div>
               <div className="flex flex-col flex-1 min-h-0">
                 <LessonSegmentPickerList

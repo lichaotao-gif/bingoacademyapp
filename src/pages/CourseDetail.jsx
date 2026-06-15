@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import PaymentModal from '../components/PaymentModal'
 import ShareActionPopover from '../components/ShareActionPopover'
 import { getPurchasedCourseIds } from '../utils/purchasedCoursesStorage'
@@ -360,6 +360,7 @@ function mergeDetailReviewsForDisplay(courseId) {
 
 export default function CourseDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const course = COURSES[id] || COURSES['ai-enlighten']
   const resolvedCourseId = COURSES[id] ? id : 'ai-enlighten'
   const classTypes = course.classTypes || CLASS_TYPES_LEVEL1
@@ -451,6 +452,14 @@ export default function CourseDetail() {
       paymentState: { courseId: resolvedCourseId, classType: defaultClass },
     })
     setPaymentModalOpen(true)
+  }
+
+  const handlePrimaryAction = () => {
+    if (hasPurchasedCurrent) {
+      navigate('/profile/study')
+      return
+    }
+    openNormalCheckout()
   }
 
   /** 发起新团或携带已有团号（好友邀请链接） */
@@ -561,15 +570,15 @@ export default function CourseDetail() {
             <span className="text-xs sm:text-sm px-2.5 py-1 sm:px-3 rounded-full bg-slate-100 text-slate-700">价格 {priceDisplay}{course.priceNote ? `（${course.priceNote}）` : ''}</span>
             {course.trial && <span className="text-xs sm:text-sm px-2.5 py-1 sm:px-3 rounded-full bg-amber-50 text-amber-700">支持试看</span>}
           </div>
-          {/* 封面图下方：价格 + 分享课程 + 立即购买 */}
+          {/* 封面图下方：价格 + 分享课程 + 主操作 */}
           <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-5 lg:mt-6 pt-4 sm:pt-5 border-t border-slate-100">
             <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary">{priceDisplay}{course.priceNote ? `（${course.priceNote}）` : ''}</span>
             <div className="flex items-center gap-2 shrink-0">
               <button type="button" data-share-popover-anchor onClick={openShareMenu} className="border border-slate-300 text-slate-700 px-4 sm:px-5 py-2.5 sm:py-3 min-h-[44px] sm:min-h-[48px] rounded-xl text-sm font-medium hover:bg-slate-50 flex items-center gap-2">
                 分享课程
               </button>
-              <button type="button" onClick={openNormalCheckout} className="btn-primary px-5 sm:px-6 lg:px-8 py-2.5 sm:py-3 font-bold min-h-[44px] sm:min-h-[48px] rounded-xl text-sm shrink-0">
-                立即购买
+              <button type="button" onClick={handlePrimaryAction} className="btn-primary px-5 sm:px-6 lg:px-8 py-2.5 sm:py-3 font-bold min-h-[44px] sm:min-h-[48px] rounded-xl text-sm shrink-0">
+                {hasPurchasedCurrent ? '开始学习' : '立即购买'}
               </button>
             </div>
           </div>
@@ -969,7 +978,7 @@ export default function CourseDetail() {
         </div>
       )}
 
-      {/* 底部浮动条：课程名称 + 分享课程 + 立即购买 */}
+      {/* 底部浮动条：课程名称 + 分享课程 + 主操作 */}
       <div
         className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-3 px-4 py-3 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] safe-area-pb"
         style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
@@ -988,14 +997,13 @@ export default function CourseDetail() {
           </button>
           <button
             type="button"
-            onClick={openNormalCheckout}
+            onClick={handlePrimaryAction}
             className="shrink-0 py-3 px-5 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90"
           >
-            立即购买
+            {hasPurchasedCurrent ? '开始学习' : '立即购买'}
           </button>
         </div>
       </div>
     </div>
   )
 }
-

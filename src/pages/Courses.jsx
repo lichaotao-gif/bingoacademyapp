@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import PaymentModal from '../components/PaymentModal'
+import { getPurchasedCourseIds } from '../utils/purchasedCoursesStorage'
 
 // ─── 证书与课程关系数据 ───────────────────────────────────────
 const CERT_PLANS = [
@@ -164,7 +165,7 @@ const COURSE_TYPE_STYLE = {
 }
 
 // ─── 课程卡片（统一样式）────────────────────────────────────
-function CourseCard({ course, idx, accentColor, courseType, ageLabel, cover, isParentCourse, onBuyClick }) {
+function CourseCard({ course, idx, accentColor, courseType, ageLabel, cover, isParentCourse, isPurchased, onBuyClick, onStartLearning }) {
   const [coverError, setCoverError] = useState(false)
   const isFree = course.price === '免费' || course.price === '赠送'
   const isGift = course.price === '赠送'
@@ -204,6 +205,12 @@ function CourseCard({ course, idx, accentColor, courseType, ageLabel, cover, isP
           <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={() => setCoverError(true)} />
         ) : (
           decor
+        )}
+
+        {isPurchased && (
+          <span className="absolute top-3 left-3 z-10 text-[11px] bg-primary text-white px-2.5 py-1 rounded-full font-bold shadow-sm">
+            已购样例
+          </span>
         )}
 
         {/* 免费/赠送标记 */}
@@ -260,14 +267,22 @@ function CourseCard({ course, idx, accentColor, courseType, ageLabel, cover, isP
           </Link>
           <button
             type="button"
-            onClick={() => onBuyClick?.(course)}
+            onClick={() => {
+              if (isPurchased) {
+                onStartLearning?.(course)
+                return
+              }
+              onBuyClick?.(course)
+            }}
             className={`flex-1 text-center text-xs font-bold py-2.5 rounded-xl transition ${
-              isFree
+              isPurchased
+                ? 'bg-primary hover:bg-primary/90 text-white'
+                : isFree
                 ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
                 : 'bg-primary hover:bg-primary/90 text-white'
             }`}
           >
-            {isGift ? '领取赠课' : isFree ? '免费学习' : '立即购买'}
+            {isPurchased ? '开始学习' : isGift ? '领取赠课' : isFree ? '免费学习' : '立即购买'}
           </button>
         </div>
       </div>
@@ -918,11 +933,13 @@ const HERO_BANNERS = [
 
 // ─── 主页面 ─────────────────────────────────────────────────
 export default function Courses() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('drain')
   const [bannerIdx, setBannerIdx] = useState(0)
   const bannerTimer = useRef(null)
   const [paymentCourse, setPaymentCourse] = useState(null)
   const [packagePayment, setPackagePayment] = useState(null)
+  const [purchasedIds, setPurchasedIds] = useState(() => getPurchasedCourseIds())
   const tabCourses = getCoursesByTab(activeTab)
 
   const paymentOpen = !!(paymentCourse || packagePayment)
@@ -941,6 +958,12 @@ export default function Courses() {
       setBannerIdx((i) => (i + 1) % HERO_BANNERS.length)
     }, 3000)
     return () => clearInterval(bannerTimer.current)
+  }, [])
+
+  useEffect(() => {
+    const refresh = () => setPurchasedIds(getPurchasedCourseIds())
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
   }, [])
 
   const goToBanner = (idx) => {
@@ -1055,7 +1078,9 @@ export default function Courses() {
                 ageLabel={ageLabel}
                 cover={cover}
                 isParentCourse={isParentCourse}
+                isPurchased={Boolean(course.detailId && purchasedIds.includes(course.detailId))}
                 onBuyClick={setPaymentCourse}
+                onStartLearning={() => navigate('/profile/study')}
               />
             ))}
           </div>
