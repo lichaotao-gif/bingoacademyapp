@@ -812,6 +812,14 @@ function useQuizFooterResetSync(quizResetKey, reset) {
   }, [quizResetKey, reset])
 }
 
+function useQuizDraftSync(segmentId, hasDraft, onSegmentDraftChange) {
+  useEffect(() => {
+    if (typeof onSegmentDraftChange === 'function') {
+      onSegmentDraftChange(segmentId, hasDraft)
+    }
+  }, [hasDraft, onSegmentDraftChange, segmentId])
+}
+
 /** 底部栏会对「作答」类环节在答错时显示「重做」，与这些类型一致 */
 const SEGMENT_TYPES_ANSWER_SHORTCUT = ['choice', 'judge', 'multi_choice', 'image_choice', 'fill_blank', 'match', 'drag_drop', 'audio_choice']
 
@@ -830,11 +838,12 @@ function QuizSegmentMeta({ index, typeLabel, dark, centered }) {
   )
 }
 
-function SegmentChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+function SegmentChoice({ segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey = 0 }) {
   const p = segment.payload
   const [selected, setSelected] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const isCorrect = submitted && selected === p.correctIndex
+  useQuizDraftSync(segment.id, !submitted && selected !== null, onSegmentDraftChange)
   const handleSubmit = () => {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === p.correctIndex)
@@ -855,17 +864,36 @@ function SegmentChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0
         {p.options.map((opt, i) => (
           <label
             key={i}
+            onClick={() => {
+              if (submitted) return
+              setSelected((prev) => (prev === i ? null : i))
+            }}
             className={`${optBase} ${selected === i ? (dark ? 'border-cyan-500 bg-cyan-500/20' : 'border-primary bg-primary/5') : dark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'} ${submitted && i === p.correctIndex ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''} ${submitted && selected === i && selected !== p.correctIndex ? (dark ? 'border-red-400 bg-red-500/20' : 'border-red-300 bg-red-50') : ''}`}
           >
-            <input type="radio" name={`choice-${segment.id}`} checked={selected === i} onChange={() => setSelected(i)} disabled={submitted} className="text-primary" />
+            <input
+              type="radio"
+              name={`choice-${segment.id}`}
+              checked={selected === i}
+              onChange={() => setSelected(i)}
+              onClick={(e) => {
+                if (selected === i && !submitted) {
+                  e.preventDefault()
+                  setSelected(null)
+                }
+              }}
+              disabled={submitted}
+              className="text-primary"
+            />
             <span className={dark ? 'text-slate-100' : ''}>{String.fromCharCode(65 + i)}. {opt}</span>
           </label>
         ))}
       </div>
       {!submitted ? (
-        <button onClick={handleSubmit} disabled={selected === null} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>
-          提交
-        </button>
+        <div className="mt-3 flex justify-end">
+          <button onClick={handleSubmit} disabled={selected === null} className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>
+            提交
+          </button>
+        </div>
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : '正确答案：' + (p.options[p.correctIndex] || '')}
@@ -882,12 +910,13 @@ const JUDGE_OPTIONS = [
   { value: false, label: '错误' },
 ]
 
-function SegmentJudge({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+function SegmentJudge({ segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey = 0 }) {
   const p = segment.payload
   const correctIsTrue = p.correctIsTrue !== false
   const [selected, setSelected] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const isCorrect = submitted && selected === correctIsTrue
+  useQuizDraftSync(segment.id, !submitted && selected !== null, onSegmentDraftChange)
   const handleSubmit = () => {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === correctIsTrue)
@@ -909,6 +938,10 @@ function SegmentJudge({ segment, index, dark, onSegmentResult, quizResetKey = 0 
         {JUDGE_OPTIONS.map(({ value, label }) => (
           <label
             key={String(value)}
+            onClick={() => {
+              if (submitted) return
+              setSelected((prev) => (prev === value ? null : value))
+            }}
             className={`${optBase} ${selected === value ? (dark ? 'border-cyan-500 bg-cyan-500/20' : 'border-primary bg-primary/5') : dark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'} ${submitted && value === correctIsTrue ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''} ${submitted && selected === value && value !== correctIsTrue ? (dark ? 'border-red-400 bg-red-500/20' : 'border-red-300 bg-red-50') : ''}`}
           >
             <input
@@ -916,6 +949,12 @@ function SegmentJudge({ segment, index, dark, onSegmentResult, quizResetKey = 0 
               name={`judge-${segment.id}`}
               checked={selected === value}
               onChange={() => setSelected(value)}
+              onClick={(e) => {
+                if (selected === value && !submitted) {
+                  e.preventDefault()
+                  setSelected(null)
+                }
+              }}
               disabled={submitted}
               className="sr-only"
             />
@@ -924,14 +963,16 @@ function SegmentJudge({ segment, index, dark, onSegmentResult, quizResetKey = 0 
         ))}
       </div>
       {!submitted ? (
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={selected === null}
-          className={`mt-4 w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}
-        >
-          提交
-        </button>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={selected === null}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}
+          >
+            提交
+          </button>
+        </div>
       ) : (
         <div className={`mt-4 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : `正确答案：${correctIsTrue ? '正确' : '错误'}`}
@@ -943,13 +984,14 @@ function SegmentJudge({ segment, index, dark, onSegmentResult, quizResetKey = 0 
   )
 }
 
-function SegmentMultiChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+function SegmentMultiChoice({ segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey = 0 }) {
   const p = segment.payload
   const options = p.options || []
   const correctIndices = Array.isArray(p.correctIndices) ? p.correctIndices : []
   const [selected, setSelected] = useState(() => [])
   const [submitted, setSubmitted] = useState(false)
   const isCorrect = submitted && sameMultiChoiceAnswer(selected, correctIndices)
+  useQuizDraftSync(segment.id, !submitted && selected.length > 0, onSegmentDraftChange)
   const toggle = (i) => {
     if (submitted) return
     setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]))
@@ -988,9 +1030,11 @@ function SegmentMultiChoice({ segment, index, dark, onSegmentResult, quizResetKe
         ))}
       </div>
       {!submitted ? (
-        <button onClick={handleSubmit} disabled={selected.length === 0} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>
-          提交
-        </button>
+        <div className="mt-3 flex justify-end">
+          <button onClick={handleSubmit} disabled={selected.length === 0} className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>
+            提交
+          </button>
+        </div>
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : `正确答案：${correctLetters || '（见解析）'}`}
@@ -1003,13 +1047,14 @@ function SegmentMultiChoice({ segment, index, dark, onSegmentResult, quizResetKe
 }
 
 // 图片选择题：选项可带图片（optionImages 与 options 一一对应）
-function SegmentImageChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+function SegmentImageChoice({ segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey = 0 }) {
   const p = segment.payload
   const options = p.options || []
   const optionImages = p.optionImages || []
   const [selected, setSelected] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const isCorrect = submitted && selected === p.correctIndex
+  useQuizDraftSync(segment.id, !submitted && selected !== null, onSegmentDraftChange)
   const handleSubmit = () => {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === p.correctIndex)
@@ -1030,6 +1075,10 @@ function SegmentImageChoice({ segment, index, dark, onSegmentResult, quizResetKe
         {options.map((opt, i) => (
           <label
             key={i}
+            onClick={() => {
+              if (submitted) return
+              setSelected((prev) => (prev === i ? null : i))
+            }}
             className={`${optBase} ${selected === i ? (dark ? 'border-cyan-500 bg-cyan-500/20' : 'border-primary bg-primary/5') : dark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'} ${submitted && i === p.correctIndex ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''} ${submitted && selected === i && selected !== p.correctIndex ? (dark ? 'border-red-400 bg-red-500/20' : 'border-red-300 bg-red-50') : ''}`}
           >
             {optionImages[i] ? (
@@ -1038,12 +1087,27 @@ function SegmentImageChoice({ segment, index, dark, onSegmentResult, quizResetKe
               <span className="w-full aspect-video rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-2xl">🖼</span>
             )}
             <span className={dark ? 'text-slate-100 text-sm' : 'text-sm'}>{String.fromCharCode(65 + i)}. {opt}</span>
-            <input type="radio" name={`img-choice-${segment.id}`} checked={selected === i} onChange={() => setSelected(i)} disabled={submitted} className="sr-only" />
+            <input
+              type="radio"
+              name={`img-choice-${segment.id}`}
+              checked={selected === i}
+              onChange={() => setSelected(i)}
+              onClick={(e) => {
+                if (selected === i && !submitted) {
+                  e.preventDefault()
+                  setSelected(null)
+                }
+              }}
+              disabled={submitted}
+              className="sr-only"
+            />
           </label>
         ))}
       </div>
       {!submitted ? (
-        <button onClick={handleSubmit} disabled={selected === null} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>提交</button>
+        <div className="mt-3 flex justify-end">
+          <button onClick={handleSubmit} disabled={selected === null} className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>提交</button>
+        </div>
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : '正确答案：' + (options[p.correctIndex] || '')}
@@ -1055,11 +1119,12 @@ function SegmentImageChoice({ segment, index, dark, onSegmentResult, quizResetKe
   )
 }
 
-function SegmentFillBlank({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+function SegmentFillBlank({ segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey = 0 }) {
   const p = segment.payload
   const [values, setValues] = useState(p.blanks.map(() => ''))
   const [submitted, setSubmitted] = useState(false)
   const correct = p.blanks.every((b, i) => (values[i] || '').trim() === (b || '').trim())
+  useQuizDraftSync(segment.id, !submitted && values.some((value) => value.trim() !== ''), onSegmentDraftChange)
   const handleSubmit = () => {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, correct)
@@ -1083,7 +1148,9 @@ function SegmentFillBlank({ segment, index, dark, onSegmentResult, quizResetKey 
         ))}
       </div>
       {!submitted ? (
-        <button onClick={handleSubmit} className={`mt-2 px-4 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>提交</button>
+        <div className="mt-2 flex justify-end">
+          <button onClick={handleSubmit} className={`px-4 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>提交</button>
+        </div>
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${correct ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {correct ? '✓ 正确！' : '参考答案：' + p.blanks.join('、')}
@@ -1095,7 +1162,7 @@ function SegmentFillBlank({ segment, index, dark, onSegmentResult, quizResetKey 
   )
 }
 
-function SegmentMatch({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+function SegmentMatch({ segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey = 0 }) {
   const p = segment.payload
   const left = p.leftItems || []
   const right = p.rightItems || []
@@ -1114,6 +1181,7 @@ function SegmentMatch({ segment, index, dark, onSegmentResult, quizResetKey = 0 
     correctPairs.length > 0 &&
     correctPairs.every(([li, ri]) => selectedRightByLeft[li] === ri) &&
     selectedRightByLeft.every((r) => r !== null)
+  useQuizDraftSync(segment.id, !submitted && selectedRightByLeft.some((r) => r !== null), onSegmentDraftChange)
 
   useEffect(() => {
     if (!containerRef.current || submitted) {
@@ -1233,7 +1301,9 @@ function SegmentMatch({ segment, index, dark, onSegmentResult, quizResetKey = 0 
         </div>
       </div>
       {!submitted ? (
-        <button onClick={handleSubmit} disabled={selectedRightByLeft.some((r) => r === null)} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>完成连线</button>
+        <div className="mt-3 flex justify-end">
+          <button onClick={handleSubmit} disabled={selectedRightByLeft.some((r) => r === null)} className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>完成连线</button>
+        </div>
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-700'}`}>
           {isCorrect ? '✓ 连线正确！' : '已提交'}
@@ -1245,7 +1315,7 @@ function SegmentMatch({ segment, index, dark, onSegmentResult, quizResetKey = 0 
   )
 }
 
-function SegmentDragDrop({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+function SegmentDragDrop({ segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey = 0 }) {
   const p = segment.payload
   const items = p.items || []
   const [order, setOrder] = useState(() => items.map((_, i) => i))
@@ -1253,6 +1323,11 @@ function SegmentDragDrop({ segment, index, dark, onSegmentResult, quizResetKey =
   const [draggedIndex, setDraggedIndex] = useState(null)
   const correctOrder = p.correctOrder || items.map((_, i) => i)
   const isCorrect = correctOrder.length === order.length && correctOrder.every((c, i) => c === order[i])
+  useQuizDraftSync(
+    segment.id,
+    !submitted && order.some((itemIndex, position) => itemIndex !== position),
+    onSegmentDraftChange
+  )
 
   const handleDragStart = (e, fromPos) => {
     if (submitted) return
@@ -1320,7 +1395,9 @@ function SegmentDragDrop({ segment, index, dark, onSegmentResult, quizResetKey =
         ))}
       </div>
       {!submitted ? (
-        <button onClick={handleSubmit} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>提交顺序</button>
+        <div className="mt-3 flex justify-end">
+          <button onClick={handleSubmit} className={`px-4 py-2 rounded-lg text-sm font-medium ${dark ? 'bg-cyan-500 text-white' : 'bg-primary text-white'}`}>提交顺序</button>
+        </div>
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50'}`}>
           {isCorrect ? '✓ 顺序正确！' : '已提交'}
@@ -1507,7 +1584,7 @@ function SegmentAIExperiment({ segment, index, dark }) {
 }
 
 // 语音题（听音选答）：题干是语音，选项是文字或图片
-function SegmentAudioChoice({ segment, index, dark, onSegmentResult, quizResetKey = 0 }) {
+function SegmentAudioChoice({ segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey = 0 }) {
   const p = segment.payload
   const options = p.options || []
   const optionImages = p.optionImages || []
@@ -1517,6 +1594,7 @@ function SegmentAudioChoice({ segment, index, dark, onSegmentResult, quizResetKe
   const [playing, setPlaying] = useState(false)
   const audioRef = useRef(null)
   const isCorrect = submitted && selected === p.correctIndex
+  useQuizDraftSync(segment.id, !submitted && selected !== null, onSegmentDraftChange)
   const handleSubmit = () => {
     setSubmitted(true)
     if (typeof onSegmentResult === 'function') onSegmentResult(segment.id, selected === p.correctIndex)
@@ -1561,9 +1639,26 @@ function SegmentAudioChoice({ segment, index, dark, onSegmentResult, quizResetKe
         {options.map((opt, i) => (
           <label
             key={i}
+            onClick={() => {
+              if (submitted) return
+              setSelected((prev) => (prev === i ? null : i))
+            }}
             className={`${optBase} ${dark ? 'text-slate-200 border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'} ${selected === i ? (dark ? 'border-orange-500 bg-orange-500/20' : 'border-orange-500 bg-orange-50') : ''} ${submitted && i === p.correctIndex ? (dark ? 'border-emerald-500 bg-emerald-500/20' : 'border-emerald-500 bg-emerald-50') : ''} ${submitted && selected === i && selected !== p.correctIndex ? (dark ? 'border-red-400 bg-red-500/20' : 'border-red-300 bg-red-50') : ''}`}
           >
-            <input type="radio" name={`audio-choice-${segment.id}`} checked={selected === i} onChange={() => setSelected(i)} disabled={submitted} className="sr-only" />
+            <input
+              type="radio"
+              name={`audio-choice-${segment.id}`}
+              checked={selected === i}
+              onChange={() => setSelected(i)}
+              onClick={(e) => {
+                if (selected === i && !submitted) {
+                  e.preventDefault()
+                  setSelected(null)
+                }
+              }}
+              disabled={submitted}
+              className="sr-only"
+            />
             {optionImages[i] ? (
               <>
                 <img src={optionImages[i]} alt="" className="w-14 h-14 object-cover rounded shrink-0" />
@@ -1576,7 +1671,9 @@ function SegmentAudioChoice({ segment, index, dark, onSegmentResult, quizResetKe
         ))}
       </div>
       {!submitted ? (
-        <button onClick={handleSubmit} disabled={selected === null} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-orange-500 text-white' : 'bg-primary text-white'}`}>提交</button>
+        <div className="mt-3 flex justify-end">
+          <button onClick={handleSubmit} disabled={selected === null} className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${dark ? 'bg-orange-500 text-white' : 'bg-primary text-white'}`}>提交</button>
+        </div>
       ) : (
         <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrect ? (dark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : dark ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
           {isCorrect ? '✓ 回答正确！' : '正确答案：' + (options[p.correctIndex] || '')}
@@ -1602,9 +1699,10 @@ function SegmentBlock({
   disableNextStep,
   stepProgressLabel,
   onSegmentResult,
+  onSegmentDraftChange,
   quizResetKey,
 }) {
-  const common = { segment, index, dark, onSegmentResult, quizResetKey }
+  const common = { segment, index, dark, onSegmentResult, onSegmentDraftChange, quizResetKey }
   switch (segment.type) {
     case 'video':
       return (
@@ -2216,19 +2314,49 @@ function LessonPlayer({ lesson, onClose }) {
   const [showSegmentPicker, setShowSegmentPicker] = useState(false)
   const [segmentSidebarPcOpen, setSegmentSidebarPcOpen] = useState(true)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [showSubmitReminder, setShowSubmitReminder] = useState(false)
+  const [submitReminderMode, setSubmitReminderMode] = useState('unsubmitted')
   const [isLgViewport, setIsLgViewport] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
   )
   const [segmentPickerDrawerIn, setSegmentPickerDrawerIn] = useState(false)
   const [segmentResults, setSegmentResults] = useState({})
+  const [segmentDraftState, setSegmentDraftState] = useState({})
   const [quizFooterResetKeyBySegment, setQuizFooterResetKeyBySegment] = useState({})
-  const onSegmentResult = (segmentId, correct) => setSegmentResults((prev) => ({ ...prev, [segmentId]: correct }))
-  const onSegmentQuizReset = (segmentId) =>
-    setSegmentResults((prev) => {
+  const onSegmentResult = (segmentId, correct) => {
+    setSegmentResults((prev) => ({ ...prev, [segmentId]: correct }))
+    setSegmentDraftState((prev) => {
+      if (!Object.prototype.hasOwnProperty.call(prev, segmentId)) return prev
       const next = { ...prev }
       delete next[segmentId]
       return next
     })
+  }
+  const onSegmentDraftChange = (segmentId, hasDraft) =>
+    setSegmentDraftState((prev) => {
+      if (hasDraft) {
+        if (prev[segmentId]) return prev
+        return { ...prev, [segmentId]: true }
+      }
+      if (!Object.prototype.hasOwnProperty.call(prev, segmentId)) return prev
+      const next = { ...prev }
+      delete next[segmentId]
+      return next
+    })
+  const onSegmentQuizReset = (segmentId) =>
+    {
+      setSegmentResults((prev) => {
+        const next = { ...prev }
+        delete next[segmentId]
+        return next
+      })
+      setSegmentDraftState((prev) => {
+        if (!Object.prototype.hasOwnProperty.call(prev, segmentId)) return prev
+        const next = { ...prev }
+        delete next[segmentId]
+        return next
+      })
+    }
   const summaryStepIndex = segments.length
   const totalSteps = segments.length + 1
   const isSummary = currentStep === summaryStepIndex
@@ -2242,6 +2370,14 @@ function LessonPlayer({ lesson, onClose }) {
   /** 作答类不显示底部「作答」，答错显示「重做」；视频显示「开始播放」；游戏/AI 实验仅用内容区按钮 */
   const isAnswerOnlyShortcutSegment =
     Boolean(currentSegment && SEGMENT_TYPES_ANSWER_SHORTCUT.includes(currentSegment.type))
+  const currentAnswerHasDraft =
+    Boolean(currentSegment && segmentDraftState[currentSegment.id])
+  const currentAnswerPendingSubmit =
+    Boolean(
+      currentSegment &&
+      SEGMENT_TYPES_ANSWER_SHORTCUT.includes(currentSegment.type) &&
+      !Object.prototype.hasOwnProperty.call(segmentResults, currentSegment.id)
+    )
   const showFooterCenterButton =
     isSummary || showFooterQuizRedo || Boolean(shortcut && !isAnswerOnlyShortcutSegment)
   const handleFooterQuizRedo = () => {
@@ -2265,13 +2401,25 @@ function LessonPlayer({ lesson, onClose }) {
     setCurrentStep(summaryStepIndex)
   }
 
-  const handleContinueLearning = () => {
-    if (isSummary) return
+  const proceedToNextStep = () => {
     if (isLastSegment) {
       handleFinish()
       return
     }
     goStep('next')
+  }
+
+  const guardAnswerSubmitBeforeAdvance = () => {
+    if (!currentAnswerPendingSubmit) return false
+    setSubmitReminderMode(currentAnswerHasDraft ? 'unsubmitted' : 'empty')
+    setShowSubmitReminder(true)
+    return true
+  }
+
+  const handleContinueLearning = () => {
+    if (isSummary) return
+    if (guardAnswerSubmitBeforeAdvance()) return
+    proceedToNextStep()
   }
 
   const handleReplayLearning = () => {
@@ -2282,6 +2430,7 @@ function LessonPlayer({ lesson, onClose }) {
   /** 总结页：从头再学一遍（环节归零 + 清空本课答题记录） */
   const handleStudyAgain = () => {
     setSegmentResults({})
+    setSegmentDraftState({})
     setQuizFooterResetKeyBySegment({})
     setVideoPlaying(false)
     setShowSegmentPicker(false)
@@ -2424,6 +2573,7 @@ function LessonPlayer({ lesson, onClose }) {
                       disableNextStep={currentSegment.type === 'video' ? false : undefined}
                       stepProgressLabel={currentSegment.type === 'video' ? `环节 ${currentStep + 1}/${segments.length}` : undefined}
                       onSegmentResult={onSegmentResult}
+                      onSegmentDraftChange={onSegmentDraftChange}
                       quizResetKey={quizFooterResetKeyBySegment[currentSegment.id] || 0}
                     />
                   ) : null}
@@ -2481,11 +2631,11 @@ function LessonPlayer({ lesson, onClose }) {
                   返回学习中心
                 </button>
               ) : isLastSegment ? (
-                <button type="button" onClick={handleFinish} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
+                <button type="button" onClick={handleContinueLearning} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
                   完成
                 </button>
               ) : (
-                <button type="button" onClick={() => goStep('next')} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
+                <button type="button" onClick={handleContinueLearning} className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white cursor-pointer">
                   下一步
                 </button>
               )}
@@ -2595,6 +2745,54 @@ function LessonPlayer({ lesson, onClose }) {
                   className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-medium bg-amber-600 text-white hover:bg-amber-500"
                 >
                   确定退出
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showSubmitReminder && (
+          <div
+            className="absolute inset-0 z-[210] flex items-center justify-center p-4 bg-black/60"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="study-submit-reminder-title"
+            aria-describedby="study-submit-reminder-desc"
+            onClick={() => setShowSubmitReminder(false)}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl border border-slate-600 bg-slate-800 p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 id="study-submit-reminder-title" className="text-base font-semibold text-white m-0">
+                {submitReminderMode === 'empty' ? '当前题目未作答' : '请先提交当前答题'}
+              </h4>
+              <p id="study-submit-reminder-desc" className="text-sm text-slate-400 mt-2 mb-5 leading-relaxed">
+                {submitReminderMode === 'empty'
+                  ? '当前环节还没有填写答案，是否跳过这道题并进入下一环节？'
+                  : '当前环节已填写答案，但还没有点击提交。请先完成提交，再点击下一步，避免错过本题作答。'}
+              </p>
+              <div className={`flex gap-2 ${submitReminderMode === 'empty' ? 'justify-end' : 'justify-end'}`}>
+                {submitReminderMode === 'empty' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSubmitReminder(false)}
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-500 text-slate-200 bg-slate-700/80 hover:bg-slate-600"
+                  >
+                    继续作答
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSubmitReminder(false)
+                    if (submitReminderMode === 'empty') {
+                      proceedToNextStep()
+                    }
+                  }}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium bg-cyan-500 text-white hover:bg-cyan-400"
+                >
+                  {submitReminderMode === 'empty' ? '确认跳过' : '我知道了'}
                 </button>
               </div>
             </div>
