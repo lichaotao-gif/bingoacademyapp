@@ -112,7 +112,7 @@ export default function CoursePayment() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <Link to="/courses/checkout" className="text-primary text-sm hover:underline mb-6 inline-block">← 返回修改</Link>
+      <Link to={state?.checkoutPath || '/courses/checkout'} className="text-primary text-sm hover:underline mb-6 inline-block">← 返回修改</Link>
 
       <h1 className="text-xl font-bold text-bingo-dark mb-6">支付订单</h1>
 
@@ -122,6 +122,15 @@ export default function CoursePayment() {
           <span className="font-bold text-primary text-xl">¥{classType.price}</span>
         </div>
       </div>
+
+      {state?.orderKind === 'mall' && state?.delivery ? (
+        <div className="card p-6 mb-6">
+          <h3 className="font-semibold text-bingo-dark mb-3">收货信息</h3>
+          <p className="text-sm text-slate-700">{state.delivery.name} {state.delivery.phone}</p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">{state.delivery.region} {state.delivery.address}</p>
+          {state.delivery.note ? <p className="mt-2 text-xs text-slate-400">订单备注：{state.delivery.note}</p> : null}
+        </div>
+      ) : null}
 
       <div className="card p-6 mb-6">
         <h3 className="font-semibold text-bingo-dark mb-2">优惠券</h3>

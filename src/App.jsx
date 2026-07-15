@@ -37,7 +37,6 @@ import GrowthTrajectory from './pages/GrowthTrajectory'
 import GrowthPlanning from './pages/GrowthPlanning'
 import ProfilePoints from './pages/ProfilePoints'
 import Career from './pages/Career'
-import Events from './pages/Events'
 import EventOrganizer from './pages/EventOrganizer'
 import EventGallery from './pages/EventGallery'
 import EventAITest from './pages/EventAITest'
@@ -45,6 +44,7 @@ import EventWhitelist from './pages/EventWhitelist'
 import EventBingguo from './pages/EventBingguo'
 import Certification from './pages/Certification'
 import Mall from './pages/Mall'
+import MallCheckout from './pages/MallCheckout'
 import Franchise from './pages/Franchise'
 import Materials from './pages/Materials'
 import Study from './pages/Study'
@@ -115,14 +115,18 @@ export default function App() {
         <Route path="/profile/test" element={<ProfileTest />} />
         <Route path="/profile/points" element={<ProfilePoints />} />
         <Route path="/career" element={<Career />} />
-        <Route path="/events" element={<Events />} />
+        <Route path="/events" element={<EventWhitelist />} />
+        <Route path="/events/:eventId" element={<EventWhitelist />} />
         <Route path="/events/organizer" element={<EventOrganizer />} />
         <Route path="/events/gallery" element={<EventGallery />} />
         <Route path="/events/ai-test" element={<EventAITest />} />
-        <Route path="/events/whitelist" element={<EventWhitelist />} />
+        <Route path="/events/whitelist" element={<Navigate to="/events" replace />} />
+        <Route path="/events/whitelist/:eventId" element={<EventWhitelist />} />
         <Route path="/events/bingguo-ai" element={<EventBingguo />} />
         <Route path="/cert" element={<Certification />} />
         <Route path="/mall" element={<Mall />} />
+        <Route path="/mall/checkout/:productId" element={<MallCheckout />} />
+        <Route path="/mall/:productId" element={<Mall />} />
         <Route path="/mall/materials" element={<Materials />} />
         <Route path="/franchise" element={<Franchise />} />
         <Route path="/franchise-partner/login" element={<FranchisePartnerLogin />} />
