@@ -32,6 +32,9 @@ import ResearchSuccess from './pages/ResearchSuccess'
 import ProfileOrders from './pages/ProfileOrders'
 import OrderVoucher from './pages/OrderVoucher'
 import ProfileTest from './pages/ProfileTest'
+import Growth from './pages/Growth'
+import GrowthTrajectory from './pages/GrowthTrajectory'
+import GrowthPlanning from './pages/GrowthPlanning'
 import ProfilePoints from './pages/ProfilePoints'
 import Career from './pages/Career'
 import Events from './pages/Events'
@@ -173,8 +176,9 @@ export default function App() {
         <Route path="/login" element={<Navigate to="/" state={{ openLogin: true }} replace />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        {/* 旧路由重定向，保持兼容 */}
-        <Route path="/growth" element={<Navigate to="/courses#growth-plan" replace />} />
+        <Route path="/growth" element={<Growth />} />
+        <Route path="/growth/planning" element={<GrowthPlanning />} />
+        <Route path="/growth/trajectory" element={<GrowthTrajectory />} />
         <Route path="/charity" element={<Navigate to="/showcase#honor" replace />} />
       </Routes>
     </Layout>

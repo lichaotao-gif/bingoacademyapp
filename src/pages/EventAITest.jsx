@@ -53,6 +53,27 @@ const TEST_TYPES = [
   ...STAR_EVALUATION_TYPES,
 ]
 
+const ASSESSMENT_CATEGORY = {
+  comprehensive: {
+    title: '综合测评',
+    eyebrow: 'AI GROWTH ASSESSMENT',
+    desc: '从五个能力维度完成一次综合摸底，获得课程与成长建议。',
+    tests: TEST_TYPES.filter((t) => t.id === 'general'),
+  },
+  cross: {
+    title: '跨阶测评',
+    eyebrow: 'STAGE ASSESSMENT',
+    desc: '按学习阶段选择目标测评。启智阶 1–3 星、基础阶 4–6 星、精研阶 7–8 星、智创阶 9 星。',
+    tests: STAR_EVALUATION_TYPES,
+  },
+  star: {
+    title: '星级测评',
+    eyebrow: 'STAR ASSESSMENT',
+    desc: '选择明确的目标星级进行能力检验，保留原有一至九星测评内容与报告。',
+    tests: STAR_EVALUATION_TYPES,
+  },
+}
+
 function isFreeTest(t) {
   if (!t?.currentPrice) return false
   return t.currentPrice === '免费' || t.currentPrice.includes('免费')
@@ -139,6 +160,9 @@ function getQuizItemStatus(q, a) {
 
 export default function EventAITest() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const assessmentCategory = searchParams.get('category')
+  const categoryConfig = ASSESSMENT_CATEGORY[assessmentCategory]
+  const visibleTestTypes = categoryConfig?.tests || TEST_TYPES
   const [phase, setPhase] = useState('entry')
   const [selectedTest, setSelectedTest] = useState(null)
   const [quizQuestions, setQuizQuestions] = useState([])
@@ -337,13 +361,15 @@ export default function EventAITest() {
       {phase === 'entry' && (
         <>
           <div className="card p-8 bg-gradient-to-br from-bingo-dark to-cyan-900 text-white mb-8 rounded-2xl">
-            <h1 className="text-2xl font-bold mb-2">AI测评</h1>
-            <p className="text-slate-300 text-sm">选择下方测评类型，完成后可查看能力分析与课程推荐。</p>
+            {categoryConfig ? <p className="text-[11px] font-semibold tracking-[0.14em] text-cyan-200 mb-2">{categoryConfig.eyebrow}</p> : null}
+            <h1 className="text-2xl font-bold mb-2">{categoryConfig?.title || 'AI测评中心'}</h1>
+            <p className="text-slate-300 text-sm">{categoryConfig?.desc || '选择下方测评类型，完成后可查看能力分析与课程推荐。'}</p>
+            {categoryConfig ? <Link to="/events/ai-test" className="inline-flex mt-4 text-xs font-semibold text-white/90 hover:text-white underline underline-offset-4">查看全部测评</Link> : null}
           </div>
 
           <div className="mb-10">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-              <h2 className="section-title mb-0">选择测评类型</h2>
+              <h2 className="section-title mb-0">{assessmentCategory === 'cross' ? '选择目标阶段' : assessmentCategory === 'star' ? '选择目标星级' : '选择测评类型'}</h2>
               <button
                 type="button"
                 onClick={() => setRecordsModalOpen(true)}
@@ -357,7 +383,7 @@ export default function EventAITest() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-5">
-              {TEST_TYPES.map((t) => (
+              {visibleTestTypes.map((t) => (
                 <div
                   key={t.id}
                   id={`eval-${t.id}`}
