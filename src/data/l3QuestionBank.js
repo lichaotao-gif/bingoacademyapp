@@ -204,6 +204,20 @@ export function buildGeneralTestSession() {
   return list
 }
 
+/**
+ * 综合测评 Demo：从基础题与 L3 进阶样题中随机组成一次测评。
+ * 仅用于演示「动态组卷」体验，不代表真实自适应测评算法。
+ */
+export function buildAdaptiveGeneralDemoSession() {
+  const foundation = GENERAL_TEST_SESSION_TEMPLATE.map((q) => ({ ...q, demoDifficulty: '基础' }))
+  const advanced = L3_TEST_SESSION_TEMPLATE.map((q) => ({ ...q, demoDifficulty: '进阶' }))
+  shuffleArrayInPlace(foundation)
+  shuffleArrayInPlace(advanced)
+  const mixed = [...foundation.slice(0, 3), ...advanced.slice(0, 3)]
+  shuffleArrayInPlace(mixed)
+  return mixed.map((q, index) => ({ ...q, id: `adaptive-${index + 1}-${q.id}` }))
+}
+
 function shuffleArrayInPlace(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))

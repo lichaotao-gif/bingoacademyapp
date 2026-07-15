@@ -34,19 +34,33 @@ const PLANNING_STAGES = [
   { phase: '阶段四', time: '12–24个月', level: 'L7+', title: '沉淀成长成果', goal: '形成课程、认证、赛事与作品组合，为长期科创发展积累档案。', course: '科技特长生路径课', price: '¥1680 起', courseTo: '/courses?type=exam', event: '年度高阶白名单赛事', eventTo: '/events', tone: 'amber' },
 ]
 
-function pointAt(index, ratio = 1, radius = 78) {
+function pointAt(index, ratio = 1, radius = 92) {
   const angle = (-90 + index * 72) * Math.PI / 180
-  return `${110 + Math.cos(angle) * radius * ratio},${110 + Math.sin(angle) * radius * ratio}`
+  return `${170 + Math.cos(angle) * radius * ratio},${146 + Math.sin(angle) * radius * ratio}`
 }
 
 function RadarChart() {
   const rings = [1, .67, .34]
   const dataPoints = DIMENSIONS.map((item, index) => pointAt(index, item.score / 100)).join(' ')
-  return <svg className="planning-radar" viewBox="0 0 220 220" role="img" aria-label="五维能力雷达图">
+  return <svg className="planning-radar" viewBox="0 0 340 300" role="img" aria-label="五维能力雷达图：创新应用 87% 最高，动手实践与审美创造 50% 有待提升">
     {rings.map((ring) => <polygon key={ring} points={DIMENSIONS.map((_, index) => pointAt(index, ring)).join(' ')} fill="none" stroke="#dbe5f1" strokeWidth="1.3" />)}
-    {DIMENSIONS.map((_, index) => <line key={index} x1="110" y1="110" x2={pointAt(index).split(',')[0]} y2={pointAt(index).split(',')[1]} stroke="#dbe5f1" strokeWidth="1.2" />)}
-    <polygon points={dataPoints} fill="rgba(101,97,239,.22)" stroke="#6561ef" strokeWidth="3" strokeLinejoin="round" />
-    {DIMENSIONS.map((item, index) => { const [x, y] = pointAt(index, 1.19).split(','); return <text key={item.name} x={x} y={y} textAnchor="middle" dominantBaseline="middle">{item.name}</text> })}
+    {DIMENSIONS.map((_, index) => <line key={index} x1="170" y1="146" x2={pointAt(index).split(',')[0]} y2={pointAt(index).split(',')[1]} stroke="#dbe5f1" strokeWidth="1.2" />)}
+    <polygon points={dataPoints} fill="rgba(99,91,255,.24)" stroke="#635bff" strokeWidth="3" strokeLinejoin="round" />
+    {DIMENSIONS.map((item, index) => { const [x, y] = pointAt(index, 1.34).split(','); return <text key={item.name} x={x} y={y} textAnchor={Number(x) < 145 ? 'end' : Number(x) > 195 ? 'start' : 'middle'} dominantBaseline="middle">{item.name}</text> })}
+    {DIMENSIONS.map((item, index) => { const [x, y] = pointAt(index, item.score / 100).split(','); return <circle key={item.name} cx={x} cy={y} r="4.5" fill="white" stroke={item.color} strokeWidth="3" /> })}
+  </svg>
+}
+
+function StudentAvatar() {
+  return <svg viewBox="0 0 96 96" role="img" aria-label="林一诺的卡通头像">
+    <defs><linearGradient id="avatar-shirt" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#75e4ff" /><stop offset="1" stopColor="#635bff" /></linearGradient></defs>
+    <circle cx="48" cy="48" r="46" fill="#dff7ff" />
+    <path d="M20 91c2-20 13-29 28-29s27 9 29 29" fill="url(#avatar-shirt)" />
+    <path d="M31 39c0-15 8-25 19-25 13 0 21 10 21 25v8c0 14-9 24-21 24-11 0-19-10-19-24z" fill="#ffd5b8" />
+    <path d="M30 42c-5-19 6-33 22-33 14 0 23 10 22 27-8-1-14-5-19-11-5 8-14 13-25 17z" fill="#24355b" />
+    <circle cx="42" cy="47" r="2.3" fill="#24355b" /><circle cx="59" cy="47" r="2.3" fill="#24355b" />
+    <path d="M45 58c4 3 8 3 12 0" fill="none" stroke="#d67b77" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M37 68c4 5 8 7 13 7s10-2 14-7" fill="#fff" opacity=".9" />
   </svg>
 }
 
@@ -77,21 +91,25 @@ export default function GrowthPlanning() {
 
       {activeTab === 'report' && (
       <section className="planning-report" aria-labelledby="planning-report-title">
-        <div className="planning-report-head">
+        <div className="planning-report-head planning-report-head--game">
           <div className="planning-student">
-            <span className="planning-student-avatar"><PlanIcon type="report" /></span>
-            <div><p>GROWTH REPORT</p><h1 id="planning-report-title">林一诺</h1><span>测评日期 · 2026/7/15</span></div>
+            <span className="planning-student-avatar"><StudentAvatar /></span>
+            <div className="planning-student-copy"><p>AI GROWTH PLAYER</p><h1 id="planning-report-title">林一诺</h1><span>最后测评 · 2026/7/15</span><div className="planning-student-tags"><b>二阶基础</b><b>角色 · 控制师</b></div></div>
           </div>
-          <span className="planning-level">L5</span>
+          <aside className="planning-level-card" aria-label="当前等级 L5，距离 L6 还差 33%">
+            <div className="planning-level-card-top"><span>CURRENT LEVEL</span><b>白银段位</b></div>
+            <div className="planning-level-value"><strong>L5</strong><div><b>AI 控制师</b><span>已完成本级 67%</span></div></div>
+            <div className="planning-level-progress"><i><b style={{ width: '67%' }} /></i><span>距离 L6 还差 33%</span></div>
+          </aside>
         </div>
         <div className="planning-report-body">
           <article className="planning-profile-summary">
             <div><span>学习阶段</span><strong>二阶基础</strong><p>能控制 AI 系统，理解传感器与决策</p></div>
             <div><span>角色称号</span><strong>控制师</strong><p>AI 素养等级标识</p></div>
           </article>
-          <article className="planning-score-summary">
-            <div><span>本次测评得分率</span><strong>67<small>%</small></strong><p>达标，继续加油</p></div>
-            <i><b style={{ width: '67%' }} /></i>
+          <article className="planning-score-summary planning-score-summary--game">
+            <div className="planning-score-orb"><strong>67<small>%</small></strong><span>综合得分率</span></div>
+            <div className="planning-score-track"><div><span>本次测评表现</span><b>达标 · 超过 53% 同龄学员</b></div><i><b style={{ width: '67%' }} /></i><p>保持创新应用优势，下一阶段重点提升动手实践与算法思维。</p></div>
           </article>
           <article className="planning-insight">
             <span>AI 学员画像</span><p>林一诺同学对新技术保持强烈好奇心，能够主动把生活中的问题转化为 AI 创意方案；在创新应用与项目表达上表现突出。当前可通过编程实操、结构化任务和阶段复盘，进一步强化动手实践与算法思维，逐步形成“发现问题—设计方案—完成作品”的完整能力闭环。</p>

@@ -1,9 +1,10 @@
+/* eslint-disable react-hooks/set-state-in-effect -- route/localStorage synchronization intentionally updates view state */
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
 import {
   buildL3TestSession,
-  buildGeneralTestSession,
+  buildAdaptiveGeneralDemoSession,
   L3_EVALUATION_DIMENSIONS,
   dimensionMeta,
   formatMultiChoiceAnswerLine,
@@ -43,12 +44,12 @@ const STAR_EVALUATION_TYPES = Array.from({ length: 9 }, (_, i) => {
 const TEST_TYPES = [
   {
     id: 'general',
-    name: '普通测评',
-    event: '综合摸底',
-    duration: 12,
+    name: 'AI 综合能力测评',
+    event: '动态综合摸底',
+    duration: 15,
     originalPrice: '',
     currentPrice: '免费',
-    desc: '适合还不确定具体学习方向的同学：综合摸底，含单选、多选、判断与简答样题。完成后结合薄弱维度为你推荐适合入门或强化的课程。',
+    desc: '系统将从能力题库中随机组卷，并根据前序作答表现模拟调整后续难度。完成后生成五维能力诊断与成长建议。',
   },
   ...STAR_EVALUATION_TYPES,
 ]
@@ -57,7 +58,7 @@ const ASSESSMENT_CATEGORY = {
   comprehensive: {
     title: '综合测评',
     eyebrow: 'AI GROWTH ASSESSMENT',
-    desc: '从五个能力维度完成一次综合摸底，获得课程与成长建议。',
+    desc: '直接进入动态综合测评。系统会随机抽题，并根据作答表现模拟调整后续题目难度。',
     tests: TEST_TYPES.filter((t) => t.id === 'general'),
   },
   cross: {
@@ -131,7 +132,7 @@ function buildAiSummary(dimStats, isGeneral) {
   const mastered = dimStats.filter((x) => x.pct >= 80)
   const weak = dimStats.filter((x) => x.pct < 60)
   const mid = dimStats.filter((x) => x.pct >= 60 && x.pct < 80)
-  let text = isGeneral ? '根据本次普通综合测评，' : '根据本次测评，'
+  let text = isGeneral ? '根据本次综合测评，' : '根据本次测评，'
   if (mastered.length) text += `你在「${mastered.map((m) => m.name).join('、')}」等维度表现较好`
   else text += '各维度仍有较大提升空间'
   text += '。'
@@ -163,9 +164,10 @@ export default function EventAITest() {
   const assessmentCategory = searchParams.get('category')
   const categoryConfig = ASSESSMENT_CATEGORY[assessmentCategory]
   const visibleTestTypes = categoryConfig?.tests || TEST_TYPES
-  const [phase, setPhase] = useState('entry')
-  const [selectedTest, setSelectedTest] = useState(null)
-  const [quizQuestions, setQuizQuestions] = useState([])
+  const directComprehensive = assessmentCategory === 'comprehensive' && !searchParams.get('record')
+  const [phase, setPhase] = useState(directComprehensive ? 'testing' : 'entry')
+  const [selectedTest, setSelectedTest] = useState(directComprehensive ? TEST_TYPES.find((test) => test.id === 'general') : null)
+  const [quizQuestions, setQuizQuestions] = useState(() => directComprehensive ? buildAdaptiveGeneralDemoSession() : [])
   const [answers, setAnswers] = useState({})
   const [currentQ, setCurrentQ] = useState(0)
   const [reportSnapshot, setReportSnapshot] = useState(null)
@@ -183,6 +185,10 @@ export default function EventAITest() {
 
   useEffect(() => {
     if (phase !== 'entry') setRecordsModalOpen(false)
+  }, [phase])
+
+  useEffect(() => {
+    if (phase === 'testing' && !testStartRef.current) testStartRef.current = Date.now()
   }, [phase])
 
   useEffect(() => {
@@ -224,11 +230,11 @@ export default function EventAITest() {
 
   function startAssessment(t) {
     setSelectedTest(t)
-    setQuizQuestions(t.id === 'general' ? buildGeneralTestSession() : buildL3TestSession())
+    setQuizQuestions(t.id === 'general' ? buildAdaptiveGeneralDemoSession() : buildL3TestSession())
     setPhase('testing')
     setCurrentQ(0)
     setAnswers({})
-    testStartRef.current = Date.now()
+    testStartRef.current = null
   }
 
   function submitTest() {
@@ -301,6 +307,17 @@ export default function EventAITest() {
               ? aNow === true || aNow === false
               : true))
 
+  const adaptiveStatus = useMemo(() => {
+    if (selectedTest?.id !== 'general') return null
+    const previous = quizQuestions.slice(0, currentQ)
+    if (!previous.length) return { level: '基础', note: '正在建立初始能力基线' }
+    const answeredCorrectly = previous.filter((question, index) => isL3AnswerCorrect(question, answers[index])).length
+    const rate = answeredCorrectly / previous.length
+    if (rate >= .75) return { level: '挑战', note: '前序表现较好，模拟提升题目难度' }
+    if (rate >= .4) return { level: '进阶', note: '当前表现稳定，模拟保持进阶难度' }
+    return { level: '基础', note: '正在巩固基础，模拟降低题目难度' }
+  }, [answers, currentQ, quizQuestions, selectedTest])
+
   const dimStats = useMemo(() => {
     if (!reportSnapshot) return null
     return buildDimensionStats(reportSnapshot.questions, reportSnapshot.answers)
@@ -351,8 +368,8 @@ export default function EventAITest() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="flex items-center gap-3 mb-2">
-        <Link to="/courses" className="text-sm text-slate-500 hover:text-primary">
-          AI能力课程
+        <Link to={assessmentCategory ? '/growth' : '/courses'} className="text-sm text-slate-500 hover:text-primary">
+          {assessmentCategory ? 'AI成长规划' : 'AI能力课程'}
         </Link>
         <span className="text-slate-300">/</span>
         <span className="text-sm text-slate-700">测评中心</span>
@@ -454,7 +471,13 @@ export default function EventAITest() {
       {phase === 'testing' && (
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-            <h1 className="text-xl font-bold text-bingo-dark leading-snug">{selectedTest?.name || 'AI 测评'}</h1>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold text-bingo-dark leading-snug">{selectedTest?.name || 'AI 测评'}</h1>
+                {adaptiveStatus ? <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-bold text-violet-700">AI 动态组卷 · Demo</span> : null}
+              </div>
+              {adaptiveStatus ? <p className="mt-2 text-xs text-slate-500">{adaptiveStatus.note}，当前模拟难度：<strong className="text-primary">{adaptiveStatus.level}</strong></p> : null}
+            </div>
             <span className="text-sm text-slate-500 tabular-nums shrink-0">{quizQuestions.length ? `${currentQ + 1} / ${quizQuestions.length}` : '—'}</span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2 mb-6">
@@ -467,6 +490,7 @@ export default function EventAITest() {
                 <div className="card p-8">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="font-semibold text-bingo-dark text-base">{currentQ + 1}. {quizQuestions[currentQ].q}</h2>
+                {adaptiveStatus ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-100">动态难度 · {adaptiveStatus.level}</span> : null}
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                   {quizQuestions[currentQ].type === 'fill_blank'
                     ? '填空题'
@@ -692,7 +716,7 @@ export default function EventAITest() {
             <div className="rounded-b-3xl bg-gradient-to-b from-bingo-dark via-cyan-900 to-primary text-white px-5 pt-8 pb-20 text-center shadow-lg">
             <ReportSummaryUserHeader />
             <p className="mt-3 text-2xl font-bold leading-snug text-white sm:text-3xl md:text-4xl">
-              {selectedTest?.id === 'general' ? '普通综合测评' : selectedTest?.name || 'L3快速测评'}
+              {selectedTest?.id === 'general' ? 'AI 综合能力测评' : selectedTest?.name || 'L3快速测评'}
             </p>
             <div className="mt-8 flex items-stretch justify-center gap-0 text-sm">
               {[
@@ -928,8 +952,9 @@ export default function EventAITest() {
             <button
               type="button"
               onClick={() => {
-                setPhase('entry')
                 setReportSnapshot(null)
+                if (assessmentCategory === 'comprehensive') startAssessment(TEST_TYPES.find((test) => test.id === 'general'))
+                else setPhase('entry')
               }}
               className="rounded-lg border border-slate-200 text-slate-600 text-sm px-5 py-2.5 hover:bg-slate-50"
             >

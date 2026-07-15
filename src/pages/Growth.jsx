@@ -50,7 +50,7 @@ export default function Growth() {
           <p className="hidden sm:block text-sm text-slate-500">测评结果将自动进入上方成长规划</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           {modules.map((module, index) => (
             <article key={module.id} className={`growth-module growth-module--${module.tone} ${module.primary ? 'growth-module--primary' : ''}`}>
               <div className="growth-module-top">
