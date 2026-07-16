@@ -28,10 +28,12 @@ const EVALUATION_ITEMS = [
 ]
 
 const PLANNING_STAGES = [
-  { phase: '阶段一', time: '现在–3个月', level: 'L5 → L6', title: '补齐基础能力', goal: '重点强化算法思维与动手实践，完成一次完整项目。', course: 'AI 精英进阶课', price: '¥698 起', courseTo: '/courses/detail/ai-advance-basic', event: '人工智能创新挑战赛', eventTo: '/events', tone: 'blue' },
-  { phase: '阶段二', time: '3–6个月', level: 'L6 稳固', title: '形成项目能力', goal: '掌握模型训练基础，把创意方案转化为可展示作品。', course: '机器学习入门与实战', price: '¥698 起', courseTo: '/courses/detail/ai-advance-ml', event: '青少年科技创新大赛', eventTo: '/events', tone: 'violet' },
-  { phase: '阶段三', time: '6–12个月', level: 'L6 → L7', title: '突破竞赛实践', goal: '围绕优势方向持续打磨作品，完成至少一次赛事实践。', course: '白名单赛事通关营', price: '¥998', courseTo: '/courses?type=exam', event: '全国青少年科创赛事', eventTo: '/events', tone: 'rose' },
-  { phase: '阶段四', time: '12–24个月', level: 'L7+', title: '沉淀成长成果', goal: '形成课程、认证、赛事与作品组合，为长期科创发展积累档案。', course: '科技特长生路径课', price: '¥1680 起', courseTo: '/courses?type=exam', event: '年度高阶白名单赛事', eventTo: '/events', tone: 'amber' },
+  { phase: '阶段一', time: '现在–1个月', level: 'L5 定位', title: '完成能力定位', goal: '通过综合测评梳理优势与短板，确定未来一年的主攻方向。', milestone: '形成个人能力基线与第一版成长任务单', course: 'AI 能力诊断与补强课', price: '¥299 起', courseTo: '/courses', event: '人工智能创新挑战赛体验组', eventTo: '/events', tone: 'blue', current: true },
+  { phase: '阶段二', time: '1–3个月', level: 'L5 → L6', title: '补齐基础能力', goal: '强化算法思维与动手实践，独立完成一个可运行的小项目。', milestone: '完成 L6 前阶课程与首个 AI 项目作品', course: 'AI 精英进阶课', price: '¥698 起', courseTo: '/courses/detail/ai-advance-basic', event: '青少年 AI 应用创意赛', eventTo: '/events', tone: 'cyan' },
+  { phase: '阶段三', time: '3–6个月', level: 'L6 稳固', title: '形成项目能力', goal: '掌握模型训练基础，把创意方案转化为结构完整的展示作品。', milestone: '沉淀 2 个项目案例并完成一次阶段复测', course: '机器学习入门与实战', price: '¥698 起', courseTo: '/courses/detail/ai-advance-ml', event: '青少年科技创新大赛', eventTo: '/events', tone: 'violet' },
+  { phase: '阶段四', time: '6–12个月', level: 'L6 → L7', title: '突破竞赛实践', goal: '围绕优势方向持续打磨作品，经历报名、备赛、提交与答辩全流程。', milestone: '完成至少 1 次正式赛事与作品答辩', course: '白名单赛事通关营', price: '¥998', courseTo: '/courses?type=exam', event: '全国青少年科创白名单赛事', eventTo: '/events', tone: 'rose' },
+  { phase: '阶段五', time: '12–24个月', level: 'L7 → L8', title: '建立方向优势', goal: '选择 AIGC、智能工程或科创研究方向，形成持续迭代的专项能力。', milestone: '获得专项认证并形成个人作品集', course: 'AI 科创研究项目课', price: '¥1280 起', courseTo: '/courses?type=exam', event: '全国青少年人工智能创新挑战赛', eventTo: '/events', tone: 'orange' },
+  { phase: '阶段六', time: '24–36个月', level: 'L8+', title: '沉淀长期成果', goal: '整合课程、认证、赛事和代表作品，形成面向未来发展的科创成长档案。', milestone: '完成高阶认证、代表作品与年度成长报告', course: '科技特长生长期路径课', price: '¥1680 起', courseTo: '/courses?type=exam', event: '年度高阶白名单赛事', eventTo: '/events', tone: 'amber' },
 ]
 
 function pointAt(index, ratio = 1, radius = 92) {
@@ -94,18 +96,17 @@ export default function GrowthPlanning() {
         <div className="planning-report-head planning-report-head--game">
           <div className="planning-student">
             <span className="planning-student-avatar"><StudentAvatar /></span>
-            <div className="planning-student-copy"><p>AI GROWTH PLAYER</p><h1 id="planning-report-title">林一诺</h1><span>最后测评 · 2026/7/15</span><div className="planning-student-tags"><b>二阶基础</b><b>角色 · 控制师</b></div></div>
+            <div className="planning-student-copy"><p>AI GROWTH PLAYER</p><h1 id="planning-report-title">林一诺</h1><span>综合测评 · 2026/7/15</span></div>
           </div>
           <aside className="planning-level-card" aria-label="当前等级 L5，距离 L6 还差 33%">
-            <div className="planning-level-card-top"><span>CURRENT LEVEL</span><b>白银段位</b></div>
-            <div className="planning-level-value"><strong>L5</strong><div><b>AI 控制师</b><span>已完成本级 67%</span></div></div>
+            <div className="planning-level-card-top"><span>CURRENT LEVEL</span></div>
+            <div className="planning-level-value"><strong>L5</strong><div><b>当前成长等级</b><span>已完成本级 67%</span></div></div>
             <div className="planning-level-progress"><i><b style={{ width: '67%' }} /></i><span>距离 L6 还差 33%</span></div>
           </aside>
         </div>
         <div className="planning-report-body">
           <article className="planning-profile-summary">
-            <div><span>学习阶段</span><strong>二阶基础</strong><p>能控制 AI 系统，理解传感器与决策</p></div>
-            <div><span>角色称号</span><strong>控制师</strong><p>AI 素养等级标识</p></div>
+            <div><span>当前学习课程</span><strong>L1 星级课程</strong><p>AI 启蒙通识课</p></div>
           </article>
           <article className="planning-score-summary planning-score-summary--game">
             <div className="planning-score-orb"><strong>67<small>%</small></strong><span>综合得分率</span></div>
@@ -140,7 +141,7 @@ export default function GrowthPlanning() {
         {activeTab === 'plan' ? (
           <div className="planning-tab-panel" role="tabpanel">
             <div className="planning-tab-heading"><div><p>LONG-TERM GROWTH PLAN</p><h2>长期成长规划</h2><span>像人生规划一样，把未来两年的课程学习与赛事实践拆成可执行阶段。</span></div></div>
-            <ol className="planning-stage-grid">
+            <ol className="planning-roadmap">
               {PLANNING_STAGES.map((stage, index) => <PlanningStage key={stage.phase} stage={stage} index={index} />)}
             </ol>
           </div>
@@ -158,17 +159,30 @@ export default function GrowthPlanning() {
 }
 
 function PlanningStage({ stage, index }) {
-  return <li className={`planning-stage planning-stage--${stage.tone}`}>
-    <div className="planning-stage-top"><span>{String(index + 1).padStart(2, '0')}</span><div><p>{stage.phase} · {stage.time}</p><b>{stage.level}</b></div></div>
-    <h3>{stage.title}</h3><p className="planning-stage-goal">{stage.goal}</p>
-    <section className="planning-stage-item planning-stage-item--course">
-      <span><PlanIcon type="report" /></span><div><small>推荐课程</small><strong>{stage.course}</strong><b>{stage.price}</b></div>
-      <Link to={stage.courseTo}>立即购买</Link>
-    </section>
-    <section className="planning-stage-item planning-stage-item--event">
-      <span><PlanIcon type="timeline" /></span><div><small>推荐赛事</small><strong>{stage.event}</strong></div>
-      <Link to={stage.eventTo}>进入赛事</Link>
-    </section>
+  return <li className={`planning-roadmap-step planning-roadmap-step--${stage.tone} ${stage.current ? 'is-current' : ''}`}>
+    <span className="planning-roadmap-node">{String(index + 1).padStart(2, '0')}</span>
+    <article className="planning-roadmap-card">
+      <header className="planning-roadmap-head">
+        <div><p>{stage.phase} · {stage.time}</p><h3>{stage.title}</h3></div>
+        <div className="planning-roadmap-badges"><b>{stage.level}</b>{stage.current ? <span>当前阶段</span> : null}</div>
+      </header>
+      <div className="planning-roadmap-body">
+        <div className="planning-roadmap-summary">
+          <p>{stage.goal}</p>
+          <div><span>阶段成果</span><strong>{stage.milestone}</strong></div>
+        </div>
+        <div className="planning-roadmap-recommendations">
+          <section className="planning-roadmap-item">
+            <span><PlanIcon type="report" /></span><div><small>推荐课程</small><strong>{stage.course}</strong><b>{stage.price}</b></div>
+            <Link to={stage.courseTo}>立即购买</Link>
+          </section>
+          <section className="planning-roadmap-item">
+            <span><PlanIcon type="timeline" /></span><div><small>推荐赛事</small><strong>{stage.event}</strong></div>
+            <Link to={stage.eventTo}>进入赛事</Link>
+          </section>
+        </div>
+      </div>
+    </article>
   </li>
 }
 

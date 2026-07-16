@@ -3,17 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 const CATEGORIES = [
   { id: 'all', label: '全部' },
-  { id: 'enlighten', label: 'AI启蒙' },
-  { id: 'programming', label: '智能编程' },
-  { id: 'sensing', label: '感知实验' },
-  { id: 'robotics', label: '机器人教具' },
-  { id: 'advanced', label: '科创进阶' },
-  { id: 'consumables', label: '实验耗材' },
+  { id: 'course', label: '课程资源配套' },
+  { id: 'competition', label: '赛事备赛资源' },
+  { id: 'selected', label: '缤果严选' },
 ]
 
 const PRODUCTS = [
   {
-    id: 'kit-ai-starter', category: 'enlighten', emoji: '🧩', tag: '启蒙推荐',
+    id: 'kit-ai-starter', category: 'course', emoji: '🧩', tag: '启蒙推荐',
     image: '/mall/ai-sensor-kit.png',
     name: 'AI启蒙传感学具套装', price: 680, originalPrice: 780, sales: '1,286',
     age: '7-10岁', desc: '主控板、灯光、声音传感器一套配齐，陪孩子完成第一个智能互动作品。',
@@ -21,7 +18,7 @@ const PRODUCTS = [
     details: ['认识光线与声音如何被机器感知', '完成“智能夜灯”和“声音提示器”两个作品', '配套课程任务卡，从搭建到展示循序完成'],
   },
   {
-    id: 'robot-microbit', category: 'programming', emoji: '🤖', tag: '热销单品',
+    id: 'robot-microbit', category: 'course', emoji: '🤖', tag: '热销单品',
     image: '/mall/ai-coding-robot.png',
     name: '人工智能 Micro:bit 编程学具', price: 298, originalPrice: 358, sales: '2,043',
     age: '8-14岁', desc: '图形化编程与传感器互动相结合，适合在家完成编程创作。',
@@ -29,7 +26,7 @@ const PRODUCTS = [
     details: ['图形化编程，孩子可独立上手', '通过传感器控制灯光、声音和动作', '完成互动小游戏与智能装置创作'],
   },
   {
-    id: 'sensor-ai-kit', category: 'sensing', emoji: '📡', tag: '实验室同款',
+    id: 'sensor-ai-kit', category: 'competition', emoji: '📡', tag: '实验室同款',
     image: '/mall/ai-vision-kit.png',
     name: 'AI视觉与多模态传感器套装', price: 1280, originalPrice: 1480, sales: '586',
     age: '10-16岁', desc: '视觉、距离、声音等多种感知实验，配套数据采集与实验报告模板。',
@@ -37,7 +34,7 @@ const PRODUCTS = [
     details: ['体验图像、距离和声音的多模态感知', '采集真实数据，理解 AI 的输入与判断', '附实验报告模板，适合课程成果展示'],
   },
   {
-    id: 'robot-car', category: 'robotics', emoji: '🚗', tag: '创作必备',
+    id: 'robot-car', category: 'competition', emoji: '🚗', tag: '创作必备',
     image: '/mall/ai-coding-robot.png',
     name: '智能循迹小车创作套装', price: 498, originalPrice: 598, sales: '932',
     age: '9-14岁', desc: '从组装到编程，完成循迹、避障与智能控制等趣味挑战。',
@@ -45,7 +42,7 @@ const PRODUCTS = [
     details: ['完成小车组装与基础线路连接', '编程实现循迹、避障和智能控制', '按闯关地图完成创作挑战'],
   },
   {
-    id: 'jetson-nano-edu', category: 'advanced', emoji: '🖥️', tag: '科创进阶',
+    id: 'jetson-nano-edu', category: 'selected', emoji: '🖥️', tag: '科创进阶',
     image: '/mall/ai-vision-kit.png',
     name: '边缘人工智能实验主机', price: 3299, originalPrice: 3699, sales: '168',
     age: '12岁以上', desc: '用于边缘 AI 与轻量深度学习推理演示，支持视觉识别项目实践。',
@@ -53,7 +50,7 @@ const PRODUCTS = [
     details: ['运行轻量 AI 视觉识别模型', '理解边缘计算如何实时处理数据', '配套进阶实验指引，适合科创项目'],
   },
   {
-    id: 'drone-ai-lite', category: 'advanced', emoji: '🚁', tag: '新品上线',
+    id: 'drone-ai-lite', category: 'selected', emoji: '🚁', tag: '新品上线',
     image: '/mall/ai-drone-kit.png',
     name: 'AI视觉循迹无人机（教育版）', price: 1899, originalPrice: 2199, sales: '216',
     age: '12岁以上', desc: '体验 AI 视觉循迹、定点巡航与智能控制，附课堂安全说明。',
@@ -61,7 +58,7 @@ const PRODUCTS = [
     details: ['在安全护桨保护下完成基础操控', '体验 AI 视觉循迹与定点巡航', '通过任务卡完成航线挑战'],
   },
   {
-    id: 'ai-xlab-pack', category: 'consumables', emoji: '📦', tag: '班课装',
+    id: 'ai-xlab-pack', category: 'course', emoji: '📦', tag: '班课装',
     image: '/mall/ai-sensor-kit.png',
     name: 'AI机器学习实验耗材包', price: 458, originalPrice: 528, sales: '743',
     age: '10岁以上', desc: '围绕数据采集、标注与分类实验设计，适配约 30 人 AI 班课。',
@@ -69,7 +66,7 @@ const PRODUCTS = [
     details: ['覆盖数据采集、标注和分类练习', '适配 30 人班课的分组实验', '可与 AI 机器学习课程同步使用'],
   },
   {
-    id: 'creative-board', category: 'programming', emoji: '🎛️', tag: '家庭实践',
+    id: 'creative-board', category: 'selected', emoji: '🎛️', tag: '家庭实践',
     image: '/mall/ai-coding-robot.png',
     name: 'AI创意交互开发板套装', price: 398, originalPrice: 468, sales: '689',
     age: '8-14岁', desc: '通过按键、灯光、声音完成互动作品，低门槛体验智能硬件创作。',
@@ -109,7 +106,7 @@ function ProductDetail({ product, onBack }) {
   return (
     <main className="bg-slate-50 pb-14">
       <div className="mx-auto max-w-7xl px-4 pt-6">
-        <button type="button" onClick={onBack} className="mb-5 text-sm text-slate-500 transition hover:text-primary">资源商城 / 教具详情</button>
+        <button type="button" onClick={onBack} className="mb-5 text-sm text-slate-500 transition hover:text-primary">资源商城 / 学具详情</button>
         <section className="grid gap-8 rounded-2xl bg-white p-5 shadow-sm sm:p-7 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-10">
           <div>
             <div className="overflow-hidden rounded-xl bg-slate-100">
@@ -120,7 +117,7 @@ function ProductDetail({ product, onBack }) {
           <div className="py-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded bg-primary/10 px-2 py-1 text-xs font-medium text-primary">{product.tag}</span>
-              <span className="text-xs text-slate-400">课程配套实物教具</span>
+              <span className="text-xs text-slate-400">课程配套实物学具</span>
             </div>
             <h1 className="mt-3 text-2xl font-bold leading-snug text-bingo-dark sm:text-3xl">{product.name}</h1>
             <p className="mt-3 text-sm leading-7 text-slate-600">{product.desc}</p>
@@ -129,7 +126,7 @@ function ProductDetail({ product, onBack }) {
               <span className="text-sm text-slate-500">商城价</span>
               <span className="text-3xl font-bold text-rose-500">¥{product.price}</span>
               <span className="pb-1 text-sm text-slate-400 line-through">¥{product.originalPrice}</span>
-              <span className="mb-1 ml-auto text-xs text-rose-500">实物教具 · 包邮配送</span>
+              <span className="mb-1 ml-auto text-xs text-rose-500">实物学具 · 包邮配送</span>
             </div>
             <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-y border-slate-100 py-4 text-sm">
               <p><span className="text-slate-400">配送：</span><span className="text-slate-700">48 小时内发货</span></p>
@@ -181,9 +178,9 @@ function ProductDetail({ product, onBack }) {
           <aside className="h-fit rounded-2xl bg-white p-5 shadow-sm">
             <h2 className="font-bold text-bingo-dark">购买说明</h2>
             <dl className="mt-4 space-y-4 text-sm">
-              <div><dt className="text-xs text-slate-400">商品类型</dt><dd className="mt-1 text-slate-700">课程配套实物教具</dd></div>
+              <div><dt className="text-xs text-slate-400">商品类型</dt><dd className="mt-1 text-slate-700">课程配套实物学具</dd></div>
               <div><dt className="text-xs text-slate-400">学习方式</dt><dd className="mt-1 text-slate-700">动手组装 · 任务实践</dd></div>
-              <div><dt className="text-xs text-slate-400">售后保障</dt><dd className="mt-1 text-slate-700">正品教具 · 使用指导</dd></div>
+              <div><dt className="text-xs text-slate-400">售后保障</dt><dd className="mt-1 text-slate-700">正品学具 · 7 天售后保障</dd></div>
             </dl>
           </aside>
         </section>
@@ -216,40 +213,63 @@ export default function Mall() {
         <div>
           <p className="text-sm font-medium text-primary">BINGO AI EDU SHOP</p>
           <h1 className="mt-1 text-3xl font-bold text-bingo-dark">资源商城</h1>
-          <p className="mt-2 text-sm text-slate-500">精选 AI 教具，让孩子在动手实践中理解人工智能。</p>
+          <p className="mt-2 text-sm text-slate-500">精选 AI 学具，配合课程与赛事学习持续进阶。</p>
         </div>
         <label className="relative block">
-          <span className="sr-only">搜索教具</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索教具名称"
+          <span className="sr-only">搜索学具</span>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索学具名称"
             className="w-64 rounded-full border border-slate-200 py-2.5 pl-4 pr-10 text-sm outline-none transition focus:border-primary" />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">⌕</span>
         </label>
       </header>
 
-      <section className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-[#10213d] via-[#0e5f88] to-[#11a7bd] px-7 py-9 text-white sm:px-10">
-        <span className="absolute -right-3 -top-12 text-[13rem] opacity-10">🤖</span>
-        <div className="relative max-w-2xl">
-          <p className="text-sm font-medium text-cyan-200">教具精选 · 家庭学习 · 课堂实践</p>
-          <h2 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl">把抽象的 AI，变成孩子手中的创作</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-200">从启蒙传感器、智能编程到科创实验，一套套教具配合任务指引，在家也能完成真实的 AI 项目。</p>
-          <button type="button" onClick={() => setActiveCategory('enlighten')} className="mt-5 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-primary transition hover:bg-cyan-50">从 AI 启蒙开始</button>
-        </div>
-      </section>
-
-      <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[['官方教具', '机构端同款课程教具'], ['动手实践', '项目任务卡辅助学习'], ['配送售后', '实物教具包邮配送'], ['使用指导', '附配套操作指引']].map(([title, desc]) => (
-          <div key={title} className="card p-4">
-            <p className="text-sm font-semibold text-bingo-dark">{title}</p>
-            <p className="mt-1 text-xs text-slate-500">{desc}</p>
+      <section className="relative mb-8 overflow-hidden rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50 px-5 py-6 text-slate-900 shadow-lg shadow-sky-900/5 sm:px-7 sm:py-7">
+        <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-sky-300/35 blur-3xl" />
+        <div className="absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-blue-300/25 blur-3xl" />
+        <div className="relative grid items-stretch gap-5 lg:grid-cols-[minmax(250px,4fr)_minmax(0,7fr)]">
+          <div className="flex flex-col justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/75 px-3 py-1.5 text-xs font-semibold tracking-wide text-primary shadow-sm">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="m12 3-1.5 5.5L5 10l5.5 1.5L12 17l1.5-5.5L19 10l-5.5-1.5L12 3Z" /><path strokeLinecap="round" strokeLinejoin="round" d="m19 16-.7 2.3L16 19l2.3.7L19 22l.7-2.3L22 19l-2.3-.7L19 16Z" /></svg>
+                为你推荐
+              </div>
+              <h2 className="mt-4 text-2xl font-bold leading-tight text-bingo-dark sm:text-3xl">让每一次练习，<br className="hidden sm:block" />都更贴近你的目标</h2>
+              <p className="mt-3 max-w-sm text-sm leading-6 text-slate-600">根据正在学习的课程和已报名赛事，优先匹配现在最需要的学具资源。</p>
+            </div>
+            <button type="button" onClick={() => setActiveCategory('course')} className="mt-6 inline-flex min-h-11 w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/20 transition duration-200 hover:-translate-y-0.5 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-sky-50">
+              查看课程资源配套
+              <span aria-hidden="true">→</span>
+            </button>
           </div>
-        ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {PRODUCTS.filter((product) => ['kit-ai-starter', 'sensor-ai-kit'].includes(product.id)).map((product) => {
+              const isCourse = product.category === 'course'
+              return (
+                <Link key={product.id} to={`/mall/${product.id}`} className="group relative overflow-hidden rounded-2xl border border-white/80 bg-white/85 p-3 shadow-sm shadow-sky-900/5 transition duration-200 hover:-translate-y-1 hover:border-sky-200 hover:bg-white hover:shadow-lg hover:shadow-sky-900/10 focus:outline-none focus:ring-2 focus:ring-primary">
+                  <div className="absolute -right-5 -top-5 h-24 w-24 rounded-full bg-sky-100 transition duration-300 group-hover:scale-125" />
+                  <div className="relative flex h-full flex-col">
+                    <img src={product.image} alt="" className="aspect-video w-full rounded-xl object-cover shadow-lg shadow-sky-900/15" />
+                    <div className="pt-3 text-left">
+                      <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold ${isCourse ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>{isCourse ? '课程进度匹配' : '赛事备赛匹配'}</span>
+                      <h3 className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-bingo-dark">{product.name}</h3>
+                      <div className="mt-3 flex items-end justify-between gap-2">
+                        <span className="text-base font-bold text-rose-500">¥{product.price}</span>
+                        <span className="text-xs font-medium text-primary transition group-hover:translate-x-0.5">去看看 →</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
       </section>
 
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-bingo-dark">教具分类</h2>
-            <p className="mt-1 text-sm text-slate-500">按学习阶段和动手方向选择适合的教具</p>
+            <h2 className="text-xl font-bold text-bingo-dark">学具分类</h2>
+            <p className="mt-1 text-sm text-slate-500">按课程配套、赛事备赛和精选资源选择学具</p>
           </div>
           <span className="text-sm text-slate-400">共 {visibleProducts.length} 件商品</span>
         </div>
@@ -266,7 +286,7 @@ export default function Mall() {
             {visibleProducts.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         ) : (
-          <div className="card py-16 text-center text-sm text-slate-500">没有找到相关教具，换个关键词试试。</div>
+          <div className="card py-16 text-center text-sm text-slate-500">没有找到相关学具，换个关键词试试。</div>
         )}
       </section>
     </main>

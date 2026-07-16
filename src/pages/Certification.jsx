@@ -10,7 +10,21 @@ const CERTIFICATE_TYPES = [
     gradient: 'from-cyan-500 to-blue-700',
     accent: 'text-cyan-700',
     soft: 'bg-cyan-50 border-cyan-100',
-    description: '面向 AI 学习起步阶段，关注人工智能的基础知识、信息伦理、工具体验与表达能力。通过课程任务和实践作品，记录学习者从“认识 AI”到“理解 AI”的成长过程。学习者会从生活中的智能现象出发，了解人类五感与机器感知的关系，建立对数据、算法与智能工具的基本认识，并学会以安全、负责任的方式使用人工智能。',
+    description: '面向 AI 学习起步阶段，关注人工智能的基础知识、工具体验与表达能力。',
+    introductionSections: [
+      {
+        title: '课程完成情况',
+        text: '完成一星《AI 萌芽》全套 8 课时课程，系统学习 AI 五感传感器认知、SPA「感知 - 处理 - 执行」底层思维模型、标准化人机指令、循环与条件基础逻辑、AI 绘画创作、语音唤醒交互等启蒙内容，通过游戏、手工、AIGC 创意实操完成全阶段学习。',
+      },
+      {
+        title: '熟练掌握能力',
+        text: '能够区分摄像头、麦克风、触摸屏三类 AI 传感器；理解智能设备通用工作流程；可撰写清晰完整的 AI 绘画指令；熟练运用循环、条件两种基础编程思维独立完成任务；能规范使用语音唤醒词与人机对话。',
+      },
+      {
+        title: '达成综合 AI 素养',
+        text: '建立完整 AI 基础认知，具备基础计算思维、清晰逻辑表达能力，形成人机协作创作意识，养成规范、安全使用 AI 工具的数字媒介素养，达到 AI 精英启蒙（青铜）基础入门标准。',
+      },
+    ],
     abilities: ['AI 基础认知', '数字伦理意识', '工具体验与表达'],
     samples: ['AI 初识与生活应用', '智能工具体验报告', '负责任使用 AI'],
     coursePath: '完成对应星级的 AI 通识课程，包含 AI 感知世界、智能工具体验与数字伦理等主题。',
@@ -147,17 +161,19 @@ export default function Certification() {
           <div>
             <p className={`text-sm font-semibold ${certificate.accent}`}>CERTIFICATE PREVIEW</p>
             <h2 id="sample-heading" className="mt-2 text-3xl font-bold text-bingo-dark">{certificate.name}{level && <span className="ml-3 text-primary">{level.star} 星</span>}</h2>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">{certificate.description}</p>
-            <div className="mt-6 flex flex-wrap gap-2">{certificate.abilities.map((ability) => <span key={ability} className={`rounded-full border px-3 py-1.5 text-xs ${certificate.soft} ${certificate.accent}`}>{ability}</span>)}</div>
-            <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="font-bold text-bingo-dark">获得这张证书，需要完成什么？</h3>
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <div><p className="text-xs font-semibold text-slate-400">01 · 对应课程</p><p className="mt-2 text-sm leading-6 text-slate-700">{certificate.coursePath}</p></div>
-                <div><p className="text-xs font-semibold text-slate-400">02 · 考核与成果</p><p className="mt-2 text-sm leading-6 text-slate-700">{certificate.assessment}</p></div>
-                <div><p className="text-xs font-semibold text-slate-400">03 · 证书作用</p><p className="mt-2 text-sm leading-6 text-slate-700">{certificate.value}</p></div>
+            {certificate.introductionSections ? (
+              <div className="mt-5 space-y-4">
+                {certificate.introductionSections.map((section, index) => (
+                  <section key={section.title} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                    <p className={`text-xs font-bold ${certificate.accent}`}>{String(index + 1).padStart(2, '0')} · {section.title}</p>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">{section.text}</p>
+                  </section>
+                ))}
               </div>
-              <p className="mt-4 border-t border-slate-200 pt-3 text-xs leading-5 text-slate-400">说明：具体课程名称、课时与考核规则将以该等级最终发布的认证标准为准。</p>
-            </div>
+            ) : (
+              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">{certificate.description}</p>
+            )}
+            <div className="mt-6 flex flex-wrap gap-2">{certificate.abilities.map((ability) => <span key={ability} className={`rounded-full border px-3 py-1.5 text-xs ${certificate.soft} ${certificate.accent}`}>{ability}</span>)}</div>
             <div className="mt-8 border-y border-slate-200 py-5">
               {level ? <>
                 <div className="flex items-center justify-between"><h3 className="font-bold text-bingo-dark">选择认证等级</h3><span className="text-sm text-slate-500">{level.stage} · {level.title}</span></div>
