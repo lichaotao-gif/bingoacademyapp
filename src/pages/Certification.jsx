@@ -162,14 +162,10 @@ export default function Certification() {
             <p className={`text-sm font-semibold ${certificate.accent}`}>CERTIFICATE PREVIEW</p>
             <h2 id="sample-heading" className="mt-2 text-3xl font-bold text-bingo-dark">{certificate.name}{level && <span className="ml-3 text-primary">{level.star} 星</span>}</h2>
             {certificate.introductionSections ? (
-              <div className="mt-5 space-y-4">
-                {certificate.introductionSections.map((section, index) => (
-                  <section key={section.title} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                    <p className={`text-xs font-bold ${certificate.accent}`}>{String(index + 1).padStart(2, '0')} · {section.title}</p>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">{section.text}</p>
-                  </section>
-                ))}
-              </div>
+              <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6" aria-label="证书内容">
+                <p className={`text-xs font-bold ${certificate.accent}`}>证书介绍</p>
+                <p className="mt-3 text-sm leading-8 text-slate-600">{certificate.introductionSections.map((section) => section.text).join(' ')}</p>
+              </section>
             ) : (
               <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">{certificate.description}</p>
             )}

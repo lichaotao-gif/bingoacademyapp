@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 
 const TABS = [
   { key: 'all', label: '全部' },
+  { key: 'course', label: '课程订单' },
+  { key: 'mall', label: '资源商城' },
   { key: 'pending', label: '待支付' },
   { key: 'paid', label: '已支付' },
   { key: 'completed', label: '已完成' },
@@ -11,9 +13,9 @@ const TABS = [
 
 // 模拟订单数据
 const MOCK_ORDERS = [
-  { id: 'RX20250715001', project: 'AI通识科学营', period: '2025暑期营', count: 1, amount: 3980, time: '2025-07-10 14:32', status: 'paid' },
-  { id: 'RX20250712002', project: '数据科学研学营', period: '暑期数据科学营', count: 1, amount: 5980, time: '2025-07-08 09:15', status: 'completed' },
-  { id: 'RX20250718003', project: '机器学习启蒙营', period: '2025暑期营', count: 1, amount: 4580, time: '2025-07-12 16:20', status: 'pending' },
+  { id: 'CO20250715001', source: 'course', project: 'AI 萌芽 · 一星能力课程', period: '课程学习包', count: 1, amount: 399, time: '2025-07-10 14:32', status: 'paid' },
+  { id: 'CO20250712002', source: 'course', project: 'AI 创意表达 · 进阶课程', period: '课程学习包', count: 1, amount: 599, time: '2025-07-08 09:15', status: 'completed' },
+  { id: 'MO20250718003', source: 'mall', project: 'AI 创作启蒙工具套装', period: '资源商城', count: 1, amount: 168, time: '2025-07-12 16:20', status: 'pending' },
 ]
 
 const STATUS_MAP = {
@@ -25,7 +27,7 @@ const STATUS_MAP = {
 
 export default function ProfileOrders() {
   const [tab, setTab] = useState('all')
-  const orders = MOCK_ORDERS.filter(o => tab === 'all' || o.status === tab)
+  const orders = MOCK_ORDERS.filter(o => tab === 'all' || (tab === 'course' || tab === 'mall' ? o.source === tab : o.status === tab))
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -51,9 +53,9 @@ export default function ProfileOrders() {
         ) : (
           orders.map((o) => (
             <div key={o.id} className="card p-5">
-              <div className="flex justify-between items-start mb-3">
+              <div className="flex justify-between items-start mb-3 gap-3">
                 <div>
-                  <p className="font-semibold text-bingo-dark">{o.project}</p>
+                  <div className="mb-1.5 flex items-center gap-2"><span className={'rounded-full px-2 py-0.5 text-[10px] font-bold ' + (o.source === 'course' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600')}>{o.source === 'course' ? '课程订单' : '资源商城'}</span><p className="font-semibold text-bingo-dark">{o.project}</p></div>
                   <p className="text-sm text-slate-500">{o.period} · {o.count} 人</p>
                   <p className="text-xs text-slate-400 mt-1">订单号 {o.id} · {o.time}</p>
                 </div>

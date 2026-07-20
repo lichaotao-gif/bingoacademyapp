@@ -1016,85 +1016,68 @@ function MyWorks({ onBack }) {
 
 // ─── 我的赛事 ────────────────────────────────────────────
 function MyEvents({ onBack }) {
-  const [showShareModal, setShowShareModal] = useState(false)
-  const [shareTarget, setShareTarget] = useState('')
-
   const events = [
-    { id: 1, name: '第五届全国青少年AI挑战赛', status: '已获奖', award: '全国一等奖', date: '2025-05-20', official: '官方认证' },
-    { id: 2, name: '省级创客马拉松竞赛2025', status: '已参与', award: '优秀奖', date: '2025-04-15', official: '' },
-    { id: 3, name: '缤果AI学院内部竞赛·春季', status: '报名中', award: '', date: '2025-07-01', official: '' },
+    { id: 1, name: '2026 全国青少年人工智能创新挑战赛', category: '智能创作 · 小学组', submitDate: '2026-07-12', applicant: '林一诺', contact: '138****8888', status: '报名审核中', note: '报名资料已提交，工作人员将在 1–3 个工作日内联系。' },
+    { id: 2, name: '粤港澳青少年创客马拉松', category: 'AI 创意应用 · 少儿组', submitDate: '2026-06-28', applicant: '林一诺', contact: '138****8888', status: '报名成功', note: '已报名成功，请留意赛事通知与备赛安排。' },
   ]
 
   return (
-    <ShareableModule title="我的赛事" icon="🏆" onBack={onBack}>
-      <div className="space-y-3">
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="mb-6 flex items-center gap-2 text-sm"><button onClick={onBack} className="text-slate-500 hover:text-primary">← 我的工作台</button><span className="text-slate-300">/</span><span className="font-semibold text-bingo-dark">我的赛事</span></div>
+      <section className="rounded-3xl border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 p-5 sm:p-6">
+        <p className="text-xs font-bold tracking-[0.14em] text-orange-500">MY EVENT APPLICATIONS</p><h1 className="mt-1 text-2xl font-extrabold text-slate-800">我的赛事报名</h1><p className="mt-2 text-sm text-slate-500">这里展示你已提交的赛事报名信息和处理进度。</p>
+      </section>
+      <div className="mt-5 space-y-3">
         {events.map(e => (
-          <div key={e.id} className="card p-5 hover:shadow-md hover:border-primary/30 transition">
+          <article key={e.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h3 className="font-semibold text-bingo-dark text-sm">{e.name}</h3>
-                  {e.official && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{e.official}</span>}
-                </div>
-                {e.award && <p className="text-xs text-amber-600 font-medium mb-1">🏆 {e.award}</p>}
-                <p className="text-xs text-slate-400">{e.date}</p>
+                <h2 className="font-bold text-bingo-dark">{e.name}</h2>
+                <p className="mt-1 text-sm text-slate-500">{e.category}</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={'text-[10px] px-2 py-0.5 rounded-full ' + (e.status === '已获奖' ? 'bg-amber-100 text-amber-700' : e.status === '已参与' ? 'bg-slate-100 text-slate-600' : 'bg-sky-100 text-sky-700')}>{e.status}</span>
-                {(e.status === '已获奖' || e.status === '已参与') && (
-                  <button onClick={() => { setShareTarget(e.name); setShowShareModal(true) }}
-                    className="text-[10px] bg-orange-100 text-orange-600 px-2 py-1 rounded-lg hover:bg-orange-200 transition flex items-center gap-0.5">
-                    <span>📤</span>{e.status === '已获奖' ? '晒奖' : '分享'}
-                  </button>
-                )}
-              </div>
+              <span className={'shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ' + (e.status === '报名成功' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700')}>{e.status}</span>
             </div>
-          </div>
+            <div className="mt-4 grid gap-2 border-t border-slate-100 pt-4 text-sm text-slate-600 sm:grid-cols-3"><p><span className="text-slate-400">报名人：</span>{e.applicant}</p><p><span className="text-slate-400">联系电话：</span>{e.contact}</p><p><span className="text-slate-400">提交时间：</span>{e.submitDate}</p></div>
+            <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-500">{e.note}</p>
+          </article>
         ))}
       </div>
-      {showShareModal && <ShareModal title={'分享赛事：' + shareTarget} subtitle="获奖赛事分享时自动携带奖项标识和赛事官方logo" onClose={() => setShowShareModal(false)} />}
-    </ShareableModule>
+    </div>
   )
 }
 
 // ─── 我的认证 ────────────────────────────────────────────
 function MyCerts({ onBack }) {
-  const [showShareModal, setShowShareModal] = useState(false)
-  const [shareTarget, setShareTarget] = useState('')
-
   const certs = [
-    { id: 1, name: 'AI素养初级认证', level: 'L1', issuer: '缤果AI学院', date: '2025-03-15', valid: '永久有效' },
-    { id: 2, name: 'Python编程进阶认证', level: 'L2', issuer: '缤果AI学院', date: '2025-05-08', valid: '永久有效' },
+    { id: 1, name: 'AI 精英启蒙（青铜）认证', level: 'L1', issuer: '缤果 AI 学院', date: '2026-06-18', valid: '永久有效', course: '一星《AI 萌芽》课程' },
+    { id: 2, name: 'AI 创意表达课程结业证书', level: '课程证书', issuer: '缤果 AI 学院', date: '2026-05-23', valid: '永久有效', course: 'AI 创意表达 · 体验课程' },
   ]
 
   return (
-    <ShareableModule title="我的认证" icon="📜" onBack={onBack}>
-      <div className="grid md:grid-cols-2 gap-4">
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="mb-6 flex items-center gap-2 text-sm"><button onClick={onBack} className="text-slate-500 hover:text-primary">← 我的工作台</button><span className="text-slate-300">/</span><span className="font-semibold text-bingo-dark">我的认证</span></div>
+      <section className="rounded-3xl border border-amber-100 bg-gradient-to-r from-amber-50 to-yellow-50 p-5 sm:p-6"><p className="text-xs font-bold tracking-[0.14em] text-amber-600">MY CERTIFICATES</p><h1 className="mt-1 text-2xl font-extrabold text-slate-800">我的认证</h1><p className="mt-2 text-sm text-slate-500">已获得的课程结业证书与能力认证都保存在这里。</p></section>
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
         {certs.map(c => (
-          <div key={c.id} className="card p-5 bg-gradient-to-br from-indigo-50 to-violet-50 border-indigo-200/60 hover:shadow-md transition">
+          <article key={c.id} className="rounded-2xl border border-[#eadfbf] bg-gradient-to-br from-[#fffdf7] to-[#fff8e7] p-5 shadow-sm">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">{c.level}</span>
+                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{c.level}</span>
                 <h3 className="font-bold text-bingo-dark mt-1">{c.name}</h3>
+                <p className="text-xs text-slate-500 mt-1">{c.course}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{c.issuer} · {c.date}</p>
                 <p className="text-xs text-emerald-600 mt-0.5">{c.valid}</p>
               </div>
-              <div className="w-14 h-14 rounded-xl bg-indigo-100 flex items-center justify-center text-2xl shrink-0">📜</div>
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"><WorkspaceIcon type="badge" className="h-7 w-7" /></div>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <button type="button" className="text-xs border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-50">下载证书</button>
-              <button type="button" className="text-xs border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-50">扫码验真</button>
-              <button onClick={() => { setShareTarget(c.name); setShowShareModal(true) }}
-                className="text-xs bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg hover:bg-orange-200 transition flex items-center gap-1">
-                <span>📤</span> 分享证书
-              </button>
+              <button type="button" className="text-xs border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg hover:bg-amber-50">查看证书</button>
+              <button type="button" className="text-xs border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg hover:bg-amber-50">下载证书</button>
             </div>
-          </div>
+          </article>
         ))}
       </div>
-      <Link to="/cert" className="block mt-4 text-center text-sm text-primary hover:underline">前往认证中心查看更多 →</Link>
-      {showShareModal && <ShareModal title={'分享认证：' + shareTarget} subtitle="生成高清证书图，含验真二维码，链接支持他人扫码查看" onClose={() => setShowShareModal(false)} />}
-    </ShareableModule>
+    </div>
   )
 }
 
@@ -1195,9 +1178,20 @@ function MyOrders({ onBack }) {
 }
 
 // ─── 个人中心主组件 ────────────────────────────────────────
+function WorkspaceIcon({ type, className = 'w-6 h-6' }) {
+  const paths = {
+    study: <><path d="M4.5 6.25A3.25 3.25 0 0 1 7.75 3h8.75A3.25 3.25 0 0 1 19.75 6.25V20a.75.75 0 0 1-1.12.65l-4.5-2.5-4.5 2.5A.75.75 0 0 1 8.5 20V6.25" /><path d="M11 7.25h5M11 10.5h4" /></>,
+    event: <><path d="M8 4.5h8l1 4.25-3 1.75L12 8.75 10 10.5 7 8.75 8 4.5Z" /><path d="M12 9.25v5.5" /><path d="M8.5 20h7M9.5 14.75h5" /></>,
+    report: <><path d="M6.25 3.5h8.5l3 3V20a1 1 0 0 1-1 1H6.25a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" /><path d="M14.5 3.75V7h3" /><path d="M8.25 16.5v-2.75M12 16.5V10.5M15.75 16.5v-4.25" /></>,
+    order: <><path d="M4 7.25h16v12.5H4z" /><path d="M4 7.25 6.25 3.5h11.5L20 7.25M4 11h16M9.25 14.5h5.5" /></>,
+    badge: <><circle cx="12" cy="9.5" r="5.5" /><path d="m8.5 14.25-1.25 6.25L12 18l4.75 2.5-1.25-6.25" /><path d="m10.25 9.5 1.15 1.15 2.35-2.45" /></>,
+    arrow: <path d="M5 12h13M13 7l5 5-5 5" />,
+  }
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">{paths[type]}</svg>
+}
+
 export default function Profile() {
   const [page, setPage] = useState('main')
-  const [shareModal, setShareModal] = useState(null)
 
   if (page === 'member') return <div className="max-w-7xl mx-auto px-4 py-8"><MemberCenter onBack={() => setPage('main')} /></div>
   if (page === 'promo') return <div className="max-w-7xl mx-auto px-4 py-8"><PromoCenter onBack={() => setPage('main')} /></div>
@@ -1207,259 +1201,73 @@ export default function Profile() {
   if (page === 'ability') return <div className="max-w-7xl mx-auto px-4 py-8"><MyAbility onBack={() => setPage('main')} /></div>
   if (page === 'orders') return <div className="max-w-7xl mx-auto px-4 py-8"><MyOrders onBack={() => setPage('main')} /></div>
 
-  // ── 一级首页 ──────────────────────────────────────────
-  const SHAREABLE_MODULES = [
-    { key: 'works', label: '个人作品', icon: '🎨' },
-    { key: 'events', label: '我的赛事', icon: '🏆' },
-    { key: 'certs', label: '我的认证', icon: '📜' },
-    { key: 'ability', label: '能力档案', icon: '📊' },
-    { key: 'orders', label: '我的订单', icon: '📦' },
+  const sessionUser = getSessionUser()
+  const quickLinks = [
+    { key: 'events', title: '我的赛事', note: '2 条报名信息', page: 'events', icon: 'event', tone: 'bg-[#fff1e9] text-[#d86939] ring-[#ffd5bd]' },
+    { key: 'report', title: '成长报告', note: '82 分', to: '/growth/planning', icon: 'report', tone: 'bg-[#eaf8f3] text-[#15886d] ring-[#c8ecdf]' },
+    { key: 'order', title: '我的订单', note: '3 笔订单', to: '/profile/orders', icon: 'order', tone: 'bg-[#f2edff] text-[#7255ca] ring-[#ded1ff]' },
+    { key: 'badge', title: '我的认证', note: '2 张证书', page: 'certs', icon: 'badge', tone: 'bg-[#fff7df] text-[#b87913] ring-[#f5e2a8]' },
   ]
 
-  const sessionUser = getSessionUser()
-
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* ── 顶部通栏：用户信息 + 会员状态 ── */}
-      <section className="mb-8">
-        <div className="card p-6 bg-gradient-to-r from-bingo-dark to-slate-800 text-white">
-          <div className="flex flex-wrap items-start gap-5">
-            {/* 头像+基本信息 */}
-            <div className="flex items-center gap-4">
-              <img
-                src={sessionUserDisplayAvatarUrl(sessionUser)}
-                alt=""
-                className="w-16 h-16 rounded-full object-cover shrink-0 border-2 border-cyan-400/30 bg-white/10"
-                width={64}
-                height={64}
-                decoding="async"
-              />
-              <div>
-                <p className="font-bold text-lg">昵称 · {sessionUser.nickname}</p>
-                <p className="text-white/70 text-xs mt-0.5">学员ID: BG20250001 · 绑定手机：138****8888</p>
-                <button type="button" className="text-xs text-cyan-400 hover:text-white mt-1 transition">安全设置 →</button>
+    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-9">
+      <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#edf4ff] via-[#f5f5ff] to-[#edfbf7] px-5 py-6 shadow-[0_18px_48px_rgba(60,91,167,0.10)] sm:px-8 sm:py-8">
+        <div className="absolute -right-12 -top-16 h-52 w-52 rounded-full bg-[#83a6ff]/20" />
+        <div className="absolute bottom-0 left-[38%] h-24 w-24 rounded-t-full bg-[#88e0c5]/20" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="relative shrink-0">
+              <div className="rounded-[22px] bg-white p-1.5 shadow-[0_10px_24px_rgba(63,90,160,0.16)]">
+                <img src={sessionUserDisplayAvatarUrl(sessionUser)} alt={`${sessionUser.nickname}的头像`} className="h-16 w-16 rounded-[17px] object-cover sm:h-20 sm:w-20" width={80} height={80} decoding="async" />
               </div>
+              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#536ee8] px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">L1 学习中</span>
             </div>
-
-            {/* 会员状态 */}
-            <div className="flex-1 min-w-[220px]">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="text-xs font-bold bg-gradient-to-r from-amber-400 to-orange-500 px-3 py-1 rounded-full">👑 年度会员</span>
-                <span className="text-white/70 text-xs">剩余 320 天</span>
-                <span className="text-emerald-400 text-xs">● 自动续费已开启</span>
-              </div>
-              <p className="text-white/60 text-xs mb-3">下次续费 2026-01-20 · ¥239（自动续费优惠价）</p>
-              <div className="flex gap-2 flex-wrap">
-                <button onClick={() => setPage('member')}
-                  className="text-xs bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition">
-                  会员中心 · 查看权益
-                </button>
-                <button onClick={() => setPage('member')}
-                  className="text-xs bg-white/15 text-white px-4 py-2 rounded-xl hover:bg-white/25 transition">
-                  管理自动续费
-                </button>
-              </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold tracking-[0.16em] text-[#7588ae]">MY WORKSPACE</p>
+              <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#203252] sm:text-3xl">你好，{sessionUser.nickname}</h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-[#66799a]">今天也向 AI 小达人更进一步吧。你的学习、赛事与成长成果，都在这里持续记录。</p>
             </div>
-
-            <Link to="/profile/edit" className="text-xs text-white/70 hover:text-white border border-white/20 rounded-xl px-4 py-2 transition self-start shrink-0">编辑资料</Link>
           </div>
-        </div>
-      </section>
-
-      {/* ── 核心功能区 ── */}
-      <section className="mb-8">
-        <h2 className="section-title mb-3">核心功能</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-
-          {/* 会员中心 - 重点高亮 */}
-          <button onClick={() => setPage('member')}
-            className="card p-4 text-center hover:shadow-md hover:border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200/60 transition group col-span-1">
-            <div className="text-2xl mb-1">👑</div>
-            <p className="font-semibold text-amber-700 text-sm group-hover:text-amber-800">会员中心</p>
-            <p className="text-[10px] text-amber-600/70 mt-0.5">年度会员</p>
-          </button>
-
-          {/* 推广赚钱 - 重点高亮 */}
-          <button onClick={() => setPage('promo')}
-            className="card p-4 text-center hover:shadow-md hover:border-orange-300 bg-gradient-to-br from-orange-50 to-rose-50 border-orange-200/60 transition group">
-            <div className="text-2xl mb-1">💰</div>
-            <p className="font-semibold text-orange-700 text-sm group-hover:text-orange-800">推广赚钱</p>
-            <p className="text-[10px] text-orange-600/70 mt-0.5">佣金翻倍中</p>
-          </button>
-
-          {/* 五大可分享模块 - 带分享图标 */}
-          {SHAREABLE_MODULES.map(m => (
-            m.key === 'orders' ? (
-              <Link key={m.key} to="/profile/orders"
-                className="card p-4 text-center hover:shadow-md hover:border-primary/30 transition group relative block">
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-[9px]">📤</div>
-                <div className="text-2xl mb-1">{m.icon}</div>
-                <p className="font-medium text-bingo-dark text-sm group-hover:text-primary">{m.label}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">研学订单·凭证·退款</p>
-              </Link>
-            ) : (
-            <button key={m.key} onClick={() => setPage(m.key)}
-              className="card p-4 text-center hover:shadow-md hover:border-primary/30 transition group relative">
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-[9px]">📤</div>
-              <div className="text-2xl mb-1">{m.icon}</div>
-              <p className="font-medium text-bingo-dark text-sm group-hover:text-primary">{m.label}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">支持多渠道分享</p>
-            </button>
-            )
-          ))}
-
-          {/* 其他功能 */}
-          {[
-            { to: '/profile/study', icon: '📚', label: '学习中心', note: '我的课程' },
-            { to: '/profile/points', icon: '⭐', label: '积分商城', note: '积分兑换' },
-            { to: '/events/ai-test', icon: '🧪', label: '测评中心', note: '能力测评' },
-            { to: '/profile#tools', icon: '🛠️', label: '我的教具', note: '' },
-            { to: '/community', icon: '💬', label: '消息通知', note: '' },
-            { to: '/profile#settings', icon: '⚙️', label: '设置中心', note: '' },
-            { to: '/cert', icon: '🏅', label: '公益积分', note: '' },
-          ].map((item, i) => (
-            <Link key={i} to={item.to}
-              className="card p-4 text-center hover:shadow-md hover:border-primary/30 transition group">
-              <div className="text-2xl mb-1">{item.icon}</div>
-              <p className="font-medium text-bingo-dark text-sm group-hover:text-primary">{item.label}</p>
-              {item.note && <p className="text-[10px] text-slate-400 mt-0.5">{item.note}</p>}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 数据概览区 ── */}
-      <section className="mb-8">
-        <h2 className="section-title mb-3">数据概览</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: '已学课程时长', value: '128h', icon: '📚', note: '本月 +12h', page: null },
-            { label: '参与赛事', value: '6 场', icon: '🏆', note: '获奖 3 次', page: 'events' },
-            { label: '获得认证', value: '2 项', icon: '📜', note: '全部永久有效', page: 'certs' },
-            { label: '推广佣金余额', value: '¥86.50', icon: '💰', note: '待结算 ¥23', page: 'promo' },
-            { label: '已邀请好友', value: '18 人', icon: '👥', note: '本月 +3人', page: 'promo' },
-            { label: '公益积分', value: '1,280', icon: '⭐', note: '等级：学分达人', page: null },
-            { label: '能力综合评分', value: '83/100', icon: '📊', note: '进阶学员等级', page: 'ability' },
-            { label: '会员福利待领', value: '3 项', icon: '🎁', note: '立即领取', page: 'member' },
-          ].map((d, i) => (
-            <div key={i}
-              className={'card p-5 hover:shadow-md transition ' + (d.page ? 'cursor-pointer hover:border-primary/30' : '')}
-              onClick={() => d.page && setPage(d.page)}>
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-slate-500">{d.label}</p>
-                <span className="text-lg">{d.icon}</span>
-              </div>
-              <p className="text-2xl font-bold text-bingo-dark mt-1">{d.value}</p>
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-slate-400">{d.note}</p>
-                {d.page && (
-                  <button onClick={e => { e.stopPropagation(); setShareModal(d.label) }}
-                    className="text-[10px] text-orange-500 hover:text-orange-600 transition">📤</button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 缤果学分银行 ── */}
-      <ScoreBank />
-
-      {/* ── B端合作入口 ── */}
-      <section className="mb-8">
-        <h2 className="section-title">B端 · 合作/加盟管理</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link to="/franchise" className="card p-4 text-center hover:shadow-md hover:border-primary/30 transition bg-gradient-to-br from-cyan-50 to-sky-50">
-            <div className="font-semibold text-primary">加盟申请</div>
-            <div className="text-xs text-slate-500 mt-1">加盟进度查询</div>
-          </Link>
-          <Link to="/events?tab=b" className="card p-4 text-center hover:shadow-md hover:border-primary/30 transition bg-gradient-to-br from-cyan-50 to-sky-50">
-            <div className="font-semibold text-primary">赛事DIY定制</div>
-            <div className="text-xs text-slate-500 mt-1">定制进度查询</div>
-          </Link>
-          <a href="/#/b" className="card p-4 text-center hover:shadow-md hover:border-primary/30 transition bg-gradient-to-br from-cyan-50 to-sky-50">
-            <div className="font-semibold text-primary">合作管理</div>
-            <div className="text-xs text-slate-500 mt-1">机构合作进度</div>
-          </a>
-          <Link to="/mall?b=1" className="card p-4 text-center hover:shadow-md hover:border-primary/30 transition bg-gradient-to-br from-cyan-50 to-sky-50">
-            <div className="font-semibold text-primary">采购订单</div>
-            <div className="text-xs text-slate-500 mt-1">加盟方专属采购</div>
+          <Link to="/profile/edit" className="inline-flex min-h-11 items-center justify-center gap-1.5 self-start rounded-xl border border-[#c7d4f4] bg-white/85 px-4 text-sm font-semibold text-[#536ee8] transition hover:border-[#8da7ef] hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#6d8cf0] focus:ring-offset-2 lg:self-auto">
+            编辑资料 <WorkspaceIcon type="arrow" className="h-4 w-4" />
           </Link>
         </div>
-      </section>
-
-      {/* ── 营销推荐区 ── */}
-      <section className="mb-8">
-        <h2 className="section-title mb-3">为你推荐</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            { type: '会员专享', title: '年度会员专享 · AI精品课7折', desc: '限时课程专项折扣，点击直接使用', icon: '👑', color: 'border-amber-200/60 bg-amber-50/50', btn: '立即使用', btnStyle: 'bg-amber-500 text-white' },
-            { type: '赛事活动', title: '白名单赛事报名截止提醒', desc: '第五届青少年AI挑战赛 · 距截止 3 天', icon: '⚡', color: 'border-sky-200/60 bg-sky-50/50', btn: '立即报名', btnStyle: 'bg-sky-500 text-white' },
-            { type: '推广激励', title: '佣金翻倍进行中 · 暑期专场', desc: '精品营课佣金 ×2，已获 ¥86.50', icon: '💰', color: 'border-orange-200/60 bg-orange-50/50', btn: '立即推广', btnStyle: 'bg-orange-500 text-white' },
-            { type: '课程限时', title: 'AI通识科学营 · 限时8折', desc: '今日仅剩 12 个名额，拼团更优惠', icon: '🔥', color: 'border-rose-200/60 bg-rose-50/50', btn: '查看详情', btnStyle: 'bg-rose-500 text-white' },
-            { type: '会员专享', title: '开通年度会员 · 赛事集训免费学', desc: '年度会员专属集训资料包，价值¥299', icon: '🏆', color: 'border-violet-200/60 bg-violet-50/50', btn: '开通会员', btnStyle: 'bg-violet-500 text-white' },
-            { type: '推广激励', title: '邀请好友开通会员赚额外奖励', desc: '每成功邀请1人开通年度会员额外得¥30', icon: '👥', color: 'border-emerald-200/60 bg-emerald-50/50', btn: '生成海报', btnStyle: 'bg-emerald-500 text-white' },
-          ].map((rec, i) => (
-            <div key={i} className={'card p-5 border hover:shadow-md transition ' + rec.color}>
-              <div className="flex items-start gap-3 mb-3">
-                <span className="text-xl">{rec.icon}</span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[10px] bg-white rounded-full px-2 py-0.5 text-slate-500">{rec.type}</span>
-                  </div>
-                  <p className="font-semibold text-bingo-dark text-sm">{rec.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{rec.desc}</p>
-                </div>
-              </div>
-              <button type="button" className={'text-xs px-4 py-2 rounded-lg font-medium ' + rec.btnStyle}>{rec.btn}</button>
-            </div>
+        <div className="relative mt-7 grid grid-cols-3 divide-x divide-[#cbd9ef] rounded-2xl border border-white/80 bg-white/60 px-1 py-3 backdrop-blur-sm sm:max-w-2xl">
+          {[['本周学习', '3 次'], ['成长积分', '820'], ['完成课程', '8 节']].map(([label, value]) => (
+            <div key={label} className="px-3 text-center sm:px-5"><p className="text-xs text-[#7788a7]">{label}</p><p className="mt-1 text-base font-extrabold text-[#2b416a] sm:text-lg">{value}</p></div>
           ))}
         </div>
       </section>
 
-      {/* ── 推广赚钱入口（高亮展示） ── */}
-      <section id="promo" className="mb-8">
-        <div className="card p-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-300/40 hover:border-amber-400/60 hover:shadow-md transition cursor-pointer"
-          onClick={() => setPage('promo')}>
-          <div className="flex flex-wrap items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-2xl shrink-0">💰</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <h3 className="font-bold text-bingo-dark text-lg">推广赚钱</h3>
-                <span className="text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold">佣金翻倍中</span>
-              </div>
-              <p className="text-sm text-slate-600">专属推广码 · 海报链接生成 · 推广订单明细 · 佣金结算提现 · 活动专场 · 邀请有礼 · 团队推广</p>
-              <div className="flex gap-4 mt-2 text-xs text-slate-500">
-                <span>可提现 <strong className="text-amber-600">¥86.50</strong></span>
-                <span>待结算 <strong className="text-slate-700">¥23.00</strong></span>
-                <span>本月 <strong className="text-slate-700">12 单</strong></span>
-                <span>年度会员佣金加成 <strong className="text-emerald-600">+20%</strong></span>
-              </div>
-            </div>
-            <button type="button" className="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition">
-              进入推广赚钱 →
-            </button>
-          </div>
+      <section className="mt-6">
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div><p className="text-xs font-bold tracking-[0.15em] text-[#8494b0]">LEARNING HUB</p><h2 className="mt-1 text-xl font-extrabold text-[#243452]">我的工作台</h2></div>
+          <p className="hidden text-sm text-slate-500 sm:block">从课程出发，记录每一次成长</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {quickLinks.map((item) => {
+            const commonClass = 'group flex min-h-[92px] items-center gap-3 rounded-2xl border border-white bg-white p-3.5 text-left shadow-[0_8px_20px_rgba(68,85,137,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(68,85,137,0.14)] focus:outline-none focus:ring-2 focus:ring-[#6d8cf0] focus:ring-offset-2'
+            const content = <><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ${item.tone}`}><WorkspaceIcon type={item.icon} className="h-5 w-5" /></span><span className="min-w-0"><span className="block text-sm font-extrabold text-[#31435f]">{item.title}</span><span className="mt-1 block truncate text-xs text-[#8491a8]">{item.note}</span></span></>
+            return item.page ? <button key={item.key} type="button" onClick={() => setPage(item.page)} className={commonClass}>{content}</button> : <Link key={item.key} to={item.to} className={commonClass}>{content}</Link>
+          })}
         </div>
       </section>
 
-      {/* ── 底部快捷区 ── */}
-      <section className="card p-5 bg-slate-50">
-        <div className="flex flex-wrap gap-3 justify-center text-sm">
-          <Link to="/" className="text-slate-600 hover:text-primary transition">🏠 返回首页</Link>
-          <span className="text-slate-300">|</span>
-          <button type="button" className="text-slate-600 hover:text-primary transition">📖 帮助中心</button>
-          <span className="text-slate-300">|</span>
-          <button type="button" className="text-slate-600 hover:text-primary transition">📞 联系我们</button>
-          <span className="text-slate-300">|</span>
-          <button onClick={() => setPage('member')} className="text-amber-600 hover:text-amber-700 transition font-medium">👑 会员专属客服</button>
-          <span className="text-slate-300">|</span>
-          <button onClick={() => setPage('member')} className="text-slate-600 hover:text-primary transition">🔄 自动续费管理</button>
+      <section className="mt-5 overflow-hidden rounded-[26px] border border-[#d8e4fb] bg-white shadow-[0_14px_30px_rgba(65,88,148,0.08)]">
+        <div className="flex flex-col gap-4 border-b border-[#e8eefb] bg-gradient-to-r from-[#f3f7ff] to-[#eefbfa] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div><p className="text-xs font-bold tracking-[0.14em] text-[#788cae]">MY LEARNING</p><h2 className="mt-1 text-xl font-extrabold text-[#273c60]">我的学习</h2><p className="mt-1 text-sm text-[#7182a0]">已购买课程与本周学习进度</p></div>
+          <Link to="/courses" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#cbd9f5] bg-white px-4 text-sm font-bold text-[#526fbe] transition hover:bg-[#f6f8ff] focus:outline-none focus:ring-2 focus:ring-[#6d8cf0] focus:ring-offset-2">购买更多课程</Link>
+        </div>
+        <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+          {[{ title: 'AI 萌芽 · 一星能力课程', lesson: '第 4 课 · 认识智能传感器', progress: 52, color: 'bg-[#5f79e7]', status: '学习中', cta: '继续学习' }, { title: 'AI 创意表达 · 体验课', lesson: '共 8 课 · 已完成全部学习', progress: 100, color: 'bg-[#41b998]', status: '已完成', cta: '查看回顾' }].map((course) => (
+            <article key={course.title} className="rounded-2xl border border-[#e4e9f4] bg-[#fcfdff] p-4 transition hover:border-[#c7d5f3] hover:bg-white">
+              <div className="flex items-start justify-between gap-3"><div><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${course.status === '学习中' ? 'bg-[#e8edff] text-[#576fe0]' : 'bg-[#e6f8f1] text-[#238b70]'}`}>{course.status}</span><h3 className="mt-3 text-base font-extrabold text-[#31435f]">{course.title}</h3><p className="mt-1 text-sm text-[#7b8aa3]">{course.lesson}</p></div><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f0f4ff] text-[#5873d5]"><WorkspaceIcon type="study" className="h-5 w-5" /></span></div>
+              <div className="mt-5"><div className="mb-2 flex items-center justify-between text-xs"><span className="text-[#7b8aa3]">课程进度</span><span className="font-bold text-[#40577f]">{course.progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-[#e9edf6]"><div className={`h-full rounded-full ${course.color}`} style={{ width: `${course.progress}%` }} /></div></div>
+              <Link to="/profile/study" className="mt-5 inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#536ee8] transition hover:text-[#3b56cb]">{course.cta}<WorkspaceIcon type="arrow" className="h-4 w-4" /></Link>
+            </article>
+          ))}
         </div>
       </section>
-
-      {/* 分享弹窗 */}
-      {shareModal && <ShareModal title={'分享 · ' + shareModal} onClose={() => setShareModal(null)} />}
     </div>
   )
 }
