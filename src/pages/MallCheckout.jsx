@@ -12,11 +12,22 @@ const PRODUCTS = {
   'creative-board': { name: 'AI创意交互开发板套装', price: 398, image: '/mall/ai-coding-robot.png' },
 }
 
+const REGION_OPTIONS = {
+  上海市: ['上海市'],
+  北京市: ['北京市'],
+  广东省: ['广州市', '深圳市', '佛山市', '东莞市'],
+  浙江省: ['杭州市', '宁波市', '温州市'],
+  江苏省: ['南京市', '苏州市', '无锡市'],
+  四川省: ['成都市', '绵阳市'],
+  湖北省: ['武汉市', '宜昌市'],
+  湖南省: ['长沙市', '株洲市'],
+}
+
 export default function MallCheckout() {
   const { productId } = useParams()
   const navigate = useNavigate()
   const product = PRODUCTS[productId] || PRODUCTS['kit-ai-starter']
-  const [form, setForm] = useState({ name: '', phone: '', region: '', address: '', note: '' })
+  const [form, setForm] = useState({ name: '', phone: '', province: '', city: '', address: '', note: '' })
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const submit = (event) => {
@@ -26,7 +37,7 @@ export default function MallCheckout() {
         courseName: product.name,
         classType: { name: '实物教具', price: product.price },
         image: product.image,
-        delivery: form,
+        delivery: { ...form, region: `${form.province} ${form.city}`.trim() },
         checkoutPath: `/mall/checkout/${productId}`,
         orderKind: 'mall',
       },
@@ -57,7 +68,7 @@ export default function MallCheckout() {
           <label className="text-sm font-medium text-slate-700">收货人姓名 *<input required value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="请输入姓名" className="mt-1.5 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-primary" /></label>
           <label className="text-sm font-medium text-slate-700">手机号码 *<input required type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="用于配送联系" className="mt-1.5 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-primary" /></label>
         </div>
-        <label className="block text-sm font-medium text-slate-700">所在地区 *<input required value={form.region} onChange={(e) => update('region', e.target.value)} placeholder="省 / 市 / 区（县）" className="mt-1.5 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-primary" /></label>
+        <label className="block text-sm font-medium text-slate-700">所在地区 *<div className="mt-1.5 grid grid-cols-2 gap-3"><select required value={form.province} onChange={(e) => setForm((current) => ({ ...current, province: e.target.value, city: '' }))} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-primary"><option value="">选择省份</option>{Object.keys(REGION_OPTIONS).map((province) => <option key={province} value={province}>{province}</option>)}</select><select required disabled={!form.province} value={form.city} onChange={(e) => update('city', e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-normal outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 focus:border-primary"><option value="">选择城市</option>{(REGION_OPTIONS[form.province] || []).map((city) => <option key={city} value={city}>{city}</option>)}</select></div></label>
         <label className="block text-sm font-medium text-slate-700">详细地址 *<textarea required value={form.address} onChange={(e) => update('address', e.target.value)} placeholder="街道、门牌号、楼栋、单元、房间号等" rows="3" className="mt-1.5 w-full resize-none rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-primary" /></label>
         <label className="block text-sm font-medium text-slate-700">订单备注（选填）<input value={form.note} onChange={(e) => update('note', e.target.value)} placeholder="如配送时间、课程班级等" className="mt-1.5 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-primary" /></label>
         <button type="submit" className="btn-primary w-full py-3 text-base font-bold">提交订单 · 去支付</button>

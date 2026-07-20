@@ -8,9 +8,14 @@ const CATEGORIES = [
   { id: 'selected', label: '缤果严选' },
 ]
 
+const LEVEL_CATEGORIES = [
+  { id: 'all', label: '全部' },
+  ...Array.from({ length: 9 }, (_, index) => ({ id: `L${index + 1}`, label: `L${index + 1}` })),
+]
+
 const PRODUCTS = [
   {
-    id: 'kit-ai-starter', category: 'course', emoji: '🧩', tag: '启蒙推荐',
+    id: 'kit-ai-starter', category: 'course', level: 'L1', emoji: '🧩', tag: '启蒙推荐',
     image: '/mall/ai-sensor-kit.png',
     name: 'AI启蒙传感学具套装', price: 680, originalPrice: 780, sales: '1,286',
     age: '7-10岁', desc: '主控板、灯光、声音传感器一套配齐，陪孩子完成第一个智能互动作品。',
@@ -18,7 +23,7 @@ const PRODUCTS = [
     details: ['认识光线与声音如何被机器感知', '完成“智能夜灯”和“声音提示器”两个作品', '配套课程任务卡，从搭建到展示循序完成'],
   },
   {
-    id: 'robot-microbit', category: 'course', emoji: '🤖', tag: '热销单品',
+    id: 'robot-microbit', category: 'course', level: 'L2', emoji: '🤖', tag: '热销单品',
     image: '/mall/ai-coding-robot.png',
     name: '人工智能 Micro:bit 编程学具', price: 298, originalPrice: 358, sales: '2,043',
     age: '8-14岁', desc: '图形化编程与传感器互动相结合，适合在家完成编程创作。',
@@ -26,7 +31,7 @@ const PRODUCTS = [
     details: ['图形化编程，孩子可独立上手', '通过传感器控制灯光、声音和动作', '完成互动小游戏与智能装置创作'],
   },
   {
-    id: 'sensor-ai-kit', category: 'competition', emoji: '📡', tag: '实验室同款',
+    id: 'sensor-ai-kit', category: 'competition', level: 'L5', emoji: '📡', tag: '实验室同款',
     image: '/mall/ai-vision-kit.png',
     name: 'AI视觉与多模态传感器套装', price: 1280, originalPrice: 1480, sales: '586',
     age: '10-16岁', desc: '视觉、距离、声音等多种感知实验，配套数据采集与实验报告模板。',
@@ -34,7 +39,7 @@ const PRODUCTS = [
     details: ['体验图像、距离和声音的多模态感知', '采集真实数据，理解 AI 的输入与判断', '附实验报告模板，适合课程成果展示'],
   },
   {
-    id: 'robot-car', category: 'competition', emoji: '🚗', tag: '创作必备',
+    id: 'robot-car', category: 'competition', level: 'L3', emoji: '🚗', tag: '创作必备',
     image: '/mall/ai-coding-robot.png',
     name: '智能循迹小车创作套装', price: 498, originalPrice: 598, sales: '932',
     age: '9-14岁', desc: '从组装到编程，完成循迹、避障与智能控制等趣味挑战。',
@@ -42,7 +47,7 @@ const PRODUCTS = [
     details: ['完成小车组装与基础线路连接', '编程实现循迹、避障和智能控制', '按闯关地图完成创作挑战'],
   },
   {
-    id: 'jetson-nano-edu', category: 'selected', emoji: '🖥️', tag: '科创进阶',
+    id: 'jetson-nano-edu', category: 'selected', level: 'L8', emoji: '🖥️', tag: '科创进阶',
     image: '/mall/ai-vision-kit.png',
     name: '边缘人工智能实验主机', price: 3299, originalPrice: 3699, sales: '168',
     age: '12岁以上', desc: '用于边缘 AI 与轻量深度学习推理演示，支持视觉识别项目实践。',
@@ -50,7 +55,7 @@ const PRODUCTS = [
     details: ['运行轻量 AI 视觉识别模型', '理解边缘计算如何实时处理数据', '配套进阶实验指引，适合科创项目'],
   },
   {
-    id: 'drone-ai-lite', category: 'selected', emoji: '🚁', tag: '新品上线',
+    id: 'drone-ai-lite', category: 'selected', level: 'L7', emoji: '🚁', tag: '新品上线',
     image: '/mall/ai-drone-kit.png',
     name: 'AI视觉循迹无人机（教育版）', price: 1899, originalPrice: 2199, sales: '216',
     age: '12岁以上', desc: '体验 AI 视觉循迹、定点巡航与智能控制，附课堂安全说明。',
@@ -58,7 +63,7 @@ const PRODUCTS = [
     details: ['在安全护桨保护下完成基础操控', '体验 AI 视觉循迹与定点巡航', '通过任务卡完成航线挑战'],
   },
   {
-    id: 'ai-xlab-pack', category: 'course', emoji: '📦', tag: '班课装',
+    id: 'ai-xlab-pack', category: 'course', level: 'L4', emoji: '📦', tag: '班课装',
     image: '/mall/ai-sensor-kit.png',
     name: 'AI机器学习实验耗材包', price: 458, originalPrice: 528, sales: '743',
     age: '10岁以上', desc: '围绕数据采集、标注与分类实验设计，适配约 30 人 AI 班课。',
@@ -66,7 +71,7 @@ const PRODUCTS = [
     details: ['覆盖数据采集、标注和分类练习', '适配 30 人班课的分组实验', '可与 AI 机器学习课程同步使用'],
   },
   {
-    id: 'creative-board', category: 'selected', emoji: '🎛️', tag: '家庭实践',
+    id: 'creative-board', category: 'selected', level: 'L6', emoji: '🎛️', tag: '家庭实践',
     image: '/mall/ai-coding-robot.png',
     name: 'AI创意交互开发板套装', price: 398, originalPrice: 468, sales: '689',
     age: '8-14岁', desc: '通过按键、灯光、声音完成互动作品，低门槛体验智能硬件创作。',
@@ -84,8 +89,6 @@ function ProductCard({ product }) {
       <div className="relative h-40 overflow-hidden bg-slate-100">
         <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent" />
-        <span className="absolute right-4 top-3 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">{product.tag}</span>
-        <span className="absolute bottom-4 left-4 text-[10px] tracking-[0.18em] text-white/90">BINGO AI EDU</span>
       </div>
       <div className="p-4">
         <p className="mb-2 line-clamp-2 min-h-10 text-sm leading-5 text-slate-600">{product.desc}</p>
@@ -193,6 +196,7 @@ export default function Mall() {
   const navigate = useNavigate()
   const { productId } = useParams()
   const [activeCategory, setActiveCategory] = useState('all')
+  const [activeLevel, setActiveLevel] = useState('all')
   const [query, setQuery] = useState('')
   const selectedProduct = productId ? PRODUCTS.find((product) => product.id === productId) : null
 
@@ -200,10 +204,11 @@ export default function Mall() {
     const keyword = query.trim().toLowerCase()
     return PRODUCTS.filter((product) => {
       const categoryMatch = activeCategory === 'all' || product.category === activeCategory
+      const levelMatch = activeLevel === 'all' || product.level === activeLevel
       const textMatch = !keyword || `${product.name}${product.desc}${product.tag}`.toLowerCase().includes(keyword)
-      return categoryMatch && textMatch
+      return categoryMatch && levelMatch && textMatch
     })
-  }, [activeCategory, query])
+  }, [activeCategory, activeLevel, query])
 
   if (selectedProduct) return <ProductDetail product={selectedProduct} onBack={() => navigate('/mall')} />
 
@@ -273,13 +278,9 @@ export default function Mall() {
           </div>
           <span className="text-sm text-slate-400">共 {visibleProducts.length} 件商品</span>
         </div>
-        <div className="mb-6 flex flex-wrap gap-2">
-          {CATEGORIES.map((category) => (
-            <button key={category.id} type="button" onClick={() => setActiveCategory(category.id)}
-              className={`rounded-full px-4 py-2 text-sm transition ${activeCategory === category.id ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-primary/10 hover:text-primary'}`}>
-              {category.label}
-            </button>
-          ))}
+        <div className="mb-7 overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/80 via-white to-blue-50/65 shadow-sm">
+          <div className="p-4 sm:flex sm:items-center sm:gap-5"><p className="mb-3 shrink-0 text-sm font-bold text-bingo-dark sm:mb-0">学具分类</p><div className="flex flex-wrap gap-2">{CATEGORIES.map((category) => <button key={category.id} type="button" onClick={() => { setActiveCategory(category.id); setActiveLevel('all') }} className={`min-h-10 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${activeCategory === category.id ? 'bg-primary text-white shadow-sm' : 'bg-white text-slate-600 ring-1 ring-sky-100 hover:bg-sky-50 hover:text-primary'}`}>{category.label}</button>)}</div></div>
+          <div className="border-t border-sky-100/80 p-4 sm:flex sm:items-center sm:gap-5"><p className="mb-3 shrink-0 text-sm font-bold text-bingo-dark sm:mb-0">课程级别</p><div className="flex flex-wrap gap-2" role="tablist" aria-label="课程级别筛选">{LEVEL_CATEGORIES.map((level) => <button key={level.id} type="button" role="tab" aria-selected={activeLevel === level.id} onClick={() => setActiveLevel(level.id)} className={`min-h-10 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${activeLevel === level.id ? 'bg-primary text-white shadow-sm' : 'bg-white text-slate-600 ring-1 ring-sky-100 hover:bg-sky-50 hover:text-primary'}`}>{level.label}</button>)}</div></div>
         </div>
         {visibleProducts.length ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
