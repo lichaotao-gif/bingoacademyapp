@@ -342,6 +342,9 @@ export default function Home() {
                     <LinkArrow />
                   </Link>
                 ))}
+                <Link to="/cert" className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dashed border-sky-300 bg-sky-50/60 px-4 text-sm font-bold text-sky-800 transition hover:border-sky-500 hover:bg-sky-100 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-sky-700">
+                  查看更多证书 <LinkArrow />
+                </Link>
               </div>
             </div>
           </div>
