@@ -17,7 +17,10 @@ export default function Layout({ children }) {
   /** 加盟商 / 机构总管理登录页：与后台一致不叠悬浮按钮/底栏/客服，避免挡住「登录」 */
   const franchisePartnerLoginPage =
     loc.pathname.includes('/franchise-partner/login') || loc.pathname.includes('/institution-hq/login')
-  const showPublicMarketingLayers = !franchiseWorkspace && !franchisePartnerLoginPage
+  // 首页采用内容导向的沉浸式版式，避免通用悬浮营销入口打断首屏与模块浏览。
+  const showPublicMarketingLayers =
+    !franchiseWorkspace && !franchisePartnerLoginPage && !['/', '/franchise'].includes(loc.pathname)
+  const showPublicFooter = !franchiseWorkspace && !franchisePartnerLoginPage
 
   useEffect(() => {
     if (loc.state?.openLogin) {
@@ -141,7 +144,7 @@ export default function Layout({ children }) {
       ) : null}
 
       {showPublicMarketingLayers ? <ChatPopup /> : null}
-      {showPublicMarketingLayers ? (
+      {showPublicFooter ? (
       <footer className="bg-bingo-dark text-slate-400 text-sm py-8 border-t border-cyan-500/20 bg-gradient-to-r from-[#0f172a] to-[#1e293b]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap justify-between gap-6">
           <div>

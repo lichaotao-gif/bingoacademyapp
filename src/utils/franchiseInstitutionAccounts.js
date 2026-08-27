@@ -73,7 +73,7 @@ function maybeApplyDemoPreviewInstitutionSeed(pid, bucket) {
       id: DEMO_PREVIEW_ACCOUNT_ID,
       partnerId: pid,
       refCode,
-      orgNameSnapshot: '启思博雅教育中心',
+      orgNameSnapshot: '缤果AI学院示范教学中心',
       name: '李老师',
       phone: DEMO_PREVIEW_STAFF_PHONE,
       password: 'demo123',

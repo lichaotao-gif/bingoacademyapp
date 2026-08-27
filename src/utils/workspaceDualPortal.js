@@ -126,7 +126,7 @@ export function dualSwitchToInstitutionHqWorkspace(phoneDigits) {
   }
   const session = {
     orgId: INSTITUTION_HQ_DEMO_ORG_ID,
-    orgName: '启思博雅教育集团（演示）',
+    orgName: '缤果AI学院示范教学中心（演示）',
     displayName: '机构总管理员',
     loginPhone: d,
     loginAt: new Date().toISOString(),

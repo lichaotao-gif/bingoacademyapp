@@ -20,7 +20,7 @@ export default function LeadCaptureTrigger({
   const asset = getLeadAsset(leadKey)
   const resolvedKey = asset?.key || leadKey
   const submitted = useLeadSubmitted(resolvedKey)
-  const canDownload = Boolean(asset?.getContent)
+  const canDownload = asset?.delivery !== 'contact' && Boolean(asset?.getContent)
 
   const handleClick = () => {
     if (submitted && canDownload) {

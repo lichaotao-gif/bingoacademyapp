@@ -3,6 +3,34 @@
 export const LEAD_CAPTURE_CHANGED_EVENT = 'bingo-lead-capture-changed'
 
 export const LEAD_ASSETS = {
+  'growth-plan': {
+    title: '领取专属分龄学习方案',
+    delivery: 'contact',
+    aliases: ['领取分龄学习方案', '免费领取AI能力测评 + 专属分龄学习方案'],
+    fileName: '缤果AI学院-6至18岁AI分龄学习方案.txt',
+    mimeType: 'text/plain;charset=utf-8',
+    getContent: () => `缤果AI学院 · 6–18岁 AI 分龄学习方案
+
+启智阶（L1–L3，AI认知与基础交互）
+L1 AI萌芽：机器如何感知世界？
+L2 AI感知：AI视觉特征与语音交互认知
+L3 AI分类：AI标签、模型与算法认知
+
+基础阶（L4–L6，工具应用与技能入门）
+L4 AI特征：图像与语音识别的AI创作
+L5 AI推理：AI指令认知与编程实现
+L6 AI数据：AI逻辑推理与情绪识别
+
+精研阶（L7–L8，技术实践与思维构建）
+L7 AI建模：AI语言解码与智能应用
+L8 AI神经网络：AI神经网络与数据可视化
+
+智创阶（L9，创新应用与项目链接）
+L9 AI视觉：AI视觉应用的创造与展望
+
+建议先完成 15 分钟综合测评，再结合孩子的兴趣、基础与目标确定起始等级。
+`,
+  },
   'franchise-cooperation-plan': {
     title: '免费获取机构合作方案',
     aliases: ['免费获取合作方案', '免费获取机构合作方案'],

@@ -32,6 +32,7 @@ export function saveLeadSubmission(leadKey, payload = {}) {
   map[key] = {
     submittedAt: new Date().toISOString(),
     name: String(payload.name || '').trim(),
+    age: String(payload.age || '').trim(),
     phone: String(payload.phone || '').trim(),
     org: String(payload.org || '').trim(),
   }

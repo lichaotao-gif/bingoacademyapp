@@ -36,7 +36,8 @@ const NAV = [
 ]
 
 /** 侧栏无有效机构名时的默认展示名 */
-const DEFAULT_SIDEBAR_INSTITUTION = '启思博雅教育中心'
+// 使用通用演示名称，避免在测试/演示页面中出现第三方机构名称。
+const DEFAULT_SIDEBAR_INSTITUTION = '缤果AI学院示范教学中心'
 
 function sidebarPartnerInstitutionName(session) {
   const raw = (session?.orgName || '').trim()

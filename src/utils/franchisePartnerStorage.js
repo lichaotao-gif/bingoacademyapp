@@ -603,6 +603,18 @@ export function getPartnerSession() {
   const digits = normalizePartnerPhoneDigits(s.phone)
   const staffSub = s.staffSubUser === true
   const isPreviewMain = digits === FRANCHISE_PREVIEW_DEMO_MAIN_PHONE
+  // 演示资料迁移：旧版示例机构名称统一替换为通用测试数据。
+  const hasLegacyOrgName = String(s.orgName || '').includes('启思博雅')
+  if (hasLegacyOrgName) {
+    const migrated = { ...s, orgName: '缤果AI学院示范教学中心' }
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(migrated))
+      window.dispatchEvent(new Event('franchise-partner-session-changed'))
+    } catch {
+      return s
+    }
+    return migrated
+  }
   if (isPreviewMain && (staffSub || rawDigits !== FRANCHISE_PREVIEW_DEMO_MAIN_PHONE)) {
     const cleaned = { ...s, phone: FRANCHISE_PREVIEW_DEMO_MAIN_PHONE }
     delete cleaned.staffSubUser
@@ -769,7 +781,7 @@ export function buildPartnerSessionPayloadForLogin(phoneDigits) {
       partnerId: 'p_13800138000',
       refCode: 'FJ-QISI-DEMO',
       phone: p,
-      orgName: '启思博雅教育中心',
+      orgName: '缤果AI学院示范教学中心',
       contactName: '管理员',
       loginAt: new Date().toISOString(),
     }

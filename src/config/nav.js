@@ -4,7 +4,7 @@ export const mainNavGroups = [
   [{ path: '/growth', label: 'AI成长规划' }],
   [{ path: '/courses', label: 'AI能力课程' }],
   [{ path: '/events', label: 'AI赛事活动' }],
-  [{ path: '/tools', label: 'AI探索平台' }],
+  [{ path: '/tools', label: 'AI探索活动' }],
   [{ path: '/cert', label: '成果认证' }],
   [{ path: '/mall', label: '资源商城' }],
   [{ path: '/franchise', label: '加盟合作' }],

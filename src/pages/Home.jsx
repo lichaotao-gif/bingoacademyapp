@@ -1,391 +1,226 @@
 import {
-  ArrowRightOutlined,
-  BookOutlined,
-  BulbOutlined,
-  CompassOutlined,
-  CodeOutlined,
-  ExperimentOutlined,
-  FlagOutlined,
-  GiftOutlined,
-  GlobalOutlined,
-  RocketOutlined,
-  SafetyCertificateOutlined,
-  ShopOutlined,
-  TeamOutlined,
+  ArrowRightOutlined, BookOutlined, BulbOutlined, CompassOutlined,
+  FileTextOutlined, FlagOutlined, GlobalOutlined, ProjectOutlined,
+  PlayCircleOutlined, ReadOutlined, RobotOutlined, RocketOutlined, SafetyCertificateOutlined,
+  TeamOutlined, TrophyOutlined,
 } from '@ant-design/icons'
-import { createElement } from 'react'
+import { createElement, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import LeadCaptureTrigger from '../components/LeadCaptureTrigger'
 
-const MODULES = [
+const JOURNEY_STEPS = [
+  { number: '01', label: 'AI成长规划', title: '科学测评 · 定制路径', desc: '15分钟能力测评，形成孩子的专属分龄学习规划。', output: '专属测评报告 · 分龄学习方案', to: '/growth', icon: CompassOutlined, tone: 'from-blue-600 to-cyan-500' },
+  { number: '02', label: 'AI能力课程', title: '分级学习 · 项目实践', desc: '四阶九星课程体系，让知识在创意项目中真正落地。', output: '阶段能力证书 · 原创项目作品', to: '/courses', icon: BookOutlined, tone: 'from-violet-600 to-blue-500' },
+  { number: '03', label: 'AI赛事实践', title: '备赛训练 · 实战获奖', desc: '白名单赛事专项训练，连接真实挑战和官方参赛通道。', output: '赛事奖项 · 综合素养背景', to: '/events', icon: TrophyOutlined, tone: 'from-orange-500 to-rose-500' },
+]
+
+const COURSE_LEVELS = [
   {
-    number: '01',
-    title: 'AI成长规划',
-    eyebrow: '每一步，都朝向未来',
-    desc: '从兴趣发现到能力进阶，为 6–18 岁孩子建立清晰、可持续的成长路径。',
-    to: '/growth',
-    icon: CompassOutlined,
-    tone: 'from-[#056b78] via-[#0da3a1] to-[#4bd3b8]',
-    points: ['AI素养测评', '分龄学习路径', '成长轨迹管理'],
+    id: 'starter', label: '启智阶', range: 'L1–L3', descriptor: 'AI认知与基础交互',
+    courses: [
+      { level: 'L1', levelName: 'AI萌芽', english: 'AI Sprout', grade: '1–2年级', age: '6–8岁', title: '机器如何感知世界？', subtitle: '从生活体验出发，认识机器感知世界的基本方式', price: '¥299', certificate: 'AI Explorer Bronze', cover: '/hero-1.png' },
+      { level: 'L2', levelName: 'AI感知', english: 'AI Perception', grade: '2–3年级', age: '7–9岁', title: 'AI视觉特征与语音交互认知', subtitle: '理解图像特征与语音交互的基础原理', price: '¥399', certificate: 'AI Explorer Silver', cover: '/home-explore-knowledge.png' },
+      { level: 'L3', levelName: 'AI分类', english: 'AI Classification', grade: '3–4年级', age: '8–10岁', title: 'AI标签、模型与算法认知', subtitle: '通过动手实践认识标签、模型与分类算法', price: '¥499', certificate: 'AI Explorer Gold', cover: '/home-ai-children-hero.png' },
+    ],
   },
   {
-    number: '02',
-    title: 'AI能力课',
-    eyebrow: '学会使用，更学会创造',
-    desc: '以项目式学习培养理解、表达、创造与解决问题的 AI 核心能力。',
-    to: '/courses',
-    icon: BookOutlined,
-    tone: 'from-[#2158c7] via-[#377dea] to-[#79c8ff]',
-    points: ['AI素养启蒙', '创意实践课程', '竞赛进阶训练'],
+    id: 'foundation', label: '基础阶', range: 'L4–L6', descriptor: '工具应用与技能入门',
+    courses: [
+      { level: 'L4', levelName: 'AI特征', english: 'AI Features', grade: '4–5年级', age: '9–11岁', title: '图像与语音识别的AI创作', subtitle: '运用识别工具完成图像与声音创意作品', price: '¥698', certificate: 'AI Creator Bronze', cover: '/home-explore-games.png' },
+      { level: 'L5', levelName: 'AI推理', english: 'AI Reasoning', grade: '5–6年级', age: '10–12岁', title: 'AI指令认知与编程实现', subtitle: '学习指令逻辑，并用编程实现智能交互', price: '¥698', certificate: 'AI Creator Silver', cover: '/mall/ai-coding-robot.png' },
+      { level: 'L6', levelName: 'AI数据', english: 'AI Data', grade: '6–7年级', age: '11–13岁', title: 'AI逻辑推理与情绪识别', subtitle: '理解数据关系，探索逻辑推理与情绪识别', price: '¥698', certificate: 'AI Creator Gold', cover: '/mall/ai-sensor-kit.png' },
+    ],
   },
   {
-    number: '03',
-    title: 'AI赛事活动',
-    eyebrow: '把热爱变成高光时刻',
-    desc: '赛事、营地与主题活动，让孩子在真实挑战中看见自己的成长。',
-    to: '/events',
-    icon: FlagOutlined,
-    tone: 'from-[#b34b12] via-[#eb7b1b] to-[#ffc15b]',
-    points: ['白名单赛事', '创意挑战活动', '优秀作品展映'],
+    id: 'advanced', label: '精研阶', range: 'L7–L8', descriptor: '技术实践与思维构建',
+    courses: [
+      { level: 'L7', levelName: 'AI建模', english: 'AI Modeling', grade: '7–8年级', age: '12–14岁', title: 'AI语言解码与智能应用', subtitle: '掌握语言处理方法，设计可用的智能应用', price: '¥1280', certificate: 'AI Engineer Bronze', cover: '/events/ai-creative-competition.jpg' },
+      { level: 'L8', levelName: 'AI神经网络', english: 'AI Neural Networks', grade: '8–9年级', age: '13–15岁', title: 'AI神经网络与数据可视化', subtitle: '理解神经网络结构，用可视化呈现数据规律', price: '¥1280', certificate: 'AI Engineer Silver', cover: '/events/sci-fi-competition.png' },
+      { level: 'L8', grade: '8–9年级', age: '13–15岁', title: 'AI数据科学与可视化实战', subtitle: '从数据分析到图表表达，完成综合实践项目', price: '¥1280', cover: '/mall/ai-vision-kit.png' },
+    ],
+  },
+  {
+    id: 'innovation', label: '智创阶', range: 'L9', descriptor: '创新应用与项目链接',
+    courses: [
+      { level: 'L9', levelName: 'AI视觉', english: 'AI Computer Vision', grade: '9–10年级', age: '14–16岁', title: 'AI视觉应用的创造与展望', subtitle: '完成高阶视觉项目，探索人工智能创新方向', price: '¥1680', certificate: 'AI Engineer Gold', cover: '/events/art-competition.png' },
+      { level: 'L9', grade: '9–10年级', age: '14–16岁', title: 'AI创新项目实战', subtitle: '围绕真实问题完成跨学科AI创新项目', price: '¥1680', cover: '/home-ai-children-hero.png' },
+      { level: 'L9', grade: '9–10年级', age: '14–16岁', title: 'AI视觉与机器人编程实战', subtitle: '融合视觉识别与智能控制，打造完整作品', price: '¥1680', cover: '/mall/ai-coding-robot.png' },
+    ],
   },
 ]
 
-const EXPLORATIONS = [
-  {
-    title: 'AI知识漫游',
-    desc: '探索 AI 奥秘，动手完成有趣实验，覆盖 SPA 模型、传感器、AIGC 创作等主题。',
-    to: '/tools#knowledge',
-    icon: GlobalOutlined,
-    tone: 'from-[#0649ba] via-[#146bdb] to-[#58bee7]',
-    image: '/home-explore-knowledge.png',
-    overlay: 'bg-[linear-gradient(90deg,rgba(4,46,132,.96)_0%,rgba(7,80,175,.87)_38%,rgba(13,104,202,.30)_63%,rgba(37,152,222,.05)_100%)]',
-    ctaTone: 'bg-[#09a9d2] shadow-[0_10px_24px_rgba(3,119,181,.32)]',
-    cta: '探索实验',
-  },
-  {
-    title: 'AI兴趣游戏',
-    desc: '把 AI 知识变成游戏闯关，边玩边学，适合孩子轻量体验和反复练习。',
-    to: '/tools#games',
-    icon: GiftOutlined,
-    tone: 'from-[#4d2aad] via-[#7045d3] to-[#a579ed]',
-    image: '/home-explore-games.png',
-    overlay: 'bg-[linear-gradient(90deg,rgba(65,31,150,.97)_0%,rgba(86,44,179,.88)_38%,rgba(105,66,201,.32)_63%,rgba(134,94,224,.04)_100%)]',
-    ctaTone: 'bg-[#ef6caa] shadow-[0_10px_24px_rgba(174,55,143,.32)]',
-    cta: '开始游戏',
-  },
+const ADVANTAGES = [
+  { title: '项目式学习 PBL', desc: '以真实问题为导向，每阶段完成一个创意项目，在实践中理解知识并解决问题。', icon: ProjectOutlined },
+  { title: '分龄分层教学', desc: '匹配 6–18 岁认知特点，四阶九星循序渐进，让学习难度与成长节奏相适应。', icon: TeamOutlined },
+  { title: '双标准对标体系', desc: '衔接国内人工智能教育要求，并参考 UNESCO、OECD、IOAI 国际素养框架。', icon: GlobalOutlined },
+  { title: '原创导师伴学', desc: '用孩子易理解的方式拆解抽象概念，通过任务引导和阶段反馈保持学习动力。', icon: RobotOutlined },
+  { title: '学习成果可量化', desc: '测评、作品和能力证书共同记录成长，学习结果可追溯、可展示、可验证。', icon: SafetyCertificateOutlined },
+  { title: '白名单赛事衔接', desc: '提供备赛课程、项目指导与赛事信息，让学习成果进入更真实的挑战场景。', icon: FlagOutlined },
 ]
 
-const CAPABILITY_COURSES = [
-  {
-    label: '热门推荐',
-    age: '6–10 岁',
-    title: 'AI素养启蒙·面向未来的第一课',
-    desc: '趣味认识人工智能，在动手体验中建立 AI 素养。',
-    meta: '12 课时 · AI 素养',
-    price: '¥299',
-    cover: '/hero-1.png',
-    to: '/courses?type=literacy',
-    icon: BulbOutlined,
-    tone: 'bg-amber-50 text-amber-700',
-  },
-  {
-    label: '赛事进阶',
-    age: '10–14 岁',
-    title: '白名单赛事通关营',
-    desc: '围绕赛事规则、项目设计与展示表达进行专项训练。',
-    meta: '16 课时 · 赛事入门',
-    price: '¥998',
-    cover: '/hero-3.png',
-    to: '/courses?type=contest',
-    icon: CodeOutlined,
-    tone: 'bg-blue-50 text-blue-700',
-  },
-  {
-    label: '成长规划',
-    age: '15–18 岁',
-    title: '科技特长生路径课',
-    desc: '将 AI 能力、项目实践与升学目标连接成清晰路径。',
-    meta: '16 课时 · 升学衔接',
-    price: '¥698',
-    cover: '/home-ai-children-hero.png',
-    to: '/courses?type=exam',
-    icon: ExperimentOutlined,
-    tone: 'bg-violet-50 text-violet-700',
-  },
+const GUIDES = [
+  { title: '新课标下，AI素养为什么成为必修课？', meta: '政策深度解读', image: '/home-explore-knowledge.png', to: '/research' },
+  { title: '教育部白名单AI赛事全解析', meta: '赛事价值与备赛指南', image: '/events/ai-creative-competition.jpg', to: '/events' },
+  { title: '不同年龄段如何规划AI学习路径？', meta: '6–18岁分龄成长建议', image: '/home-ai-children-hero.png', to: '/growth' },
+  { title: '家长如何判断一门AI课程是否适合孩子？', meta: '家庭选课避坑指南', image: '/home-explore-games.png', to: '/growth' },
+  { title: '校内外AI学习怎样形成完整成长闭环？', meta: '学习路径规划', image: '/hero-1.png', to: '/courses' },
+  { title: 'AI作品、证书与赛事成果如何持续积累？', meta: '成果认证指南', image: '/events/art-competition.png', to: '/cert' },
+  { title: 'UNESCO学生AI能力框架核心要点', meta: '国际框架解读', image: '/hero-2.png', to: '/research' },
+  { title: '从零开始学AI，第一阶段应该学什么？', meta: 'AI启蒙学习指南', image: '/hero-3.png', to: '/courses' },
 ]
 
-const FEATURED_EVENTS = [
-  {
-    title: '全国青少年人工智能大赛',
-    meta: '自然科学素养类 · 适配 L1–L9',
-    deadline: '距离报名截止 46 天',
-    to: '/events/ai-competition',
-    image: '/events/ai-creative-competition.jpg',
-  },
-  {
-    title: '全国青少年机器人创新挑战赛',
-    meta: '机器人设计 · 智能控制 · 工程挑战',
-    deadline: '报名中',
-    to: '/events/robotics',
-    image: '/events/sci-fi-competition.png',
-  },
-  {
-    title: '全国青少年数字艺术创意大赛',
-    meta: '数字绘画 · 动画设计 · AI 创意表达',
-    deadline: '距离报名截止 52 天',
-    to: '/events/digital-art',
-    image: '/events/art-competition.png',
-  },
+const PARTNERS = [
+  { title: '公立校进校合作', desc: '标准化课程体系输出、师资培训与赛事活动共建', icon: ReadOutlined },
+  { title: '教培机构加盟', desc: '课程授权、师训运营、品牌支持与赛事资源对接', icon: TeamOutlined },
+  { title: '活动定制合作', desc: 'AI营地、科普讲座、校园科技节与赛事承办', icon: RocketOutlined },
 ]
 
-const CERTIFICATE_ITEMS = [
-  { code: 'L1', title: 'AI 素养启蒙证书', detail: '完成 AI 基础认知、智能工具体验与安全使用学习', tone: 'from-sky-500 to-cyan-500', tag: '能力启蒙' },
-  { code: 'L3', title: 'AI 创意实践证书', detail: '完成主题项目创作，掌握 AI 辅助表达与问题解决', tone: 'from-teal-500 to-emerald-500', tag: '项目实践' },
-  { code: 'L5', title: 'AI 赛事能力证书', detail: '完成赛事训练与综合挑战，形成阶段性能力证明', tone: 'from-indigo-500 to-blue-600', tag: '赛事进阶' },
+const TEXTBOOK_SAMPLES = [
+  { province: '广东', title: '人工智能启蒙与实践', volume: '小学版 · 第一册', tone: ['#2563eb', '#06b6d4'] },
+  { province: '浙江', title: '智能创想与项目学习', volume: '小学版 · 第二册', tone: ['#7c3aed', '#ec4899'] },
+  { province: '江苏', title: 'AI基础与编程思维', volume: '小学版 · 第一册', tone: ['#0f766e', '#22c55e'] },
+  { province: '北京', title: '人工智能素养读本', volume: '小学版 · 基础篇', tone: ['#dc2626', '#f97316'] },
+  { province: '上海', title: 'AI创新实践手册', volume: '小学版 · 实践篇', tone: ['#4f46e5', '#8b5cf6'] },
+  { province: '四川', title: '智能科技探索', volume: '小学版 · 第一册', tone: ['#ea580c', '#facc15'] },
+  { province: '湖北', title: '人工智能基础课程', volume: '小学版 · 第二册', tone: ['#0284c7', '#2dd4bf'] },
+  { province: '山东', title: 'AI与科学实践', volume: '小学版 · 探索篇', tone: ['#0369a1', '#6366f1'] },
+  { province: '湖南', title: '智能创造入门', volume: '小学版 · 第一册', tone: ['#9333ea', '#f43f5e'] },
+  { province: '福建', title: '人工智能应用启蒙', volume: '小学版 · 第二册', tone: ['#059669', '#14b8a6'] },
+  { province: '河南', title: 'AI思维训练', volume: '小学版 · 基础篇', tone: ['#c2410c', '#fb7185'] },
+  { province: '陕西', title: '智能技术与未来', volume: '小学版 · 实践篇', tone: ['#4338ca', '#0ea5e9'] },
 ]
 
-const SHOP_ITEMS = [
-  { title: 'AI启蒙传感学具套装', image: '/mall/ai-sensor-kit.png', price: '¥680', age: '7–10 岁', to: '/mall/kit-ai-starter' },
-  { title: '人工智能 Micro:bit 编程学具', image: '/mall/ai-coding-robot.png', price: '¥298', age: '8–14 岁', to: '/mall/robot-microbit' },
-  { title: 'AI视觉与多模态传感器套装', image: '/mall/ai-vision-kit.png', price: '¥1,280', age: '10–16 岁', to: '/mall/sensor-ai-kit' },
-]
-
-function SectionHeading({ index, title, subtitle }) {
-  return (
-    <div className="mb-7 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="text-xs font-bold tracking-[0.18em] text-teal-700">{index}</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h2>
-      </div>
-      {subtitle ? <p className="max-w-xl text-sm leading-6 text-slate-600 sm:text-right">{subtitle}</p> : null}
-    </div>
-  )
+function SectionHeading({ eyebrow, title, subtitle, dark = false }) {
+  return <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-12"><p className={`text-xs font-black tracking-[0.18em] ${dark ? 'text-cyan-300' : 'text-blue-600'}`}>{eyebrow}</p><h2 className={`mt-3 text-2xl font-black tracking-tight sm:text-4xl ${dark ? 'text-white' : 'text-slate-950'}`}>{title}</h2>{subtitle ? <p className={`mt-3 text-sm leading-7 sm:text-base ${dark ? 'text-slate-300' : 'text-slate-600'}`}>{subtitle}</p> : null}</div>
 }
 
 function LinkArrow() {
-  return <ArrowRightOutlined aria-hidden className="text-sm transition-transform duration-200 group-hover:translate-x-1" />
+  return <ArrowRightOutlined aria-hidden="true" className="text-xs transition-transform duration-200 group-hover:translate-x-1" />
+}
+
+const PROVINCE_CELLS = [
+  ['黑龙江', 464, 38], ['内蒙古', 334, 76], ['吉林', 476, 76], ['新疆', 62, 114], ['甘肃', 250, 114], ['宁夏', 306, 114], ['辽宁', 464, 114],
+  ['北京', 406, 130], ['天津', 464, 152], ['青海', 194, 152], ['山西', 348, 152], ['河北', 406, 168], ['西藏', 92, 190], ['陕西', 306, 190],
+  ['山东', 464, 190], ['四川', 250, 228], ['重庆', 306, 228], ['河南', 364, 206], ['江苏', 480, 228], ['安徽', 422, 228], ['湖北', 364, 244],
+  ['云南', 224, 266], ['贵州', 306, 266], ['湖南', 364, 282], ['江西', 422, 266], ['浙江', 480, 266], ['广西', 328, 304], ['广东', 404, 304],
+  ['福建', 468, 304], ['上海', 530, 244], ['香港', 404, 340], ['澳门', 358, 340], ['海南', 414, 376], ['台湾', 524, 328],
+]
+
+const COVERED_PROVINCES = new Set(TEXTBOOK_SAMPLES.map(({ province }) => province))
+
+function CoverageMap() {
+  return <svg viewBox="0 0 600 420" className="h-full w-full" role="img" aria-labelledby="coverage-map-title coverage-map-desc"><title id="coverage-map-title">全国教材省份覆盖地图</title><desc id="coverage-map-desc">省级板块地图重点标注广东、浙江、江苏、北京、上海、四川、湖北和山东等教材覆盖省份</desc><defs><linearGradient id="coverage-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#eff6ff"/><stop offset=".55" stopColor="#f5f3ff"/><stop offset="1" stopColor="#ecfeff"/></linearGradient><linearGradient id="coverage-active" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2563eb"/><stop offset="1" stopColor="#7c3aed"/></linearGradient><filter id="coverage-shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#2563eb" floodOpacity=".25"/></filter></defs><rect width="600" height="420" rx="30" fill="url(#coverage-bg)"/><circle cx="515" cy="64" r="92" fill="#fff" opacity=".35"/><circle cx="88" cy="350" r="116" fill="#bfdbfe" opacity=".18"/><path d="M56 326C158 255 212 116 356 80c79-20 142 13 180 78" fill="none" stroke="#93c5fd" strokeWidth="1.5" strokeDasharray="5 8" opacity=".55"/><g transform="translate(24 24)"><rect width="144" height="48" rx="15" fill="#fff" stroke="#dbeafe"/><text x="18" y="20" fill="#64748b" fontSize="10" fontWeight="700" letterSpacing="1.2">TEXTBOOK REACH</text><text x="18" y="38" fill="#1e3a8a" fontSize="16" fontWeight="800">全国 12 省覆盖</text></g><g aria-hidden="true">{PROVINCE_CELLS.map(([name,x,y]) => { const covered = COVERED_PROVINCES.has(name); const compact = name.length > 2; return <g key={name} transform={`translate(${x} ${y})`} filter={covered ? 'url(#coverage-shadow)' : undefined}><rect x="-24" y="-16" width="48" height="32" rx="9" fill={covered ? 'url(#coverage-active)' : '#fff'} stroke={covered ? '#fff' : '#cbd5e1'} strokeWidth={covered ? '2' : '1'}/><text x="0" y={covered ? '6' : '4'} textAnchor="middle" fill={covered ? '#fff' : '#64748b'} fontSize={covered ? '18' : compact ? '9' : '10.5'} fontWeight={covered ? '800' : '600'}>{name}</text>{covered ? <circle cx="18" cy="-11" r="4" fill="#fbbf24" stroke="#fff" strokeWidth="1.5"/> : null}</g>})}</g><g transform="translate(28 388)"><circle cx="6" cy="0" r="6" fill="#4f46e5"/><text x="18" y="4" fill="#475569" fontSize="11" fontWeight="700">重点覆盖省份</text><rect x="116" y="-6" width="12" height="12" rx="4" fill="#fff" stroke="#cbd5e1"/><text x="138" y="4" fill="#64748b" fontSize="11">全国省级版图</text></g></svg>
+}
+
+function TextbookCover({ sample, index }) {
+  const [from, to] = sample.tone
+  const patternId = `textbook-pattern-${index}`
+  return <figure className="group min-w-0">
+    <div className="relative aspect-[3/4] overflow-hidden rounded-[18px] border border-white/80 bg-white shadow-[0_10px_26px_rgba(15,23,42,.12)] transition duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_16px_32px_rgba(37,99,235,.17)]">
+      <svg viewBox="0 0 180 240" className="absolute inset-0 h-full w-full" role="img" aria-label={`${sample.province}${sample.title}教材封面`}>
+        <defs><linearGradient id={patternId} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={from}/><stop offset="1" stopColor={to}/></linearGradient></defs>
+        <rect width="180" height="240" fill="#fff"/>
+        <rect width="180" height="64" fill={`url(#${patternId})`}/>
+        <path d="M0 64 180 78v12L0 76Z" fill={`url(#${patternId})`} opacity=".14"/>
+        <rect x="18" y="96" width="4" height="84" rx="2" fill={`url(#${patternId})`}/>
+        <rect x="30" y="198" width="76" height="3" rx="1.5" fill={`url(#${patternId})`} opacity=".18"/>
+      </svg>
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 py-3 text-white"><span className="text-[9px] font-black tracking-[.12em]">BINGO AI</span><span className="rounded-full bg-white/20 px-2 py-1 text-[9px] font-black backdrop-blur-sm">{sample.province}</span></div>
+      <div className="absolute inset-x-7 top-[37%] text-left"><p className="text-[9px] font-bold tracking-[.08em] text-slate-500">青少年人工智能素养系列教材</p><h4 className="mt-2 text-base font-black leading-6 text-slate-950">{sample.title}</h4><p className="mt-2 text-[10px] font-semibold text-slate-500">{sample.volume}</p></div>
+      <div className="absolute inset-x-3 bottom-3 flex items-center justify-between border-t border-slate-200 pt-2 text-[9px] font-bold text-slate-500"><span>地方教材</span><span>{String(index + 1).padStart(2, '0')}</span></div>
+    </div>
+    <figcaption className="mt-2 text-center text-xs font-black text-slate-700">{sample.province}教材</figcaption>
+  </figure>
+}
+
+function GuideCard({ guide, duplicate = false }) {
+  return <Link to={guide.to} aria-hidden={duplicate || undefined} tabIndex={duplicate ? -1 : undefined} className="group w-[290px] shrink-0 overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:w-[330px]">
+    <div className="relative aspect-[16/8] overflow-hidden bg-blue-50"><img src={guide.image} alt={duplicate ? '' : `${guide.title}文章封面`} width="800" height="400" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"/><div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent"/></div>
+    <div className="p-5"><h4 className="min-h-12 font-black leading-6 text-slate-950">{guide.title}</h4><span className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-blue-700">查看详情 <LinkArrow/></span></div>
+  </Link>
+}
+
+function GuideMarquee() {
+  return <div className="guide-marquee" role="region" aria-label="政策与学习指南自动轮播">
+    <div className="guide-marquee-track">
+      <div className="guide-marquee-group">{GUIDES.map(guide => <GuideCard key={guide.title} guide={guide}/>)}</div>
+      <div className="guide-marquee-group" aria-hidden="true">{GUIDES.map(guide => <GuideCard key={`duplicate-${guide.title}`} guide={guide} duplicate/>)}</div>
+    </div>
+  </div>
+}
+
+function JourneyMap() {
+  return <div className="relative overflow-hidden rounded-[36px] border border-blue-100 bg-gradient-to-br from-white via-blue-50/80 to-violet-50/70 p-5 shadow-[0_18px_48px_rgba(37,99,235,.10)] sm:p-8 lg:px-10 lg:pb-10 lg:pt-8" aria-label="三步AI成长路线图">
+    <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full border border-blue-200/60" aria-hidden="true"/><div className="absolute -right-5 -top-9 h-40 w-40 rounded-full border border-violet-200/70" aria-hidden="true"/><div className="relative mb-7 flex flex-wrap items-center justify-between gap-3"><span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-xs font-black tracking-[.12em] text-blue-700 shadow-sm"><FlagOutlined aria-hidden="true"/>成长路线图</span><span className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black tracking-[.16em] text-white">01 → 02 → 03</span></div>
+    <svg viewBox="0 0 1200 160" preserveAspectRatio="none" className="pointer-events-none absolute inset-x-8 top-24 z-0 hidden h-44 w-[calc(100%-4rem)] lg:block" aria-hidden="true"><defs><linearGradient id="journey-route-gradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#06b6d4"/><stop offset=".5" stopColor="#7c3aed"/><stop offset="1" stopColor="#f97316"/></linearGradient></defs><path d="M150 118C330 118 390 24 600 24" fill="none" stroke="url(#journey-route-gradient)" strokeWidth="6" strokeLinecap="round" strokeDasharray="11 12"/><path d="M600 24C810 24 880 118 1050 118" fill="none" stroke="url(#journey-route-gradient)" strokeWidth="6" strokeLinecap="round" strokeDasharray="11 12"/></svg>
+    <svg viewBox="0 0 44 900" preserveAspectRatio="none" className="pointer-events-none absolute bottom-10 left-4 top-28 z-0 w-11 lg:hidden" aria-hidden="true"><defs><linearGradient id="journey-mobile-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#06b6d4"/><stop offset=".5" stopColor="#7c3aed"/><stop offset="1" stopColor="#f97316"/></linearGradient></defs><path d="M22 6C2 190 42 260 22 438S4 710 22 888" fill="none" stroke="url(#journey-mobile-gradient)" strokeWidth="4" strokeLinecap="round" strokeDasharray="10 12"/></svg>
+    <div className="relative z-10 grid gap-8 lg:grid-cols-3 lg:gap-8">{JOURNEY_STEPS.map(({number,label,title,desc,output,to,icon,tone}, index) => <div key={number} className={`relative ml-10 lg:ml-0 lg:w-[300px] ${index === 0 ? 'lg:mt-16 lg:justify-self-start' : index === 1 ? 'lg:justify-self-center' : 'lg:mt-16 lg:justify-self-end'}`}>
+      {index < JOURNEY_STEPS.length - 1 ? <span className="absolute -bottom-7 -left-9 z-20 grid h-7 w-7 rotate-90 place-items-center rounded-full border-2 border-white bg-gradient-to-br from-violet-600 to-orange-500 text-[10px] text-white shadow-md lg:hidden" aria-hidden="true"><ArrowRightOutlined/></span> : null}
+      <Link to={to} className="group flex min-h-[270px] flex-col rounded-3xl border border-blue-100 bg-white p-5 text-center shadow-[0_12px_34px_rgba(37,99,235,.10)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(37,99,235,.16)] focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:p-6"><span className={`mx-auto grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br ${tone} text-xl text-white shadow-lg ring-8 ring-white`}>{createElement(icon, {'aria-hidden':true})}</span><p className="mt-4 text-xs font-black tracking-[0.12em] text-blue-600">第 {number} 站 · {label}</p><h3 className="mt-2 text-lg font-black text-slate-950">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{desc}</p><span className="mt-auto flex items-center justify-center gap-2 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-700"><FileTextOutlined aria-hidden="true" className="text-blue-500"/>产出：{output}</span></Link>
+      {index < JOURNEY_STEPS.length - 1 ? <span className={`absolute -right-16 z-30 hidden h-11 w-11 place-items-center rounded-full border-4 border-white bg-gradient-to-br ${index === 0 ? 'from-cyan-500 to-violet-600 -rotate-[14deg]' : 'from-violet-600 to-orange-500 rotate-[14deg]'} text-base text-white shadow-[0_8px_22px_rgba(79,70,229,.3)] lg:grid ${index === 0 ? '-top-2' : 'top-11'}`} aria-hidden="true"><ArrowRightOutlined/></span> : null}
+    </div>)}</div>
+  </div>
+}
+
+function CourseCard({ course }) {
+  return <Link to={`/courses?level=${course.level}`} className="group overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-[0_10px_30px_rgba(15,23,42,.08)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_38px_rgba(37,99,235,.14)] focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-blue-600"><div className="relative aspect-[16/9] overflow-hidden bg-blue-50"><img src={course.cover} alt={`${course.title}课程封面`} width="900" height="506" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"/><div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent"/><span className="absolute left-4 top-4 rounded-lg bg-blue-600 px-3 py-1 text-sm font-black text-white">{course.level}</span><span className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-slate-700">{course.grade} · {course.age}</span></div><div className="p-5 sm:p-6"><h3 className="text-lg font-black leading-7 text-slate-950">{course.title}</h3><p className="mt-1.5 min-h-12 text-sm leading-6 text-slate-500">{course.subtitle}</p><div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4"><strong className="text-xl text-orange-600">{course.price}</strong><span className="inline-flex min-h-10 items-center gap-2 text-sm font-black text-blue-700">查看详情 <LinkArrow/></span></div></div></Link>
+}
+
+function IntroVideoCard() {
+  return <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-[24px] shadow-[0_24px_70px_rgba(2,6,23,.42)] lg:mx-0 lg:max-w-none">
+    <div className="group relative aspect-video overflow-hidden bg-slate-900">
+      <img src="/home-ai-children-hero.png" alt="缤果AI学院宣传视频预览" width="1200" height="675" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"/>
+      <div className="absolute inset-0 bg-slate-950/10"/>
+      <div className="absolute inset-0 grid place-items-center">
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-white/20 text-3xl text-white shadow-xl backdrop-blur-md" aria-hidden="true"><PlayCircleOutlined/></span>
+      </div>
+    </div>
+  </div>
 }
 
 export default function Home() {
-  return (
-    <div className="overflow-hidden bg-[#f5fbfb]">
-      <a href="#home-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-teal-800 focus:shadow-lg">
-        跳至主要内容
-      </a>
+  const [activeLevel, setActiveLevel] = useState(COURSE_LEVELS[0].id)
+  const [courseRotationStopped, setCourseRotationStopped] = useState(false)
+  const currentLevel = COURSE_LEVELS.find(level => level.id === activeLevel) || COURSE_LEVELS[0]
 
-      <section className="relative isolate min-h-[330px] overflow-hidden bg-[#11206b] sm:min-h-[430px] lg:min-h-[510px]">
-        <img
-          src="/home-hero-future-lab.png"
-          alt="两位孩子与机器人一起探索人工智能"
-          width="1817"
-          height="866"
-          fetchPriority="high"
-          className="absolute inset-0 -z-20 h-full w-full object-cover object-[66%_center] sm:object-center"
-        />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(19,21,67,.96)_0%,rgba(29,24,72,.88)_34%,rgba(39,30,67,.38)_55%,rgba(29,20,45,.05)_78%)] sm:bg-[linear-gradient(90deg,rgba(19,21,67,.82)_0%,rgba(29,24,72,.62)_38%,rgba(39,30,67,.14)_58%,transparent_76%)]" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#100f36]/40 via-transparent to-white/5" />
-        <div className="mx-auto flex min-h-[330px] max-w-7xl items-center px-5 py-12 sm:min-h-[430px] sm:px-8 lg:min-h-[510px] lg:px-10">
-          <div>
-            <h1 className="max-w-[8.5em] text-4xl font-black leading-[1.15] tracking-[-0.06em] text-white drop-shadow-[0_5px_22px_rgba(3,21,72,.48)] sm:text-6xl lg:text-7xl">
-              让每个孩子
-              <br />
-              与 AI 一起成长
-            </h1>
-            <div className="mt-7 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:items-stretch">
-              <Link
-                to="/events/ai-test?category=comprehensive"
-                className="group inline-flex min-h-14 items-center gap-3 rounded-2xl border border-white/20 bg-gradient-to-br from-[#4e8df2]/95 via-[#2667dc]/95 to-[#3845ae]/95 px-4 py-3 text-left text-white shadow-[0_12px_30px_rgba(6,8,42,.28)] transition duration-200 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/20 bg-white/14 text-lg text-white"><CompassOutlined /></span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-black">综合测评 <ArrowRightOutlined className="ml-1 text-xs" /></span>
-                  <span className="mt-0.5 block text-xs font-medium text-white/78">15 分钟定位 AI 能力</span>
-                </span>
-              </Link>
-              <Link
-                to="/courses?deal=9.9"
-                className="group relative inline-flex min-h-14 items-center gap-3 overflow-hidden rounded-2xl border border-[#ffd89c]/35 bg-gradient-to-br from-[#d8795c]/95 via-[#bd4c78]/95 to-[#783c9b]/95 px-4 py-3 text-left text-white shadow-[0_12px_30px_rgba(6,8,42,.22)] transition duration-200 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white"
-              >
-                <span className="absolute right-0 top-0 rounded-bl-xl bg-[#ffcc64] px-2 py-1 text-[10px] font-black leading-none tracking-wide text-[#744000]">限时特价</span>
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/20 bg-[#ffbd5c]/92 text-lg text-[#633612]"><BookOutlined /></span>
-                <span className="min-w-0 pr-8">
-                  <span className="block text-sm font-black">推荐 AI 能力课程 <ArrowRightOutlined className="ml-1 text-xs" /></span>
-                  <span className="mt-0.5 block text-xs font-medium text-white/75">精选课程 ¥299 起</span>
-                </span>
-              </Link>
-            </div>
-          </div>
+  useEffect(() => {
+    if (courseRotationStopped) return undefined
+    const timer = window.setInterval(() => {
+      setActiveLevel(current => {
+        const currentIndex = COURSE_LEVELS.findIndex(level => level.id === current)
+        return COURSE_LEVELS[(currentIndex + 1) % COURSE_LEVELS.length].id
+      })
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [courseRotationStopped])
+
+  return <div className="overflow-hidden bg-white text-slate-800">
+    <a href="#home-content" className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-blue-800 focus:shadow-lg">跳至主要内容</a>
+
+    <section className="relative isolate min-h-[520px] overflow-hidden bg-[#11206b] sm:min-h-[590px] lg:min-h-[650px]">
+      <img src="/home-hero-future-lab.png" alt="两位孩子与机器人一起探索人工智能" width="1817" height="866" fetchPriority="high" className="absolute inset-0 -z-20 h-full w-full object-cover object-[68%_center] sm:object-center"/>
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(13,22,70,.97)_0%,rgba(22,29,82,.91)_34%,rgba(38,31,75,.46)_58%,rgba(24,17,53,.05)_82%)] sm:bg-[linear-gradient(90deg,rgba(13,22,70,.92)_0%,rgba(22,29,82,.74)_38%,rgba(38,31,75,.25)_62%,transparent_82%)]"/>
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#0b123a]/55 via-transparent to-white/5"/>
+      <div className="mx-auto grid min-h-[520px] max-w-7xl items-center gap-8 px-5 py-14 sm:min-h-[590px] sm:px-8 md:grid-cols-[1.08fr_.92fr] lg:min-h-[650px] lg:gap-10 lg:px-10"><div className="max-w-2xl text-white"><p className="text-sm font-bold tracking-[0.18em] text-cyan-200">6–18岁青少年完整AI素养成长体系</p><h1 className="mt-4 max-w-[11em] text-4xl font-black leading-[1.12] tracking-[-0.045em] drop-shadow-[0_5px_22px_rgba(3,21,72,.48)] sm:text-5xl lg:text-6xl">AI时代，给孩子一个确定的未来</h1><div className="mt-6 flex flex-wrap gap-2.5" aria-label="四项AI核心能力">{['理解AI','判断AI','驾驭AI','创造AI'].map((item,index) => <span key={item} className={`rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur-sm ${['border-cyan-200/40 bg-cyan-300/15 text-cyan-100','border-emerald-200/40 bg-emerald-300/15 text-emerald-100','border-amber-200/40 bg-amber-300/15 text-amber-100','border-violet-200/40 bg-violet-300/15 text-violet-100'][index]}`}>{item}</span>)}</div><p className="mt-5 max-w-xl text-sm leading-6 text-white/75">对标义务教育人工智能教育要求 · 参考 UNESCO / OECD / IOAI 国际AI素养框架</p><div className="mt-8 flex flex-col gap-3 sm:flex-row md:items-stretch"><Link to="/events/ai-test?category=comprehensive" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 text-sm font-black text-white shadow-[0_10px_24px_rgba(249,115,22,.28)] transition hover:bg-orange-600 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white">15分钟AI能力测评 <LinkArrow/></Link><LeadCaptureTrigger leadKey="growth-plan" label="领取分龄学习方案" title="领取专属分龄学习方案" className="min-h-12 cursor-pointer rounded-xl border border-white/55 bg-white/10 px-6 text-sm font-black text-white backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white"/></div><p className="mt-3 text-xs font-medium text-white/65">免费定位孩子AI能力水平 · 获取专属成长规划</p></div><IntroVideoCard/></div>
+    </section>
+
+    <main id="home-content">
+      <section className="bg-[#f5f9ff] py-16 sm:py-20"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><SectionHeading eyebrow="LEARNING JOURNEY" title="三步完整成长闭环" subtitle="从规划到学习再到成果，每一步都有清晰路径和明确产出。"/><JourneyMap/></div></section>
+
+      <section className="py-16 sm:py-24"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><SectionHeading eyebrow="AI CAPABILITY COURSES" title="为每个成长阶段，准备一门好课" subtitle="四阶九星体系化教学，循序渐进提升理解、判断、驾驭与创造AI的能力。"/><div className="mx-auto mb-5 flex max-w-full justify-start overflow-x-auto pb-2 sm:justify-center" role="tablist" aria-label="课程阶段"><div className="inline-flex min-w-max rounded-2xl bg-slate-100 p-1.5">{COURSE_LEVELS.map(level => { const active = level.id === activeLevel; return <button key={level.id} type="button" role="tab" aria-selected={active} aria-controls={`course-panel-${level.id}`} onClick={() => { setActiveLevel(level.id); setCourseRotationStopped(true) }} className={`min-h-11 cursor-pointer rounded-xl px-4 text-sm font-black transition sm:px-6 ${active ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-blue-700'}`}>{level.label}<span className="ml-1 text-xs">({level.range})</span></button> })}</div></div><p className="mb-9 text-center text-sm font-semibold text-slate-500">{currentLevel.label} · {currentLevel.descriptor}</p><div id={`course-panel-${currentLevel.id}`} role="tabpanel" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{currentLevel.courses.map((course, index) => <CourseCard key={`${course.level}-${index}`} course={course}/>)}</div><div className="mt-10 text-center"><Link to="/courses" className="group inline-flex min-h-12 items-center gap-2 rounded-xl bg-orange-500 px-7 text-sm font-black text-white shadow-[0_10px_24px_rgba(249,115,22,.2)] transition hover:-translate-y-0.5 hover:bg-orange-600 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-orange-500">查看完整课程体系 <LinkArrow/></Link></div></div></section>
+
+      <section className="bg-slate-50 py-16 sm:py-20"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><SectionHeading eyebrow="WHY BINGO ACADEMY" title="为什么选择缤果AI学院" subtitle="专业教研体系与权威标准对标，让孩子的AI学习更系统、更有效。"/><div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">{ADVANTAGES.map(({title,desc,icon}) => <article key={title} className="rounded-3xl border border-slate-100 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-md"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-xl text-blue-700">{createElement(icon, {'aria-hidden':true})}</span><h3 className="mt-5 text-lg font-black text-slate-950">{title}</h3><p className="mt-2 text-sm leading-7 text-slate-600">{desc}</p></article>)}</div></div></section>
+
+      <section className="py-16 sm:py-24"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><SectionHeading eyebrow="TRUST & EXPERTISE" title="权威背书，专业可信赖" subtitle="以国内教育要求为基础，吸收国际AI素养框架的先进理念。"/><div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-5">{[['UNESCO','学生人工智能能力框架'],['OECD','AI素养评估研究'],['IOAI','国际人工智能教育实践'],['新课标','国内人工智能教育要求']].map(([name,desc]) => <div key={name} className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 text-center"><strong className="text-lg text-blue-700 sm:text-xl">{name}</strong><p className="mt-2 text-xs leading-5 text-slate-600">{desc}</p></div>)}</div><h3 className="mb-6 mt-14 text-center text-xl font-black text-slate-950">政策与学习指南</h3><GuideMarquee/>
+        <div className="mt-14 overflow-hidden rounded-[32px] border border-blue-100 bg-gradient-to-br from-white via-blue-50/35 to-violet-50/50 shadow-[0_14px_36px_rgba(37,99,235,.08)]">
+          <div className="grid items-center gap-8 p-6 sm:p-9 lg:grid-cols-[.9fr_1.1fr]"><div className="aspect-[10/7] overflow-hidden rounded-2xl"><CoverageMap/></div><div><p className="text-xs font-black tracking-[0.15em] text-blue-600">TEACHING MATERIALS</p><h3 className="mt-3 text-2xl font-black text-slate-950 sm:text-3xl">配套教材覆盖全国12个省份</h3><p className="mt-4 text-sm leading-7 text-slate-600">联合专业出版与教育合作伙伴推进AI素养配套教材，让体系化课程走进更多学校和课堂。下方按地区展示代表性教材，形成清晰的全国教材成果矩阵。</p><div className="mt-5 flex flex-wrap gap-2">{TEXTBOOK_SAMPLES.map(({ province }) => <span key={province} className="rounded-lg border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">{province}</span>)}</div></div></div>
+          <div className="border-t border-blue-100/80 bg-white/70 px-5 py-7 sm:px-8 sm:py-9"><div className="mb-6 flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-black tracking-[.14em] text-violet-600">REGIONAL TEXTBOOKS</p><h3 className="mt-2 text-xl font-black text-slate-950">地方教材展示</h3></div><p className="text-xs font-semibold text-slate-500">12个地区 · 12本代表教材</p></div><div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">{TEXTBOOK_SAMPLES.map((sample, index) => <TextbookCover key={sample.province} sample={sample} index={index}/>)}</div></div>
         </div>
-      </section>
+      </div></section>
 
-      <main id="home-content" className="mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-20 lg:px-10">
-        <section>
-          <SectionHeading index="LEARNING JOURNEY" title="一条完整的 AI 成长之路" subtitle="从规划到学习、从探索到展示，让每一份好奇心都有方向。" />
-          <div className="grid gap-5 lg:grid-cols-3">
-            {MODULES.map(({ number, title, eyebrow, desc, to, icon, tone, points }) => (
-              <Link key={title} to={to} className={`group relative min-h-[332px] overflow-hidden rounded-[28px] bg-gradient-to-br ${tone} p-7 text-white shadow-[0_18px_45px_rgba(11,83,97,.16)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(11,83,97,.24)] focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-teal-600`}>
-                <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full border border-white/20 bg-white/10" />
-                <div className="absolute -bottom-20 -left-12 h-40 w-40 rounded-full bg-white/10" />
-                <div className="relative flex h-full flex-col">
-                  <div className="flex items-start justify-between">
-                    <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/30 bg-white/15 shadow-inner">{createElement(icon, { className: 'text-xl' })}</span>
-                    <span className="text-xs font-bold tracking-[0.18em] text-white/70">{number}</span>
-                  </div>
-                  <p className="mt-9 text-xs font-bold tracking-[0.14em] text-white/75">{eyebrow}</p>
-                  <h3 className="mt-2 text-2xl font-bold tracking-tight">{title}</h3>
-                  <p className="mt-3 max-w-[18rem] text-sm leading-6 text-white/85">{desc}</p>
-                  <div className="mt-auto border-t border-white/25 pt-4">
-                    <div className="flex flex-wrap gap-2">
-                      {points.map(point => <span key={point} className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">{point}</span>)}
-                    </div>
-                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold">了解更多 <LinkArrow /></span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+      <section className="bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 py-16 text-white sm:py-20"><div className="mx-auto max-w-4xl px-5 text-center sm:px-8"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/15 text-2xl"><BulbOutlined aria-hidden="true"/></span><h2 className="mt-5 text-2xl font-black sm:text-4xl">给孩子一个拥抱AI未来的机会</h2><p className="mt-3 text-sm text-white/80 sm:text-base">免费领取AI能力测评 + 专属分龄学习方案</p><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link to="/events/ai-test?category=comprehensive" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-7 text-sm font-black text-white shadow-lg transition hover:bg-orange-600 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white">立即开始免费测评 <LinkArrow/></Link><LeadCaptureTrigger leadKey="growth-plan" label="领取分龄学习方案" title="领取专属分龄学习方案" className="min-h-12 cursor-pointer rounded-xl border border-white/60 bg-white px-7 text-sm font-black text-blue-700 transition hover:bg-blue-50 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white"/></div><p className="mt-4 text-xs text-white/65">提交后，专属规划师将在1个工作日内与您联系</p></div></section>
 
-        </section>
-
-        <section className="pt-20 sm:pt-28">
-          <SectionHeading index="AI CAPABILITY COURSES" title="为每一个成长阶段，准备一门好课" subtitle="精选 AI 素养、赛事能力与升学规划课程，点击即可查看完整商品详情。" />
-          <div className="grid gap-5 lg:grid-cols-3">
-            {CAPABILITY_COURSES.map(({ label, age, title, desc, meta, price, to, icon, cover }) => (
-              <Link key={title} to={to} className="group overflow-hidden rounded-[26px] border border-slate-100 bg-white shadow-[0_12px_30px_rgba(10,89,100,.08)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_38px_rgba(10,89,100,.15)] focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-teal-600">
-                <div className="relative aspect-[16/9] overflow-hidden bg-teal-100">
-                  <img src={cover} alt={`${title}课程封面`} loading="lazy" width="1024" height="576" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-transparent" />
-                  <span className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-xl border border-white/35 bg-white/20 text-white backdrop-blur-sm">{createElement(icon)}</span>
-                  <span className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-slate-700">{label}</span>
-                  <span className="absolute bottom-4 right-4 rounded-full bg-teal-500 px-3 py-1 text-xs font-bold text-white">{age}</span>
-                </div>
-                <div className="p-5 sm:p-6">
-                  <h3 className="text-xl font-bold leading-7 text-slate-900">{title}</h3>
-                  <p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">{desc}</p>
-                  <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                    <span className="text-xs font-medium text-slate-500">{meta}</span>
-                    <span className="text-xl font-bold text-rose-500">{price}</span>
-                  </div>
-                  <span className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-teal-700">查看课程商品 <LinkArrow /></span>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-7 text-center">
-            <Link to="/courses" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-teal-700">查看全部 AI 能力课程 <LinkArrow /></Link>
-          </div>
-        </section>
-
-        <section className="pt-20 sm:pt-28">
-          <div className="rounded-[28px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-teal-50 p-6 shadow-[0_16px_36px_rgba(14,116,144,.08)] sm:p-7">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-bold tracking-[0.15em] text-sky-700">AI COMPETITION EVENTS</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">正在进行的赛事活动</h2>
-              </div>
-              <Link to="/events" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-sky-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-sky-600">查看全部赛事 <LinkArrow /></Link>
-            </div>
-            <div className="mt-6 grid gap-4 lg:grid-cols-3">
-              {FEATURED_EVENTS.map(({ title, meta, deadline, to, image }) => (
-                <Link key={title} to={to} className="group overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
-                  <div className="relative aspect-[16/8] overflow-hidden bg-sky-100">
-                    <img src={image} alt={`${title}赛事封面`} loading="lazy" width="800" height="400" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                    <span className="absolute left-3 top-3 rounded-full bg-teal-600 px-2.5 py-1 text-xs font-bold text-white">报名中</span>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-base font-bold leading-6 text-slate-900">{title}</h3>
-                    <p className="mt-2 text-xs leading-5 text-slate-500">{meta}</p>
-                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                      <span className="text-xs font-semibold text-teal-700">{deadline}</span>
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-sky-700">赛事详情 <LinkArrow /></span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="pt-20 sm:pt-28">
-          <SectionHeading index="AI EXPLORATION" title="边探索，边把 AI 玩明白" subtitle="从知识漫游到兴趣游戏，把抽象概念拆成孩子愿意点开、愿意反复尝试的探索内容。" />
-          <div className="grid gap-5 lg:grid-cols-2">
-            {EXPLORATIONS.map(({ title, desc, to, icon, tone, image, overlay, ctaTone, cta }) => (
-              <Link key={title} to={to} className={`group relative min-h-[250px] overflow-hidden rounded-[30px] bg-gradient-to-br ${tone} p-8 text-white shadow-[0_18px_42px_rgba(75,81,174,.16)] transition duration-200 hover:-translate-y-1 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-indigo-600`}>
-                <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                <div className={`absolute inset-0 ${overlay}`} />
-                <div className="relative max-w-md">
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/18 text-2xl shadow-inner">{createElement(icon)}</span>
-                  <h3 className="mt-8 text-3xl font-black tracking-tight sm:text-4xl">{title}</h3>
-                  <p className="mt-4 max-w-sm text-sm font-semibold leading-7 text-white/82">{desc}</p>
-                  <span className={`mt-8 inline-flex min-h-12 items-center gap-2 rounded-2xl px-6 text-sm font-bold ${ctaTone}`}>{cta} <LinkArrow /></span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="pt-20 sm:pt-28">
-          <SectionHeading index="ACHIEVEMENT CERTIFICATES" title="让努力被看见，也被认可" subtitle="每一段学习与实践，都能沉淀为清晰、可查验的阶段性能力证明。" />
-          <div className="overflow-hidden rounded-[28px] border border-sky-100 bg-gradient-to-br from-[#edf9ff] via-white to-[#eefcf7] shadow-[0_18px_40px_rgba(14,116,144,.10)]">
-            <div className="grid gap-7 p-7 sm:p-9 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
-              <div>
-                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-sky-600 text-white shadow-[0_10px_24px_rgba(2,132,199,.24)]"><SafetyCertificateOutlined className="text-2xl" /></span>
-                <p className="mt-6 text-xs font-bold tracking-[0.16em] text-sky-700">MY ACHIEVEMENT CERTIFICATES</p>
-                <h3 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">成长有记录，能力有证书</h3>
-                <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">从 AI 素养启蒙到赛事挑战，完成对应学习路径或实践任务后，即可获得相应阶段证书。</p>
-                <Link to="/cert" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-sky-700 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-sky-800 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-sky-700">查看我的证书 <LinkArrow /></Link>
-              </div>
-              <div className="grid gap-3">
-                {CERTIFICATE_ITEMS.map(({ code, title, detail, tone, tag }) => (
-                  <Link key={code} to="/cert" className="group flex items-center gap-4 rounded-2xl border border-sky-100 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-md">
-                    <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${tone} text-base font-black text-white shadow-sm`}>{code}</span>
-                    <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><strong className="text-sm text-slate-900">{title}</strong><em className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold not-italic text-sky-700">{tag}</em></span><span className="mt-1 block text-xs leading-5 text-slate-500">{detail}</span></span>
-                    <LinkArrow />
-                  </Link>
-                ))}
-                <Link to="/cert" className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dashed border-sky-300 bg-sky-50/60 px-4 text-sm font-bold text-sky-800 transition hover:border-sky-500 hover:bg-sky-100 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-sky-700">
-                  查看更多证书 <LinkArrow />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="pt-20 sm:pt-28">
-          <SectionHeading index="RESOURCE MALL" title="把灵感带回家" subtitle="精选课程配套、创作工具与探索资源，陪伴孩子将知识变成动手的乐趣。" />
-          <div className="grid gap-4 sm:grid-cols-3">
-            {SHOP_ITEMS.map(({ title, image, price, age, to }) => (
-              <Link key={title} to={to} className="group overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-teal-600">
-                <div className="aspect-[1.16] overflow-hidden bg-[#edf9f8] p-5">
-                  <img src={image} alt={title} loading="lazy" width="500" height="500" className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
-                </div>
-                <div className="px-5 py-4">
-                  <p className="text-xs text-slate-500">适用年龄：{age}</p>
-                  <div className="mt-1 flex items-center justify-between gap-3">
-                  <h3 className="font-bold text-slate-800">{title}</h3>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-700"><ShopOutlined /></span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
-                    <span className="text-lg font-bold text-rose-500">{price}</span>
-                    <span className="text-xs font-bold text-teal-700">查看商品 <LinkArrow /></span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="pt-20 sm:pt-28">
-          <Link to="/franchise" className="group grid overflow-hidden rounded-[32px] bg-gradient-to-r from-[#07505a] via-[#087a7d] to-[#19a68f] text-white shadow-[0_20px_48px_rgba(8,103,105,.2)] transition duration-200 hover:-translate-y-1 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-teal-600 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div className="p-8 sm:p-11">
-              <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/25 bg-white/15"><TeamOutlined className="text-xl" /></span>
-              <p className="mt-7 text-xs font-bold tracking-[0.16em] text-teal-100">PARTNER WITH US</p>
-              <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">把 AI 教育带到更多孩子身边</h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/85">面向学校、教育机构与合作伙伴，提供课程、师训、运营与品牌支持，共建面向未来的 AI 教育生态。</p>
-            </div>
-            <span className="m-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-teal-800 shadow-lg transition duration-200 group-hover:bg-teal-50 sm:mx-11 sm:mb-11 lg:my-0 lg:mr-11">了解加盟合作 <LinkArrow /></span>
-          </Link>
-        </section>
-      </main>
-    </div>
-  )
+      <section className="bg-slate-950 py-16 text-white sm:py-24"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><SectionHeading dark eyebrow="PARTNER WITH US" title="把AI教育带到更多孩子身边" subtitle="面向公立校、教培机构与活动主办方，提供全链路合作支持。"/><div className="grid gap-5 md:grid-cols-3">{PARTNERS.map(({title,desc,icon}) => <article key={title} className="rounded-3xl border border-white/10 bg-white/[.06] p-6"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-400/15 text-xl text-cyan-200">{createElement(icon, {'aria-hidden':true})}</span><h3 className="mt-5 text-lg font-black">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-400">{desc}</p></article>)}</div><div className="mt-9 flex flex-col items-center justify-between gap-5 rounded-3xl border border-white/10 bg-white/[.04] p-6 sm:flex-row"><p className="text-sm font-semibold text-slate-300">课程输出 · 师资培训 · 运营物料 · 赛事资源 · 品牌支持</p><Link to="/franchise" className="group inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl bg-white px-6 text-sm font-black text-slate-900 transition hover:bg-cyan-50 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white">获取完整合作方案 <LinkArrow/></Link></div></div></section>
+    </main>
+  </div>
 }
