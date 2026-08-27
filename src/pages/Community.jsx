@@ -1294,7 +1294,7 @@ export default function Community() {
       <div className="grid md:grid-cols-3 gap-5 mb-8">
         {[
           { icon: '💻', title: '在线报名', desc: '营班/课程/实训/学霸评选，精准信息收集，快速报名', action: '立即在线报名' },
-          { icon: '📞', title: '电话咨询', desc: '400-XXX-XXXX · 工作日9:00-21:00 · 周末10:00-18:00', action: '一键拨号' },
+          { icon: '📞', title: '电话咨询', desc: '400-168-0260 · 工作日9:00-21:00 · 周末10:00-18:00', action: '一键拨号' },
           { icon: '📍', title: '线下体验', desc: '预约到店体验，可咨询学霸评选规则，领取学霸报名指南', action: '预约到店' },
         ].map((c, i) => (
           <div key={i} className="card p-6 hover:shadow-md hover:border-primary/30 transition">

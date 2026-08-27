@@ -6,7 +6,9 @@ import {
 } from '@ant-design/icons'
 import { createElement, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import aiFutureCtaBackground from '../assets/home-ai-future-cta.jpg'
 import LeadCaptureTrigger from '../components/LeadCaptureTrigger'
+import { HOME_GUIDES as GUIDES } from '../data/homeGuides'
 
 const JOURNEY_STEPS = [
   { number: '01', label: 'AI成长规划', title: '科学测评 · 定制路径', desc: '15分钟能力测评，形成孩子的专属分龄学习规划。', output: '专属测评报告 · 分龄学习方案', to: '/growth', icon: CompassOutlined, tone: 'from-blue-600 to-cyan-500' },
@@ -58,17 +60,6 @@ const ADVANTAGES = [
   { title: '白名单赛事衔接', desc: '提供备赛课程、项目指导与赛事信息，让学习成果进入更真实的挑战场景。', icon: FlagOutlined },
 ]
 
-const GUIDES = [
-  { title: '新课标下，AI素养为什么成为必修课？', meta: '政策深度解读', image: '/home-explore-knowledge.png', to: '/research' },
-  { title: '教育部白名单AI赛事全解析', meta: '赛事价值与备赛指南', image: '/events/ai-creative-competition.jpg', to: '/events' },
-  { title: '不同年龄段如何规划AI学习路径？', meta: '6–18岁分龄成长建议', image: '/home-ai-children-hero.png', to: '/growth' },
-  { title: '家长如何判断一门AI课程是否适合孩子？', meta: '家庭选课避坑指南', image: '/home-explore-games.png', to: '/growth' },
-  { title: '校内外AI学习怎样形成完整成长闭环？', meta: '学习路径规划', image: '/hero-1.png', to: '/courses' },
-  { title: 'AI作品、证书与赛事成果如何持续积累？', meta: '成果认证指南', image: '/events/art-competition.png', to: '/cert' },
-  { title: 'UNESCO学生AI能力框架核心要点', meta: '国际框架解读', image: '/hero-2.png', to: '/research' },
-  { title: '从零开始学AI，第一阶段应该学什么？', meta: 'AI启蒙学习指南', image: '/hero-3.png', to: '/courses' },
-]
-
 const PARTNERS = [
   { title: '公立校进校合作', desc: '标准化课程体系输出、师资培训与赛事活动共建', icon: ReadOutlined },
   { title: '教培机构加盟', desc: '课程授权、师训运营、品牌支持与赛事资源对接', icon: TeamOutlined },
@@ -76,18 +67,18 @@ const PARTNERS = [
 ]
 
 const TEXTBOOK_SAMPLES = [
-  { province: '广东', title: '人工智能启蒙与实践', volume: '小学版 · 第一册', tone: ['#2563eb', '#06b6d4'] },
-  { province: '浙江', title: '智能创想与项目学习', volume: '小学版 · 第二册', tone: ['#7c3aed', '#ec4899'] },
-  { province: '江苏', title: 'AI基础与编程思维', volume: '小学版 · 第一册', tone: ['#0f766e', '#22c55e'] },
-  { province: '北京', title: '人工智能素养读本', volume: '小学版 · 基础篇', tone: ['#dc2626', '#f97316'] },
-  { province: '上海', title: 'AI创新实践手册', volume: '小学版 · 实践篇', tone: ['#4f46e5', '#8b5cf6'] },
-  { province: '四川', title: '智能科技探索', volume: '小学版 · 第一册', tone: ['#ea580c', '#facc15'] },
-  { province: '湖北', title: '人工智能基础课程', volume: '小学版 · 第二册', tone: ['#0284c7', '#2dd4bf'] },
-  { province: '山东', title: 'AI与科学实践', volume: '小学版 · 探索篇', tone: ['#0369a1', '#6366f1'] },
-  { province: '湖南', title: '智能创造入门', volume: '小学版 · 第一册', tone: ['#9333ea', '#f43f5e'] },
-  { province: '福建', title: '人工智能应用启蒙', volume: '小学版 · 第二册', tone: ['#059669', '#14b8a6'] },
-  { province: '河南', title: 'AI思维训练', volume: '小学版 · 基础篇', tone: ['#c2410c', '#fb7185'] },
-  { province: '陕西', title: '智能技术与未来', volume: '小学版 · 实践篇', tone: ['#4338ca', '#0ea5e9'] },
+  { province: '广东', title: '人工智能启蒙与实践', tone: ['#2563eb', '#06b6d4'] },
+  { province: '浙江', title: '智能创想与项目学习', tone: ['#7c3aed', '#ec4899'] },
+  { province: '江苏', title: 'AI基础与编程思维', tone: ['#0f766e', '#22c55e'] },
+  { province: '北京', title: '人工智能素养读本', tone: ['#dc2626', '#f97316'] },
+  { province: '上海', title: 'AI创新实践手册', tone: ['#4f46e5', '#8b5cf6'] },
+  { province: '四川', title: '智能科技探索', tone: ['#ea580c', '#facc15'] },
+  { province: '湖北', title: '人工智能基础课程', tone: ['#0284c7', '#2dd4bf'] },
+  { province: '山东', title: 'AI与科学实践', tone: ['#0369a1', '#6366f1'] },
+  { province: '湖南', title: '智能创造入门', tone: ['#9333ea', '#f43f5e'] },
+  { province: '福建', title: '人工智能应用启蒙', tone: ['#059669', '#14b8a6'] },
+  { province: '河南', title: 'AI思维训练', tone: ['#c2410c', '#fb7185'] },
+  { province: '陕西', title: '智能技术与未来', tone: ['#4338ca', '#0ea5e9'] },
 ]
 
 function SectionHeading({ eyebrow, title, subtitle, dark = false }) {
@@ -126,11 +117,20 @@ function TextbookCover({ sample, index }) {
         <rect x="30" y="198" width="76" height="3" rx="1.5" fill={`url(#${patternId})`} opacity=".18"/>
       </svg>
       <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 py-3 text-white"><span className="text-[9px] font-black tracking-[.12em]">BINGO AI</span><span className="rounded-full bg-white/20 px-2 py-1 text-[9px] font-black backdrop-blur-sm">{sample.province}</span></div>
-      <div className="absolute inset-x-7 top-[37%] text-left"><p className="text-[9px] font-bold tracking-[.08em] text-slate-500">青少年人工智能素养系列教材</p><h4 className="mt-2 text-base font-black leading-6 text-slate-950">{sample.title}</h4><p className="mt-2 text-[10px] font-semibold text-slate-500">{sample.volume}</p></div>
+      <div className="absolute inset-x-6 top-[42%] text-left"><p className="text-[9px] font-bold leading-4 tracking-[.08em] text-slate-500">青少年人工智能素养系列教材</p></div>
       <div className="absolute inset-x-3 bottom-3 flex items-center justify-between border-t border-slate-200 pt-2 text-[9px] font-bold text-slate-500"><span>地方教材</span><span>{String(index + 1).padStart(2, '0')}</span></div>
     </div>
     <figcaption className="mt-2 text-center text-xs font-black text-slate-700">{sample.province}教材</figcaption>
   </figure>
+}
+
+function TextbookMarquee() {
+  return <div className="textbook-marquee" role="region" aria-label="地方教材自动轮播" tabIndex="0">
+    <div className="textbook-marquee-track">
+      <div className="textbook-marquee-group">{TEXTBOOK_SAMPLES.map((sample, index) => <div key={sample.province} className="w-[112px] shrink-0"><TextbookCover sample={sample} index={index}/></div>)}</div>
+      <div className="textbook-marquee-group" aria-hidden="true">{TEXTBOOK_SAMPLES.map((sample, index) => <div key={`duplicate-${sample.province}`} className="w-[112px] shrink-0"><TextbookCover sample={sample} index={index + TEXTBOOK_SAMPLES.length}/></div>)}</div>
+    </div>
+  </div>
 }
 
 function GuideCard({ guide, duplicate = false }) {
@@ -213,12 +213,15 @@ export default function Home() {
 
       <section className="py-16 sm:py-24"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><SectionHeading eyebrow="TRUST & EXPERTISE" title="权威背书，专业可信赖" subtitle="以国内教育要求为基础，吸收国际AI素养框架的先进理念。"/><div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-5">{[['UNESCO','学生人工智能能力框架'],['OECD','AI素养评估研究'],['IOAI','国际人工智能教育实践'],['新课标','国内人工智能教育要求']].map(([name,desc]) => <div key={name} className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 text-center"><strong className="text-lg text-blue-700 sm:text-xl">{name}</strong><p className="mt-2 text-xs leading-5 text-slate-600">{desc}</p></div>)}</div><h3 className="mb-6 mt-14 text-center text-xl font-black text-slate-950">政策与学习指南</h3><GuideMarquee/>
         <div className="mt-14 overflow-hidden rounded-[32px] border border-blue-100 bg-gradient-to-br from-white via-blue-50/35 to-violet-50/50 shadow-[0_14px_36px_rgba(37,99,235,.08)]">
-          <div className="grid items-center gap-8 p-6 sm:p-9 lg:grid-cols-[.9fr_1.1fr]"><div className="aspect-[10/7] overflow-hidden rounded-2xl"><CoverageMap/></div><div><p className="text-xs font-black tracking-[0.15em] text-blue-600">TEACHING MATERIALS</p><h3 className="mt-3 text-2xl font-black text-slate-950 sm:text-3xl">配套教材覆盖全国12个省份</h3><p className="mt-4 text-sm leading-7 text-slate-600">联合专业出版与教育合作伙伴推进AI素养配套教材，让体系化课程走进更多学校和课堂。下方按地区展示代表性教材，形成清晰的全国教材成果矩阵。</p><div className="mt-5 flex flex-wrap gap-2">{TEXTBOOK_SAMPLES.map(({ province }) => <span key={province} className="rounded-lg border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">{province}</span>)}</div></div></div>
-          <div className="border-t border-blue-100/80 bg-white/70 px-5 py-7 sm:px-8 sm:py-9"><div className="mb-6 flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-black tracking-[.14em] text-violet-600">REGIONAL TEXTBOOKS</p><h3 className="mt-2 text-xl font-black text-slate-950">地方教材展示</h3></div><p className="text-xs font-semibold text-slate-500">12个地区 · 12本代表教材</p></div><div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">{TEXTBOOK_SAMPLES.map((sample, index) => <TextbookCover key={sample.province} sample={sample} index={index}/>)}</div></div>
+          <div className="grid items-center gap-8 p-6 sm:p-9 lg:grid-cols-[.9fr_1.1fr]"><div className="aspect-[10/7] overflow-hidden rounded-2xl"><CoverageMap/></div><div className="min-w-0"><p className="text-xs font-black tracking-[0.15em] text-blue-600">TEACHING MATERIALS</p><h3 className="mt-3 text-2xl font-black text-slate-950 sm:text-3xl">配套教材覆盖全国12个省份</h3><p className="mt-4 text-sm leading-7 text-slate-600">联合专业出版与教育合作伙伴推进AI素养配套教材，让体系化课程走进更多学校和课堂。下方按地区展示代表性教材，形成清晰的全国教材成果矩阵。</p><div className="mb-4 mt-6"><h3 className="text-xl font-black text-slate-950">地方教材展示</h3></div><TextbookMarquee/></div></div>
         </div>
       </div></section>
 
-      <section className="bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 py-16 text-white sm:py-20"><div className="mx-auto max-w-4xl px-5 text-center sm:px-8"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/15 text-2xl"><BulbOutlined aria-hidden="true"/></span><h2 className="mt-5 text-2xl font-black sm:text-4xl">给孩子一个拥抱AI未来的机会</h2><p className="mt-3 text-sm text-white/80 sm:text-base">免费领取AI能力测评 + 专属分龄学习方案</p><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link to="/events/ai-test?category=comprehensive" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-7 text-sm font-black text-white shadow-lg transition hover:bg-orange-600 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white">立即开始免费测评 <LinkArrow/></Link><LeadCaptureTrigger leadKey="growth-plan" label="领取分龄学习方案" title="领取专属分龄学习方案" className="min-h-12 cursor-pointer rounded-xl border border-white/60 bg-white px-7 text-sm font-black text-blue-700 transition hover:bg-blue-50 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white"/></div><p className="mt-4 text-xs text-white/65">提交后，专属规划师将在1个工作日内与您联系</p></div></section>
+      <section className="relative isolate overflow-hidden py-16 text-white sm:py-20">
+        <img src={aiFutureCtaBackground} alt="" width="1716" height="920" loading="lazy" className="absolute inset-0 -z-20 h-full w-full object-cover object-center"/>
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(15,48,120,.94)_0%,rgba(29,78,216,.82)_52%,rgba(8,145,178,.62)_100%)]" aria-hidden="true"/>
+        <div className="mx-auto max-w-4xl px-5 text-center sm:px-8"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-white/15 bg-white/15 text-2xl backdrop-blur-sm"><BulbOutlined aria-hidden="true"/></span><h2 className="mt-5 text-2xl font-black drop-shadow-sm sm:text-4xl">给孩子一个拥抱AI未来的机会</h2><p className="mt-3 text-sm text-white/85 sm:text-base">免费领取AI能力测评 + 专属分龄学习方案</p><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link to="/events/ai-test?category=comprehensive" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-7 text-sm font-black text-white shadow-lg transition hover:bg-orange-600 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white">立即开始免费测评 <LinkArrow/></Link><LeadCaptureTrigger leadKey="growth-plan" label="领取分龄学习方案" title="领取专属分龄学习方案" className="min-h-12 cursor-pointer rounded-xl border border-white/60 bg-white px-7 text-sm font-black text-blue-700 transition hover:bg-blue-50 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white"/></div><p className="mt-4 text-xs text-white/75">提交后，专属规划师将在1个工作日内与您联系</p></div>
+      </section>
 
       <section className="bg-slate-950 py-16 text-white sm:py-24"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><SectionHeading dark eyebrow="PARTNER WITH US" title="把AI教育带到更多孩子身边" subtitle="面向公立校、教培机构与活动主办方，提供全链路合作支持。"/><div className="grid gap-5 md:grid-cols-3">{PARTNERS.map(({title,desc,icon}) => <article key={title} className="rounded-3xl border border-white/10 bg-white/[.06] p-6"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-400/15 text-xl text-cyan-200">{createElement(icon, {'aria-hidden':true})}</span><h3 className="mt-5 text-lg font-black">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-400">{desc}</p></article>)}</div><div className="mt-9 flex flex-col items-center justify-between gap-5 rounded-3xl border border-white/10 bg-white/[.04] p-6 sm:flex-row"><p className="text-sm font-semibold text-slate-300">课程输出 · 师资培训 · 运营物料 · 赛事资源 · 品牌支持</p><Link to="/franchise" className="group inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl bg-white px-6 text-sm font-black text-slate-900 transition hover:bg-cyan-50 focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white">获取完整合作方案 <LinkArrow/></Link></div></div></section>
     </main>

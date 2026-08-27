@@ -13,7 +13,7 @@ export default function LeadCaptureModal({ leadKey, title, onClose, orgField = f
   const displayTitle = title || asset?.title || '领取资料'
   const isGrowthPlan = storageKey === 'growth-plan'
   const [name, setName] = useState('')
-  const [age, setAge] = useState('')
+  const [grade, setGrade] = useState('')
   const [phone, setPhone] = useState('')
   const [org, setOrg] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -23,14 +23,14 @@ export default function LeadCaptureModal({ leadKey, title, onClose, orgField = f
     e.preventDefault()
     setErr('')
     const n = name.trim()
-    const ageNumber = Number.parseInt(age, 10)
+    const g = grade.trim()
     const p = phone.replace(/\D/g, '')
-    if (isGrowthPlan && (!Number.isInteger(ageNumber) || ageNumber < 6 || ageNumber > 18)) {
-      setErr('请输入孩子的实际年龄（6–18岁）')
+    if (!n) {
+      setErr(isGrowthPlan ? '请填写姓氏或姓名' : '请填写姓名或机构名称')
       return
     }
-    if (!isGrowthPlan && !n) {
-      setErr('请填写姓名或机构名称')
+    if (isGrowthPlan && !g) {
+      setErr('请填写孩子年级')
       return
     }
     if (p.length < 11) {
@@ -43,7 +43,7 @@ export default function LeadCaptureModal({ leadKey, title, onClose, orgField = f
     }
     saveLeadSubmission(storageKey, {
       name: n,
-      age: isGrowthPlan ? String(ageNumber) : '',
+      grade: isGrowthPlan ? g : '',
       phone: p,
       org: org.trim(),
     })
@@ -95,22 +95,30 @@ export default function LeadCaptureModal({ leadKey, title, onClose, orgField = f
         ) : (
           <>
             <h3 className="font-bold text-bingo-dark text-xl mb-1">{displayTitle}</h3>
-            <p className="text-slate-500 text-sm mb-5">{isContactOnly ? '请填写孩子年龄和家长手机号，提交后客服会尽快联系您' : '请留下联系方式，提交后即可下载对应资料'}</p>
+            <p className="text-slate-500 text-sm mb-5">{isContactOnly ? '请填写姓氏或姓名、孩子年级和手机号，提交后客服会尽快联系您' : '请留下联系方式，提交后即可下载对应资料'}</p>
             {err ? <p className="text-sm text-rose-600 mb-3">{err}</p> : null}
             <form onSubmit={handleSubmit} className="space-y-3">
               {isGrowthPlan ? (
-                <input
-                  required
-                  type="number"
-                  min="6"
-                  max="18"
-                  inputMode="numeric"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  placeholder="请输入孩子年龄（6–18岁）"
-                  aria-label="孩子年龄"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
-                />
+                <>
+                  <input
+                    required
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="请输入姓氏或姓名"
+                    aria-label="姓氏或姓名"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                  />
+                  <input
+                    required
+                    type="text"
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                    placeholder="请输入孩子年级（如：小学三年级）"
+                    aria-label="孩子年级"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                  />
+                </>
               ) : (
                 <input
                   required

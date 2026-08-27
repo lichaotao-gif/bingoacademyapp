@@ -16,12 +16,15 @@
   to { transform: translateX(calc(-50% - 0.625rem)); }
 }
 
+@keyframes textbook-marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-50% - 0.4375rem)); }
+}
+
 .guide-marquee {
   position: relative;
   overflow: hidden;
   padding: 0.35rem 0 1rem;
-  mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
 }
 
 .guide-marquee-track {
@@ -42,6 +45,30 @@
   animation-play-state: paused;
 }
 
+.textbook-marquee {
+  overflow: hidden;
+  padding: 0.25rem 0 0.75rem;
+  outline: none;
+}
+
+.textbook-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 0.875rem;
+  animation: textbook-marquee-scroll 54s linear infinite;
+  will-change: transform;
+}
+
+.textbook-marquee-group {
+  display: flex;
+  gap: 0.875rem;
+}
+
+.textbook-marquee:hover .textbook-marquee-track,
+.textbook-marquee:focus .textbook-marquee-track {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .guide-marquee {
     overflow-x: auto;
@@ -50,6 +77,11 @@
   }
   .guide-marquee-track { animation: none; will-change: auto; }
   .guide-marquee-group[aria-hidden="true"] { display: none; }
+  .textbook-marquee {
+    overflow-x: auto;
+  }
+  .textbook-marquee-track { animation: none; will-change: auto; }
+  .textbook-marquee-group[aria-hidden="true"] { display: none; }
 }
 
 @layer base {

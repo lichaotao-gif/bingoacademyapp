@@ -5,7 +5,7 @@ const QUICK_REPLIES = [
   { q: '免费测评', a: '我们提供免费免费测评，按年龄段和学习目标分3类，答题后生成定制化课程推荐。请进入「赛事中心」→「免费测评」体验。' },
   { q: '赛事报名', a: '我们承接多项白名单赛事及国际赛，请进入「赛事中心」查看最新赛程与报名方式。报名赛事可享配套课程8折。' },
   { q: '加盟合作', a: '欢迎加入缤果AI学院加盟体系！我们提供品牌授权、课程体系、师训支持、赛事资源等，请进入「加盟合作」页面了解详情，或直接联系我们。' },
-  { q: '联系客服', a: '您可通过以下方式联系我们：\n📞 电话：400-xxx-xxxx\n💬 微信：bingoacademy\n✉️ 邮箱：contact@bingoacademy.cn' },
+  { q: '联系客服', a: '您可通过以下方式联系我们：\n📞 电话：400-168-0260\n💬 微信：bingoacademy\n✉️ 邮箱：contact@bingoacademy.cn' },
 ]
 
 export default function ChatPopup() {
@@ -22,7 +22,7 @@ export default function ChatPopup() {
     setInput('')
 
     const match = QUICK_REPLIES.find((r) => r.q === text.trim())
-    const reply = match ? match.a : '感谢您的留言！我们的客服会尽快回复，您也可直接拨打 400-xxx-xxxx 或添加微信 bingoacademy 咨询。'
+    const reply = match ? match.a : '感谢您的留言！我们的客服会尽快回复，您也可直接拨打 400-168-0260 或添加微信 bingoacademy 咨询。'
     setTimeout(() => {
       setMessages((m) => [...m, { role: 'bot', text: reply }])
     }, 600)
@@ -106,7 +106,7 @@ export default function ChatPopup() {
             </div>
           </div>
           <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex gap-4 text-xs text-slate-500">
-            <a href="tel:400-xxx-xxxx" className="hover:text-primary">📞 电话</a>
+            <a href="tel:400-168-0260" className="hover:text-primary">📞 电话</a>
             <a href="javascript:void(0)" className="hover:text-primary">💬 微信</a>
             <a href="mailto:contact@bingoacademy.cn" className="hover:text-primary">✉️ 邮件</a>
           </div>

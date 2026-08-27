@@ -238,7 +238,7 @@ export default function Research() {
       <section className="card p-6 bg-slate-50 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="font-semibold text-bingo-dark">立即咨询研学规划</p>
-          <p className="text-sm text-slate-500 mt-1">电话：400-XXX-XXXX · 微信：bingoacademy · 邮箱：research@bingoacademy.cn</p>
+          <p className="text-sm text-slate-500 mt-1">电话：400-168-0260 · 微信：bingoacademy · 邮箱：research@bingoacademy.cn</p>
           <div className="flex gap-3 mt-2">
             <button onClick={() => setSection('service')} className="text-cyan-600 text-sm font-medium hover:underline">团购预约</button>
             <button onClick={() => setSection('service-consult')} className="text-cyan-600 text-sm font-medium hover:underline">定制咨询</button>
@@ -578,7 +578,7 @@ export default function Research() {
       </div>
       <div className="card p-5 bg-red-50 border-red-200/60">
         <p className="font-semibold text-red-700 mb-1">📞 应急咨询</p>
-        <p className="text-sm text-slate-600">应急热线：400-XXX-XXXX（24小时） · 应急处理流程：就地评估 → 联系家长 → 医疗处置 → 上报机构</p>
+        <p className="text-sm text-slate-600">应急热线：400-168-0260（24小时） · 应急处理流程：就地评估 → 联系家长 → 医疗处置 → 上报机构</p>
       </div>
     </div>
   )
@@ -658,7 +658,7 @@ export default function Research() {
       </div>
       <div className="card p-5 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-slate-600">服务时间：工作日 9:00-21:00，周末 10:00-18:00</div>
-        <div className="text-sm text-slate-600">热线：400-XXX-XXXX · 微信：bingoacademy</div>
+        <div className="text-sm text-slate-600">热线：400-168-0260 · 微信：bingoacademy</div>
         <button onClick={() => setSection('home')} className="text-sm text-primary hover:underline">返回首页</button>
       </div>
     </div>
@@ -754,7 +754,7 @@ export default function Research() {
       <div className="grid md:grid-cols-3 gap-5 mb-8">
         {[
           { icon: '💬', title: '即时在线咨询', desc: '工作日 9:00-21:00 / 周末 10:00-18:00', tag: '在线', color: 'border-emerald-200 bg-emerald-50' },
-          { icon: '📞', title: '电话咨询', desc: '400-XXX-XXXX（服务时间同上）', tag: '点击拨号', color: 'border-sky-200 bg-sky-50' },
+          { icon: '📞', title: '电话咨询', desc: '400-168-0260（服务时间同上）', tag: '点击拨号', color: 'border-sky-200 bg-sky-50' },
           { icon: '📱', title: '企业微信咨询', desc: '扫码添加客服，获取专属咨询', tag: '扫码添加', color: 'border-primary/20 bg-primary/5' },
         ].map((c, i) => (
           <div key={i} className={'card p-6 border ' + c.color}>

@@ -125,7 +125,7 @@ export default function Layout({ children }) {
         <button type="button" className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 text-slate-700 text-xs font-medium shadow-lg hover:bg-slate-50 transition border border-slate-200" title="微信咨询">
           💬 微信咨询
         </button>
-        <a href="tel:400-xxx-xxxx" className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 text-slate-700 text-xs font-medium shadow-lg hover:bg-slate-50 transition border border-slate-200" title="电话咨询">
+        <a href="tel:400-168-0260" className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 text-slate-700 text-xs font-medium shadow-lg hover:bg-slate-50 transition border border-slate-200" title="电话咨询">
           📞 电话咨询
         </a>
         <Link to="/courses"
@@ -139,7 +139,7 @@ export default function Layout({ children }) {
       {showPublicMarketingLayers ? (
       <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden flex items-center justify-center gap-3 px-4 py-3 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
         <Link to="/courses" className="flex-1 max-w-[140px] py-2.5 rounded-xl bg-primary text-white text-sm font-bold text-center">课程报名</Link>
-        <a href="tel:400-xxx-xxxx" className="flex-1 max-w-[140px] py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-medium text-center">一键拨号</a>
+        <a href="tel:400-168-0260" className="flex-1 max-w-[140px] py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-medium text-center">一键拨号</a>
       </div>
       ) : null}
 

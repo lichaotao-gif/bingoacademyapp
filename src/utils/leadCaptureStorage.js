@@ -33,6 +33,7 @@ export function saveLeadSubmission(leadKey, payload = {}) {
     submittedAt: new Date().toISOString(),
     name: String(payload.name || '').trim(),
     age: String(payload.age || '').trim(),
+    grade: String(payload.grade || '').trim(),
     phone: String(payload.phone || '').trim(),
     org: String(payload.org || '').trim(),
   }

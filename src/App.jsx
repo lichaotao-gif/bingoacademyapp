@@ -9,6 +9,7 @@ function AdminRedirect() {
 }
 import Layout from './components/Layout'
 import Home from './pages/Home'
+import GuideDetail from './pages/GuideDetail'
 import Showcase from './pages/Showcase'
 import ShowcaseCase from './pages/ShowcaseCase'
 import ShowcaseWorks from './pages/ShowcaseWorks'
@@ -89,6 +90,7 @@ export default function App() {
       <Routes>
         <Route path="/admin/*" element={<AdminRedirect />} />
         <Route path="/" element={<Home />} />
+        <Route path="/guides/:slug" element={<GuideDetail />} />
         <Route path="/showcase" element={<Showcase />} />
         <Route path="/showcase/works" element={<ShowcaseWorks />} />
         <Route path="/showcase/awards" element={<ShowcaseAwards />} />

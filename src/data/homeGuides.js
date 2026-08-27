@@ -1,0 +1,108 @@
+function createGuide({ slug, title, meta, category, image, summary, highlights, action }) {
+  return {
+    slug,
+    title,
+    meta,
+    category,
+    image,
+    to: `/guides/${slug}`,
+    updatedAt: '2026-08-27',
+    summary,
+    content: [
+      { type: 'paragraph', text: summary },
+      { type: 'heading', text: '核心要点' },
+      { type: 'list', items: highlights },
+      { type: 'image', src: image, alt: `${title}配图`, caption: 'AI 素养学习与实践场景示意图' },
+      { type: 'heading', text: '家长与学生可以怎么做' },
+      { type: 'paragraph', text: action },
+      { type: 'quote', text: '本页面内容为演示数据，正式政策名称、适用范围和执行要求请以教育主管部门最新发布文件为准。' },
+    ],
+  }
+}
+
+export const HOME_GUIDES = [
+  createGuide({
+    slug: 'ai-literacy-new-curriculum',
+    title: '新课标下，AI素养为什么成为必修课？',
+    meta: '政策深度解读',
+    category: '政策解读',
+    image: '/home-explore-knowledge.png',
+    summary: '人工智能教育正从工具体验走向素养培养，重点不只是“会使用”，还包括理解原理、判断风险、解决问题与负责任地创造。',
+    highlights: ['关注人工智能基本概念与真实应用场景', '培养数据意识、计算思维和问题解决能力', '强化隐私、安全、伦理与责任意识'],
+    action: '建议从孩子的年龄和认知基础出发，先完成能力测评，再选择匹配的课程等级，并用项目作品记录学习成果。',
+  }),
+  createGuide({
+    slug: 'ai-competition-guide',
+    title: '教育部白名单AI赛事全解析',
+    meta: '赛事价值与备赛指南',
+    category: '赛事指南',
+    image: '/events/ai-creative-competition.jpg',
+    summary: '赛事应服务于能力成长，而不是简单追求奖项。选择赛事时需要同时关注主办单位、参赛规则、适龄范围和作品原创要求。',
+    highlights: ['核对赛事通知与官方报名渠道', '根据年龄、基础和兴趣选择赛项', '提前规划知识学习、作品打磨和展示表达'],
+    action: '先确定目标赛项和时间节点，再将准备过程拆分为基础训练、项目开发、模拟答辩和材料提交四个阶段。',
+  }),
+  createGuide({
+    slug: 'age-based-ai-path',
+    title: '不同年龄段如何规划AI学习路径？',
+    meta: '6–18岁分龄成长建议',
+    category: '成长规划',
+    image: '/home-ai-children-hero.png',
+    summary: '不同年龄段的学习重点不同：低龄阶段重在兴趣和感知，中段重在工具应用与逻辑，高段逐步进入建模、视觉和综合项目。',
+    highlights: ['6–9岁：认识智能现象，建立兴趣与基本认知', '9–12岁：学习指令、数据与编程表达', '12岁以上：开展建模、视觉和综合创新项目'],
+    action: '学习路径不宜只按年龄划分，还应结合孩子的知识基础、动手能力、兴趣方向和每周可投入时间动态调整。',
+  }),
+  createGuide({
+    slug: 'choose-ai-course',
+    title: '家长如何判断一门AI课程是否适合孩子？',
+    meta: '家庭选课避坑指南',
+    category: '选课指南',
+    image: '/home-explore-games.png',
+    summary: '优质课程应当有清晰的学习目标、适龄分级、实践任务和成果反馈，而不是只展示炫酷工具或让孩子照着步骤操作。',
+    highlights: ['课程难度与孩子年龄、基础相匹配', '每阶段有可观察的能力目标与作品产出', '兼顾技术学习、创造表达和安全伦理'],
+    action: '试听时重点观察孩子是否理解任务、能否自主表达思路，以及老师是否能够根据反馈调整教学节奏。',
+  }),
+  createGuide({
+    slug: 'ai-learning-loop',
+    title: '校内外AI学习怎样形成完整成长闭环？',
+    meta: '学习路径规划',
+    category: '学习方法',
+    image: '/hero-1.png',
+    summary: '完整的学习闭环应包含测评定位、课程学习、项目实践和成果复盘，让每一次学习都能形成下一阶段的明确依据。',
+    highlights: ['用测评确定起点和阶段目标', '用课程与项目同步发展知识和实践能力', '用作品、证书和评价记录成长轨迹'],
+    action: '建议每个阶段结束后进行一次复盘，整理知识掌握、作品质量和表达能力，再决定下一阶段的课程与实践任务。',
+  }),
+  createGuide({
+    slug: 'ai-achievement-portfolio',
+    title: 'AI作品、证书与赛事成果如何持续积累？',
+    meta: '成果认证指南',
+    category: '成果管理',
+    image: '/events/art-competition.png',
+    summary: '成长成果需要长期、真实、可追溯地记录。作品过程、能力证书和赛事经历应共同呈现孩子解决问题与持续进步的能力。',
+    highlights: ['保存项目方案、迭代记录和最终作品', '按阶段整理能力评价与证书', '记录赛事角色、任务贡献和复盘总结'],
+    action: '可以为孩子建立个人成长档案，每学期更新一次代表作品和能力变化，避免只保存最终奖状而忽略学习过程。',
+  }),
+  createGuide({
+    slug: 'unesco-ai-framework',
+    title: 'UNESCO学生AI能力框架核心要点',
+    meta: '国际框架解读',
+    category: '国际视野',
+    image: '/hero-2.png',
+    summary: '国际人工智能教育越来越重视以人为本、技术理解、伦理判断和系统设计，强调学生不仅是工具使用者，也是负责任的创造者。',
+    highlights: ['理解人工智能系统的能力与边界', '评估数据、算法和应用带来的影响', '以人为本地设计并负责任地使用技术'],
+    action: '家庭讨论AI话题时，可以同时追问“它怎样工作”“数据从哪里来”“可能影响谁”，帮助孩子建立更完整的判断框架。',
+  }),
+  createGuide({
+    slug: 'ai-first-stage',
+    title: '从零开始学AI，第一阶段应该学什么？',
+    meta: 'AI启蒙学习指南',
+    category: '入门指南',
+    image: '/hero-3.png',
+    summary: 'AI启蒙阶段不需要急于学习复杂算法，重点是从生活中的智能现象出发，理解感知、分类、指令和反馈等基础概念。',
+    highlights: ['识别生活中的人工智能应用', '通过游戏和实验理解机器感知与分类', '用简单指令完成可观察的互动任务'],
+    action: '每周安排稳定的短时学习与动手任务，比一次性学习大量概念更有效；完成后让孩子用自己的语言解释过程。',
+  }),
+]
+
+export function getHomeGuide(slug) {
+  return HOME_GUIDES.find(guide => guide.slug === slug)
+}

@@ -829,7 +829,7 @@ export default function CourseDetail() {
           </div>
           <div className="card p-4 lg:p-5 rounded-2xl">
             <p className="text-xs font-semibold text-slate-500 mb-1 lg:text-sm">服务背书</p>
-            <p className="text-xs sm:text-sm lg:text-base text-slate-700">7天无理由退款 · 全程答疑 · 学情报告 · 售后400-XXX-XXXX</p>
+            <p className="text-xs sm:text-sm lg:text-base text-slate-700">7天无理由退款 · 全程答疑 · 学情报告 · 售后400-168-0260</p>
           </div>
           <div className="card p-4 lg:p-5 rounded-2xl">
             <p className="text-xs font-semibold text-slate-500 mb-1 lg:text-sm">权威背书</p>
