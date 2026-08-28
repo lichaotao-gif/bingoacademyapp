@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { CheckCircleOutlined, CloseOutlined, SafetyCertificateOutlined, UploadOutlined } from '@ant-design/icons'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { dicebearAvatarUrl, getSessionUser, sessionUserDisplayAvatarUrl } from '../utils/sessionUser'
 
 const CERTIFICATE_TYPES = [
   {
@@ -98,6 +100,140 @@ const LEVELS_BY_CERTIFICATE = {
   literacy: LEVELS,
 }
 
+const FEATURED_ACHIEVEMENTS = [
+  {
+    id: 'featured-1',
+    nickname: '星野同学',
+    avatarSeed: 'stellar-student',
+    certificate: '/certificates/l1-ai-explorer-bronze.png',
+    certificateName: 'AI Explorer Bronze 能力认证',
+    comment: '完成这一阶段后，我已经能自己讲清楚 AI 怎样感知信息，也完成了第一份 AI 创意作品。',
+  },
+  {
+    id: 'featured-2',
+    nickname: '小宇航员',
+    avatarSeed: 'young-astronaut',
+    certificate: '/certificates/l1-ai-explorer-bronze.png',
+    certificateName: '人工智能素养一星认证',
+    comment: '证书记录了我的第一次系统学习，也让我更有信心继续挑战编程和机器人项目。',
+  },
+  {
+    id: 'featured-3',
+    nickname: '代码小鹿',
+    avatarSeed: 'coding-deer',
+    certificate: '/certificates/l1-ai-explorer-bronze.png',
+    certificateName: 'AI 基础能力认证',
+    comment: '最开心的是把课程里学到的知识做成了可以展示的作品，老师的评语也让我知道下一步怎么提升。',
+  },
+]
+
+const MAX_CERTIFICATE_BYTES = 5 * 1024 * 1024
+
+const EARNED_CERTIFICATES = [
+  { id: 'ai-bronze', name: 'AI 精英启蒙（青铜）认证', meta: 'L1 · 2026-06-18', image: '/certificates/l1-ai-explorer-bronze.png' },
+  { id: 'creative-course', name: 'AI 创意表达课程结业证书', meta: '课程证书 · 2026-05-23', image: '/certificates/l1-ai-explorer-bronze.png' },
+]
+
+function readImagePreview(file, maxBytes) {
+  return new Promise((resolve, reject) => {
+    if (!file?.type?.startsWith('image/')) {
+      reject(new Error('请选择图片文件'))
+      return
+    }
+    if (file.size > maxBytes) {
+      reject(new Error(`图片请小于 ${Math.round(maxBytes / 1024 / 1024)}MB`))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('图片读取失败，请重新选择'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function AchievementUploadModal({ open, onClose, onSubmitted }) {
+  const currentUser = useMemo(() => getSessionUser(), [])
+  const firstControlRef = useRef(null)
+  const [comment, setComment] = useState('')
+  const [certificateSource, setCertificateSource] = useState('earned')
+  const [selectedCertificateId, setSelectedCertificateId] = useState(EARNED_CERTIFICATES[0].id)
+  const [certificatePreview, setCertificatePreview] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!open) return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.setTimeout(() => firstControlRef.current?.focus(), 0)
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, onClose])
+
+  if (!open) return null
+
+  const handleImage = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setError('')
+    try {
+      const preview = await readImagePreview(file, MAX_CERTIFICATE_BYTES)
+      setCertificatePreview(preview)
+    } catch (uploadError) {
+      setError(uploadError.message)
+    }
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    if (certificateSource === 'upload' && !certificatePreview) {
+      setError('请上传证书图片')
+      return
+    }
+    if (!comment.trim()) {
+      setError('请填写成果评语')
+      return
+    }
+    onSubmitted()
+  }
+
+  return <div className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <section role="dialog" aria-modal="true" aria-labelledby="achievement-upload-title" className="my-6 w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7"><div><p className="text-xs font-bold tracking-[.14em] text-blue-600">ACHIEVEMENT SUBMISSION</p><h2 id="achievement-upload-title" className="mt-1 text-xl font-bold text-slate-950">上传我的认证成果</h2><p className="mt-2 text-sm leading-6 text-slate-500">任何用户都可以提交，公开展示前需经后台审核并推荐。</p></div><button type="button" onClick={onClose} aria-label="关闭上传窗口" className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><CloseOutlined/></button></div>
+      <form onSubmit={handleSubmit} className="space-y-5 px-5 py-6 sm:px-7">
+        <div><span className="mb-2 block text-sm font-semibold text-slate-700">投稿学生</span><div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4"><img src={sessionUserDisplayAvatarUrl(currentUser)} alt={`${currentUser.nickname}的头像`} width="52" height="52" className="h-[52px] w-[52px] rounded-2xl bg-blue-50 object-cover"/><div><strong className="block text-sm text-slate-950">{currentUser.nickname}</strong><span className="mt-1 block text-xs text-slate-500">头像和昵称自动获取当前用户资料</span></div></div></div>
+        <fieldset><legend className="text-sm font-semibold text-slate-700">选择证书来源 <span className="text-rose-500">*</span></legend><div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="选择证书来源"><button ref={firstControlRef} type="button" role="radio" aria-checked={certificateSource === 'earned'} onClick={() => { setCertificateSource('earned'); setError('') }} className={`min-h-12 cursor-pointer rounded-xl border px-3 text-sm font-bold transition ${certificateSource === 'earned' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200'}`}>从已获证书选择</button><button type="button" role="radio" aria-checked={certificateSource === 'upload'} onClick={() => { setCertificateSource('upload'); setError('') }} className={`min-h-12 cursor-pointer rounded-xl border px-3 text-sm font-bold transition ${certificateSource === 'upload' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200'}`}>上传证书图片</button></div></fieldset>
+        {certificateSource === 'earned' ? <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="选择已获得的证书">{EARNED_CERTIFICATES.map((item) => { const active = selectedCertificateId === item.id; return <button key={item.id} type="button" role="radio" aria-checked={active} onClick={() => { setSelectedCertificateId(item.id); setError('') }} className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3 text-left transition ${active ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-blue-200'}`}><img src={item.image} alt="" width="88" height="56" className="h-14 w-[88px] shrink-0 rounded-lg bg-slate-100 object-cover"/><span className="min-w-0"><strong className="block text-sm leading-5 text-slate-900">{item.name}</strong><small className="mt-1 block text-xs text-slate-500">{item.meta}</small></span></button> })}</div> : <div><span className="mb-2 block text-sm font-semibold text-slate-700">上传证书图片</span><label className="flex min-h-44 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/50 p-4 text-center transition hover:border-blue-400 hover:bg-blue-50 focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-blue-600">{certificatePreview ? <img src={certificatePreview} alt="待提交证书预览" className="max-h-60 max-w-full rounded-lg object-contain"/> : <><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-xl text-blue-700 shadow-sm"><UploadOutlined/></span><strong className="mt-3 text-sm text-slate-800">点击上传证书图片</strong><span className="mt-1 text-xs text-slate-500">支持 JPG、PNG 等图片，最大 5MB</span></>}<input type="file" accept="image/*" className="sr-only" onChange={handleImage}/></label></div>}
+        <label className="block text-sm font-semibold text-slate-700">成果评语 <span className="text-rose-500">*</span><textarea value={comment} onChange={(event) => { setComment(event.target.value); setError('') }} maxLength={160} rows={4} className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm font-normal leading-6 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100" placeholder="分享获得证书后的收获、成长或老师评语"/><span className="mt-1 block text-right text-xs font-normal text-slate-400">{comment.length}/160</span></label>
+        {error ? <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{error}</p> : null}
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} className="min-h-12 cursor-pointer rounded-xl border border-slate-200 px-6 text-sm font-bold text-slate-600 transition hover:bg-slate-50">取消</button><button type="submit" className="min-h-12 cursor-pointer rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600">提交审核</button></div>
+      </form>
+    </section>
+  </div>
+}
+
+function AchievementShowcase() {
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  return <section className="mt-16 border-t border-slate-200 pt-14" aria-labelledby="achievement-showcase-heading">
+    <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold tracking-[.12em] text-blue-600">STUDENT ACHIEVEMENTS</p><h2 id="achievement-showcase-heading" className="mt-2 text-3xl font-bold text-slate-950">学员认证成果展示</h2><p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">展示学员主动提交并经后台推荐的认证成果，记录每一次真实成长。</p></div><button type="button" onClick={() => { setSubmitted(false); setUploadOpen(true) }} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600 sm:self-auto"><UploadOutlined aria-hidden="true"/>上传我的成果</button></div>
+
+    {submitted ? <div role="status" className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-800"><CheckCircleOutlined className="mt-1 shrink-0 text-lg" aria-hidden="true"/><p><strong className="block">成果已提交审核</strong>审核通过并由后台设为推荐后，才会显示在前端成果展示中。</p></div> : null}
+
+    <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">{FEATURED_ACHIEVEMENTS.map((item) => <article key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.07)]"><div className="relative aspect-[16/10] overflow-hidden bg-slate-900"><img src={item.certificate} alt={`${item.nickname}上传的${item.certificateName}`} width="900" height="560" loading="lazy" className="h-full w-full object-cover"/><span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-blue-700 shadow-sm"><SafetyCertificateOutlined aria-hidden="true"/>推荐展示</span></div><div className="p-5 sm:p-6"><div className="flex items-center gap-3"><img src={dicebearAvatarUrl(item.avatarSeed, 96)} alt={`${item.nickname}的头像`} width="48" height="48" loading="lazy" className="h-12 w-12 rounded-2xl bg-blue-50 object-cover"/><div><h3 className="font-bold text-slate-950">{item.nickname}</h3><p className="mt-0.5 text-xs text-slate-500">{item.certificateName}</p></div></div><blockquote className="mt-5 text-sm leading-7 text-slate-600">“{item.comment}”</blockquote></div></article>)}</div>
+
+    <p className="mt-6 text-center text-xs leading-6 text-slate-500">公开展示内容均需经过平台审核与推荐；未推荐的投稿仅保留在个人提交记录中。</p>
+    <AchievementUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSubmitted={() => { setUploadOpen(false); setSubmitted(true) }}/>
+  </section>
+}
+
 function CertificateSample() {
   return (
     <figure className="rounded-2xl bg-[#10213d] p-3 shadow-[0_18px_48px_rgba(17,24,39,.2)] sm:p-4">
@@ -184,6 +320,8 @@ export default function Certification() {
             </div>
           </div>
         </section>
+
+        <AchievementShowcase />
 
       </div>
     </main>
