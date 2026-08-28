@@ -1,4 +1,4 @@
-import { CheckCircleOutlined, CloseOutlined, SafetyCertificateOutlined, UploadOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, CloseOutlined, FileTextOutlined, UploadOutlined } from '@ant-design/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { dicebearAvatarUrl, getSessionUser, sessionUserDisplayAvatarUrl } from '../utils/sessionUser'
 
@@ -125,6 +125,14 @@ const FEATURED_ACHIEVEMENTS = [
     certificateName: 'AI 基础能力认证',
     comment: '最开心的是把课程里学到的知识做成了可以展示的作品，老师的评语也让我知道下一步怎么提升。',
   },
+  {
+    id: 'featured-4',
+    nickname: '小小创造家',
+    avatarSeed: 'young-creator',
+    certificate: '/certificates/l1-ai-explorer-bronze.png',
+    certificateName: 'AI 创意实践能力认证',
+    comment: '从认识 AI 到完成自己的创意项目，我学会了把想法一步步变成作品，也更愿意主动分享学习过程。',
+  },
 ]
 
 const MAX_CERTIFICATE_BYTES = 5 * 1024 * 1024
@@ -200,7 +208,26 @@ function AchievementUploadModal({ open, onClose, onSubmitted }) {
       setError('请填写成果评语')
       return
     }
-    onSubmitted()
+    const selectedCertificate = EARNED_CERTIFICATES.find((item) => item.id === selectedCertificateId)
+    onSubmitted({
+      id: `submission-${Date.now()}`,
+      certificateName: certificateSource === 'earned' ? selectedCertificate?.name : '用户上传证书',
+      certificateImage: certificateSource === 'earned' ? selectedCertificate?.image : certificatePreview,
+      comment: comment.trim(),
+      submittedAt: new Intl.DateTimeFormat('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(new Date()),
+    })
+    setComment('')
+    setCertificateSource('earned')
+    setSelectedCertificateId(EARNED_CERTIFICATES[0].id)
+    setCertificatePreview('')
+    setError('')
   }
 
   return <div className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
@@ -218,19 +245,56 @@ function AchievementUploadModal({ open, onClose, onSubmitted }) {
   </div>
 }
 
+function SubmissionRecordsModal({ open, onClose, records }) {
+  const closeButtonRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.setTimeout(() => closeButtonRef.current?.focus(), 0)
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return <div className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <section role="dialog" aria-modal="true" aria-labelledby="submission-records-title" className="my-6 w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7"><div><p className="text-xs font-bold tracking-[.14em] text-blue-600">MY SUBMISSIONS</p><h2 id="submission-records-title" className="mt-1 text-xl font-bold text-slate-950">我的提交记录</h2><p className="mt-2 text-sm leading-6 text-slate-500">这里显示本次页面访问中提交的认证成果及审核状态。</p></div><button ref={closeButtonRef} type="button" onClick={onClose} aria-label="关闭提交记录" className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><CloseOutlined/></button></div>
+      <div className="max-h-[68vh] overflow-y-auto px-5 py-6 sm:px-7">
+        {records.length ? <div className="space-y-4">{records.map((record) => <article key={record.id} className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-[104px_minmax(0,1fr)_auto] sm:items-center">
+          <div className="flex h-32 items-center justify-center overflow-hidden rounded-xl bg-white p-2 ring-1 ring-slate-200"><img src={record.certificateImage} alt={record.certificateName} className="max-h-full max-w-full object-contain"/></div>
+          <div className="min-w-0"><h3 className="font-bold text-slate-950">{record.certificateName}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{record.comment}</p><time className="mt-2 block text-xs text-slate-400">提交时间：{record.submittedAt}</time></div>
+          <span className="inline-flex min-h-8 items-center justify-center self-start rounded-full border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 sm:self-center">待审核</span>
+        </article>)}</div> : <div className="flex min-h-64 flex-col items-center justify-center text-center"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-2xl text-blue-600"><FileTextOutlined aria-hidden="true"/></span><h3 className="mt-4 font-bold text-slate-950">暂无提交记录</h3><p className="mt-2 text-sm leading-6 text-slate-500">上传认证成果后，可在这里查看提交时间和审核状态。</p></div>}
+      </div>
+    </section>
+  </div>
+}
+
 function AchievementShowcase() {
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [recordsOpen, setRecordsOpen] = useState(false)
+  const [submissionRecords, setSubmissionRecords] = useState([])
   const [submitted, setSubmitted] = useState(false)
 
   return <section className="mt-16 border-t border-slate-200 pt-14" aria-labelledby="achievement-showcase-heading">
-    <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold tracking-[.12em] text-blue-600">STUDENT ACHIEVEMENTS</p><h2 id="achievement-showcase-heading" className="mt-2 text-3xl font-bold text-slate-950">学员认证成果展示</h2><p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">展示学员主动提交并经后台推荐的认证成果，记录每一次真实成长。</p></div><button type="button" onClick={() => { setSubmitted(false); setUploadOpen(true) }} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600 sm:self-auto"><UploadOutlined aria-hidden="true"/>上传我的成果</button></div>
+    <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold tracking-[.12em] text-blue-600">STUDENT ACHIEVEMENTS</p><h2 id="achievement-showcase-heading" className="mt-2 text-3xl font-bold text-slate-950">学员认证成果展示</h2><p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">展示学员主动提交并经后台推荐的认证成果，记录每一次真实成长。</p></div><div className="flex flex-wrap gap-3 self-start sm:self-auto"><button type="button" onClick={() => setRecordsOpen(true)} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-5 text-sm font-bold text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600"><FileTextOutlined aria-hidden="true"/>我的提交记录{submissionRecords.length ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-blue-100 px-1 text-[11px] text-blue-700" aria-label={`${submissionRecords.length}条记录`}>{submissionRecords.length}</span> : null}</button><button type="button" onClick={() => { setSubmitted(false); setUploadOpen(true) }} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600"><UploadOutlined aria-hidden="true"/>上传我的成果</button></div></div>
 
-    {submitted ? <div role="status" className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-800"><CheckCircleOutlined className="mt-1 shrink-0 text-lg" aria-hidden="true"/><p><strong className="block">成果已提交审核</strong>审核通过并由后台设为推荐后，才会显示在前端成果展示中。</p></div> : null}
+    {submitted ? <div role="status" className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-800"><CheckCircleOutlined className="shrink-0 text-lg" aria-hidden="true"/><p className="min-w-0 flex-1"><strong className="block">成果已提交审核</strong>审核通过并由后台设为推荐后，才会显示在前端成果展示中。</p><button type="button" onClick={() => setRecordsOpen(true)} className="min-h-10 cursor-pointer rounded-lg px-3 font-bold text-emerald-800 underline decoration-emerald-300 underline-offset-4 hover:bg-emerald-100">查看提交记录</button></div> : null}
 
-    <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">{FEATURED_ACHIEVEMENTS.map((item) => <article key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.07)]"><div className="relative aspect-[16/10] overflow-hidden bg-slate-900"><img src={item.certificate} alt={`${item.nickname}上传的${item.certificateName}`} width="900" height="560" loading="lazy" className="h-full w-full object-cover"/><span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-blue-700 shadow-sm"><SafetyCertificateOutlined aria-hidden="true"/>推荐展示</span></div><div className="p-5 sm:p-6"><div className="flex items-center gap-3"><img src={dicebearAvatarUrl(item.avatarSeed, 96)} alt={`${item.nickname}的头像`} width="48" height="48" loading="lazy" className="h-12 w-12 rounded-2xl bg-blue-50 object-cover"/><div><h3 className="font-bold text-slate-950">{item.nickname}</h3><p className="mt-0.5 text-xs text-slate-500">{item.certificateName}</p></div></div><blockquote className="mt-5 text-sm leading-7 text-slate-600">“{item.comment}”</blockquote></div></article>)}</div>
+    <div className="mt-8 grid gap-6 lg:grid-cols-2">{FEATURED_ACHIEVEMENTS.map((item) => <article key={item.id} className="grid overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.07)] sm:grid-cols-[42%_58%]"><div className="flex min-h-[330px] items-center justify-center overflow-hidden bg-slate-100 p-4"><img src={item.certificate} alt={`${item.nickname}上传的${item.certificateName}`} width="600" height="840" loading="lazy" className="max-h-[340px] max-w-full object-contain"/></div><div className="flex flex-col justify-center p-5 sm:p-6"><div className="flex items-center gap-3"><img src={dicebearAvatarUrl(item.avatarSeed, 96)} alt={`${item.nickname}的头像`} width="48" height="48" loading="lazy" className="h-12 w-12 rounded-2xl bg-blue-50 object-cover"/><div><h3 className="font-bold text-slate-950">{item.nickname}</h3><p className="mt-0.5 text-xs leading-5 text-slate-500">{item.certificateName}</p></div></div><blockquote className="mt-5 text-sm leading-7 text-slate-600">“{item.comment}”</blockquote></div></article>)}</div>
 
     <p className="mt-6 text-center text-xs leading-6 text-slate-500">公开展示内容均需经过平台审核与推荐；未推荐的投稿仅保留在个人提交记录中。</p>
-    <AchievementUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSubmitted={() => { setUploadOpen(false); setSubmitted(true) }}/>
+    <AchievementUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSubmitted={(record) => { setUploadOpen(false); setSubmissionRecords((current) => [record, ...current]); setSubmitted(true) }}/>
+    <SubmissionRecordsModal open={recordsOpen} onClose={() => setRecordsOpen(false)} records={submissionRecords}/>
   </section>
 }
 
