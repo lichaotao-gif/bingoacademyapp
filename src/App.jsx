@@ -44,6 +44,7 @@ import EventAITest from './pages/EventAITest'
 import EventWhitelist from './pages/EventWhitelist'
 import EventBingguo from './pages/EventBingguo'
 import Certification from './pages/Certification'
+import CertificationPolicyDetail from './pages/CertificationPolicyDetail'
 import Mall from './pages/Mall'
 import MallCheckout from './pages/MallCheckout'
 import Franchise from './pages/Franchise'
@@ -126,6 +127,7 @@ export default function App() {
         <Route path="/events/whitelist/:eventId" element={<EventWhitelist />} />
         <Route path="/events/bingguo-ai" element={<EventBingguo />} />
         <Route path="/cert" element={<Certification />} />
+        <Route path="/cert/policy/:slug" element={<CertificationPolicyDetail />} />
         <Route path="/mall" element={<Mall />} />
         <Route path="/mall/checkout/:productId" element={<MallCheckout />} />
         <Route path="/mall/:productId" element={<Mall />} />

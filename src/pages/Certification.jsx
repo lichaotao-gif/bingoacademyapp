@@ -1,18 +1,18 @@
-import { CheckCircleOutlined, CloseOutlined, FileTextOutlined, UploadOutlined } from '@ant-design/icons'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowRightOutlined, BookOutlined, CheckCircleOutlined, CloseOutlined, DownOutlined, ExperimentOutlined, FileTextOutlined, InfoCircleOutlined, ReadOutlined, UpOutlined, UploadOutlined } from '@ant-design/icons'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { dicebearAvatarUrl, getSessionUser, sessionUserDisplayAvatarUrl } from '../utils/sessionUser'
 
 const CERTIFICATE_TYPES = [
   {
     id: 'literacy',
     short: 'AI',
-    name: '人工智能素养认证',
-    subtitle: '建立认知，理解人工智能的基本逻辑与社会价值',
-    color: 'cyan',
+    name: '自主学认证系统课证书',
+    subtitle: '持证人完成星级进阶学习，达到对应 AI 能力等级标准',
     gradient: 'from-cyan-500 to-blue-700',
     accent: 'text-cyan-700',
     soft: 'bg-cyan-50 border-cyan-100',
-    description: '面向 AI 学习起步阶段，关注人工智能的基础知识、工具体验与表达能力。',
+    description: '持证人完成星级进阶学习，达到对应 AI 能力等级标准。',
     introductionSections: [
       {
         title: '课程完成情况',
@@ -28,58 +28,94 @@ const CERTIFICATE_TYPES = [
       },
     ],
     abilities: ['AI 基础认知', '数字伦理意识', '工具体验与表达'],
-    samples: ['AI 初识与生活应用', '智能工具体验报告', '负责任使用 AI'],
-    coursePath: '完成对应星级的 AI 通识课程，包含 AI 感知世界、智能工具体验与数字伦理等主题。',
-    assessment: '完成课程学习任务，并提交学习记录、体验作品或基础测评。',
-    value: '作为 AI 学习起点与阶段结业证明，纳入个人成长档案。',
   },
   {
-    id: 'creation',
-    short: 'GC',
-    name: 'AIGC 创意应用认证',
-    subtitle: '以创意为核心，完成图文、音视频与交互作品表达',
-    color: 'violet',
+    id: 'application',
+    short: 'APP',
+    name: 'AI 应用创造课',
+    subtitle: '持证人完成项目实战学习，具备 AI 场景应用创造能力',
     gradient: 'from-violet-500 to-fuchsia-700',
     accent: 'text-violet-700',
     soft: 'bg-violet-50 border-violet-100',
-    description: '围绕生成式人工智能的创意实践，考察学习者在提示设计、内容策划、作品表达和版权意识方面的能力。每一等级均以可展示的作品为核心成果。学习者将理解“创意想法如何变成 AI 可理解的任务”，并在文字、图像、音频、视频或交互内容中完成从灵感、策划到呈现的完整创作链路。',
-    abilities: ['提示设计与迭代', '多媒体创意表达', '作品策划与版权意识'],
-    samples: ['AI 绘本与海报设计', '数字角色与短片创作', '主题创意项目作品集'],
-    coursePath: '完成对应星级的 AIGC 创作课程，逐步学习提示设计、内容生成、编辑优化与作品发布。',
-    assessment: '完成主题创作任务，提交过程记录与最终作品，并通过作品评价。',
-    value: '沉淀可展示的创意作品集，证明 AI 工具应用与创作表达能力。',
+    description: '持证人完成项目实战学习，具备 AI 场景应用创造能力。',
+    abilities: ['项目实战学习', 'AI 场景应用', '应用创造能力'],
   },
   {
-    id: 'engineering',
-    short: 'ENG',
-    name: '智能工程实践认证',
-    subtitle: '用传感、编程和智能硬件完成真实问题的解决方案',
-    color: 'amber',
-    gradient: 'from-amber-400 to-orange-600',
-    accent: 'text-amber-700',
-    soft: 'bg-amber-50 border-amber-100',
-    description: '聚焦智能硬件、机器人与编程控制，通过搭建、调试、测试和迭代，认证学习者将 AI 思维落实到工程项目的实践能力。学习者会经历“发现问题—设计方案—搭建调试—测试优化”的工程流程，理解传感器、控制器和程序如何协同工作，并用项目成果回应真实生活中的小问题。',
-    abilities: ['智能硬件搭建', '程序控制与调试', '工程问题解决'],
-    samples: ['智能循迹小车', '环境感知互动装置', '机器人任务挑战项目'],
-    coursePath: '完成对应星级的智能硬件、机器人或编程控制课程，并完成项目挑战。',
-    assessment: '完成设备搭建与程序调试，提交可运行项目及测试记录。',
-    value: '形成工程实践与问题解决能力的阶段性证明，可用于项目成果展示。',
+    id: 'aigc',
+    short: 'GC',
+    name: 'AIGC 创意应用课',
+    subtitle: '持证人掌握 AIGC 创作技能，具备人机协同创意能力',
+    gradient: 'from-fuchsia-500 to-pink-700',
+    accent: 'text-fuchsia-700',
+    soft: 'bg-fuchsia-50 border-fuchsia-100',
+    description: '持证人掌握 AIGC 创作技能，具备人机协同创意能力。',
+    abilities: ['AIGC 创作技能', '人机协同', '创意表达能力'],
   },
   {
-    id: 'research',
-    short: 'R',
-    name: 'AI 科创研究认证',
-    subtitle: '以研究和成果为证，呈现跨学科探索与项目深度',
-    color: 'emerald',
+    id: 'subject',
+    short: 'X',
+    name: 'AI 学科协同课',
+    subtitle: '持证人完成跨学科融合学习，具备 AI 赋能学科能力',
     gradient: 'from-emerald-500 to-teal-700',
     accent: 'text-emerald-700',
     soft: 'bg-emerald-50 border-emerald-100',
-    description: '面向具备一定 AI 基础的学习者，关注课题选择、数据分析、模型应用、研究报告与成果答辩，形成可持续积累的科创成长档案。学习者将在导师或课程引导下，把兴趣转化为可研究的问题，完成资料查阅、方案设计、数据处理、模型或原型实践，并用规范的报告和答辩讲清自己的研究过程与结论。',
-    abilities: ['研究问题设计', '数据与模型应用', '成果报告与答辩'],
-    samples: ['AI 课题研究报告', '数据分析与模型实践', '科创成果展示答辩'],
-    coursePath: '完成对应星级的 AI 科创、数据研究或项目式学习课程，形成完整研究过程。',
-    assessment: '提交研究报告、项目成果或模型演示，并完成成果展示或答辩。',
-    value: '形成更完整的科创成果档案，呈现研究思维、项目能力与表达能力。',
+    description: '持证人完成跨学科融合学习，具备 AI 赋能学科能力。',
+    abilities: ['跨学科融合', 'AI 学科应用', '协同学习能力'],
+  },
+  {
+    id: 'competition',
+    short: 'CUP',
+    name: 'AI 赛事课程',
+    subtitle: '持证人完成赛事专项训练，具备科创赛事竞技能力',
+    gradient: 'from-amber-400 to-orange-600',
+    accent: 'text-amber-700',
+    soft: 'bg-amber-50 border-amber-100',
+    description: '持证人完成赛事专项训练，具备科创赛事竞技能力。',
+    abilities: ['赛事专项训练', '科创实践', '赛事竞技能力'],
+  },
+  {
+    id: 'maker',
+    short: 'DEV',
+    name: 'AI 编程创客课程',
+    subtitle: '持证人掌握编程创客技能，具备智能项目开发能力',
+    gradient: 'from-blue-500 to-indigo-700',
+    accent: 'text-blue-700',
+    soft: 'bg-blue-50 border-blue-100',
+    description: '持证人掌握编程创客技能，具备智能项目开发能力。',
+    abilities: ['编程创客技能', '智能项目开发', '工程实践能力'],
+  },
+  {
+    id: 'special',
+    short: 'TOP',
+    name: '专题特色拓展课',
+    subtitle: '持证人完成专题拓展学习，提升 AI 科技综合素养',
+    gradient: 'from-rose-500 to-red-700',
+    accent: 'text-rose-700',
+    soft: 'bg-rose-50 border-rose-100',
+    description: '持证人完成专题拓展学习，提升 AI 科技综合素养。',
+    abilities: ['专题拓展学习', 'AI 科技认知', '综合素养提升'],
+  },
+  {
+    id: 'parent',
+    short: 'P',
+    name: '家长课堂',
+    subtitle: '持证人完成 AI 教育课程学习，建立智慧家庭教育理念',
+    gradient: 'from-teal-500 to-cyan-700',
+    accent: 'text-teal-700',
+    soft: 'bg-teal-50 border-teal-100',
+    description: '持证人完成 AI 教育课程学习，建立智慧家庭教育理念。',
+    abilities: ['AI 教育认知', '家庭教育实践', '智慧教育理念'],
+  },
+  {
+    id: 'experience',
+    short: 'GO',
+    name: '引流体验课',
+    subtitle: '持证人完成 AI 启蒙体验，开启人工智能探索之旅',
+    gradient: 'from-slate-500 to-slate-700',
+    accent: 'text-slate-700',
+    soft: 'bg-slate-50 border-slate-200',
+    description: '持证人完成 AI 启蒙体验，开启人工智能探索之旅。',
+    abilities: ['AI 启蒙体验', '人工智能认知', '探索兴趣培养'],
   },
 ]
 
@@ -95,10 +131,46 @@ const LEVELS = [
   { star: 9, title: '智创', stage: '成果阶段', note: '能够以高质量作品、研究或答辩呈现综合能力。' },
 ]
 
-// 已确认仅「人工智能素养认证」采用 1–9 星体系；其余方向的等级设置待最终标准发布后补充。
+// 当前仅「自主学认证系统课证书」采用 1–9 星体系；其余方向的等级设置待最终标准发布后补充。
 const LEVELS_BY_CERTIFICATE = {
   literacy: LEVELS,
 }
+
+const POLICY_GUIDES = [
+  {
+    stage: '小学阶段',
+    title: '小学生综合素养',
+    eyebrow: '成长记录 · 五育发展',
+    description: 'AI 素养重在体验、作品与项目实践，可作为学生成长过程的写实记录，服务校内评价与家校沟通。',
+    note: '坚持发展性评价，不作为小升初筛选依据。',
+    path: '/cert/policy/primary-school',
+    icon: BookOutlined,
+    tone: 'border-sky-200 bg-sky-50/70 text-sky-700',
+    iconTone: 'bg-sky-600 text-white',
+  },
+  {
+    stage: '初中阶段',
+    title: '中考升学',
+    eyebrow: '创新实践 · 综评档案',
+    description: 'AI 课程、科创项目与社会实践成果，可按属地规则写入综合素质评价档案，呈现持续成长过程。',
+    note: '各地使用方式存在差异，以当地招生政策为准。',
+    path: '/cert/policy/middle-school',
+    icon: ExperimentOutlined,
+    tone: 'border-indigo-200 bg-indigo-50/70 text-indigo-700',
+    iconTone: 'bg-indigo-600 text-white',
+  },
+  {
+    stage: '高中阶段',
+    title: '高考录取',
+    eyebrow: '创新素养 · 多元评价',
+    description: 'AI 研究、项目成果与科创经历，可作为高中综评创新实践材料，为高校多元人才选拔提供参考。',
+    note: '作为写实材料使用，不等同于高考加分或录取承诺。',
+    path: '/cert/policy/college-admission',
+    icon: ReadOutlined,
+    tone: 'border-amber-200 bg-amber-50/70 text-amber-800',
+    iconTone: 'bg-amber-500 text-white',
+  },
+]
 
 const FEATURED_ACHIEVEMENTS = [
   {
@@ -133,7 +205,41 @@ const FEATURED_ACHIEVEMENTS = [
     certificateName: 'AI 创意实践能力认证',
     comment: '从认识 AI 到完成自己的创意项目，我学会了把想法一步步变成作品，也更愿意主动分享学习过程。',
   },
+  {
+    id: 'featured-5',
+    nickname: '星辰创客',
+    avatarSeed: 'stellar-maker',
+    certificate: '/certificates/l1-ai-explorer-bronze.png',
+    certificateName: 'AI 项目实践能力认证',
+    comment: '我把课堂里的想法做成了一个完整的小项目，也学会了记录每次测试和改进的过程。',
+  },
+  {
+    id: 'featured-6',
+    nickname: '思维小航',
+    avatarSeed: 'thinking-voyager',
+    certificate: '/certificates/l1-ai-explorer-bronze.png',
+    certificateName: 'AI 逻辑思维能力认证',
+    comment: '通过这一阶段的练习，我能更有条理地拆解问题，并用清晰的步骤告诉 AI 我想完成什么。',
+  },
+  {
+    id: 'featured-7',
+    nickname: 'AI 绘梦家',
+    avatarSeed: 'ai-dream-artist',
+    certificate: '/certificates/l1-ai-explorer-bronze.png',
+    certificateName: 'AIGC 创意表达认证',
+    comment: '我完成了自己的主题绘本，从故事构思到画面调整，每一步都有记录，也更懂得尊重原创。',
+  },
+  {
+    id: 'featured-8',
+    nickname: '未来工程师',
+    avatarSeed: 'future-engineer',
+    certificate: '/certificates/l1-ai-explorer-bronze.png',
+    certificateName: '智能工程实践认证',
+    comment: '完成搭建和调试后，我第一次看到自己的程序真正运行起来，也知道了遇到问题要耐心排查。',
+  },
 ]
+
+const INITIAL_FEATURED_ACHIEVEMENT_COUNT = 6
 
 const MAX_CERTIFICATE_BYTES = 5 * 1024 * 1024
 
@@ -284,13 +390,18 @@ function AchievementShowcase() {
   const [recordsOpen, setRecordsOpen] = useState(false)
   const [submissionRecords, setSubmissionRecords] = useState([])
   const [submitted, setSubmitted] = useState(false)
+  const [showAllAchievements, setShowAllAchievements] = useState(false)
+  const hasMoreAchievements = FEATURED_ACHIEVEMENTS.length > INITIAL_FEATURED_ACHIEVEMENT_COUNT
+  const visibleAchievements = showAllAchievements ? FEATURED_ACHIEVEMENTS : FEATURED_ACHIEVEMENTS.slice(0, INITIAL_FEATURED_ACHIEVEMENT_COUNT)
 
   return <section className="mt-16 border-t border-slate-200 pt-14" aria-labelledby="achievement-showcase-heading">
     <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold tracking-[.12em] text-blue-600">STUDENT ACHIEVEMENTS</p><h2 id="achievement-showcase-heading" className="mt-2 text-3xl font-bold text-slate-950">学员认证成果展示</h2><p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">展示学员主动提交并经后台推荐的认证成果，记录每一次真实成长。</p></div><div className="flex flex-wrap gap-3 self-start sm:self-auto"><button type="button" onClick={() => setRecordsOpen(true)} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-5 text-sm font-bold text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600"><FileTextOutlined aria-hidden="true"/>我的提交记录{submissionRecords.length ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-blue-100 px-1 text-[11px] text-blue-700" aria-label={`${submissionRecords.length}条记录`}>{submissionRecords.length}</span> : null}</button><button type="button" onClick={() => { setSubmitted(false); setUploadOpen(true) }} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600"><UploadOutlined aria-hidden="true"/>上传我的成果</button></div></div>
 
     {submitted ? <div role="status" className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-800"><CheckCircleOutlined className="shrink-0 text-lg" aria-hidden="true"/><p className="min-w-0 flex-1"><strong className="block">成果已提交审核</strong>审核通过并由后台设为推荐后，才会显示在前端成果展示中。</p><button type="button" onClick={() => setRecordsOpen(true)} className="min-h-10 cursor-pointer rounded-lg px-3 font-bold text-emerald-800 underline decoration-emerald-300 underline-offset-4 hover:bg-emerald-100">查看提交记录</button></div> : null}
 
-    <div className="mt-8 grid gap-6 lg:grid-cols-2">{FEATURED_ACHIEVEMENTS.map((item) => <article key={item.id} className="grid overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.07)] sm:grid-cols-[42%_58%]"><div className="flex min-h-[330px] items-center justify-center overflow-hidden bg-slate-100 p-4"><img src={item.certificate} alt={`${item.nickname}上传的${item.certificateName}`} width="600" height="840" loading="lazy" className="max-h-[340px] max-w-full object-contain"/></div><div className="flex flex-col justify-center p-5 sm:p-6"><div className="flex items-center gap-3"><img src={dicebearAvatarUrl(item.avatarSeed, 96)} alt={`${item.nickname}的头像`} width="48" height="48" loading="lazy" className="h-12 w-12 rounded-2xl bg-blue-50 object-cover"/><div><h3 className="font-bold text-slate-950">{item.nickname}</h3><p className="mt-0.5 text-xs leading-5 text-slate-500">{item.certificateName}</p></div></div><blockquote className="mt-5 text-sm leading-7 text-slate-600">“{item.comment}”</blockquote></div></article>)}</div>
+    <div id="featured-achievement-grid" className="mt-8 grid gap-6 lg:grid-cols-2">{visibleAchievements.map((item) => <article key={item.id} className="grid overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.07)] sm:grid-cols-[42%_58%]"><div className="flex min-h-[330px] items-center justify-center overflow-hidden bg-slate-100 p-4"><img src={item.certificate} alt={`${item.nickname}上传的${item.certificateName}`} width="600" height="840" loading="lazy" className="max-h-[340px] max-w-full object-contain"/></div><div className="flex flex-col justify-center p-5 sm:p-6"><div className="flex items-center gap-3"><img src={dicebearAvatarUrl(item.avatarSeed, 96)} alt={`${item.nickname}的头像`} width="48" height="48" loading="lazy" className="h-12 w-12 rounded-2xl bg-blue-50 object-cover"/><div><h3 className="font-bold text-slate-950">{item.nickname}</h3><p className="mt-0.5 text-xs leading-5 text-slate-500">{item.certificateName}</p></div></div><blockquote className="mt-5 text-sm leading-7 text-slate-600">“{item.comment}”</blockquote></div></article>)}</div>
+
+    {hasMoreAchievements ? <div className="mt-8 flex justify-center"><button type="button" aria-expanded={showAllAchievements} aria-controls="featured-achievement-grid" onClick={() => setShowAllAchievements((current) => !current)} className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-6 text-sm font-bold text-blue-700 shadow-sm transition duration-200 hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600 motion-reduce:transition-none">{showAllAchievements ? <><UpOutlined aria-hidden="true"/>收起成果</> : <><DownOutlined aria-hidden="true"/>展开更多成果</>}</button></div> : null}
 
     <p className="mt-6 text-center text-xs leading-6 text-slate-500">公开展示内容均需经过平台审核与推荐；未推荐的投稿仅保留在个人提交记录中。</p>
     <AchievementUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSubmitted={(record) => { setUploadOpen(false); setSubmissionRecords((current) => [record, ...current]); setSubmitted(true) }}/>
@@ -298,94 +409,195 @@ function AchievementShowcase() {
   </section>
 }
 
-function CertificateSample() {
+function CertificateSample({ certificateName }) {
   return (
     <figure className="rounded-2xl bg-[#10213d] p-3 shadow-[0_18px_48px_rgba(17,24,39,.2)] sm:p-4">
-      <img src="/certificates/l1-ai-explorer-bronze.png" alt="L1 AI Explorer Bronze 能力认证证书样例" className="w-full rounded-lg" />
-      <figcaption className="px-2 pt-3 text-center text-xs text-slate-300">L1 AI Explorer Bronze 能力认证证书样例</figcaption>
+      <img src="/certificates/l1-ai-explorer-bronze.png" alt={`${certificateName}样例`} className="w-full rounded-lg" />
+      <figcaption className="px-2 pt-3 text-center text-xs text-slate-300">{certificateName}样例</figcaption>
     </figure>
   )
 }
 
-export default function Certification() {
-  const [selectedType, setSelectedType] = useState('literacy')
-  const [selectedStar, setSelectedStar] = useState(1)
-  const certificate = useMemo(() => CERTIFICATE_TYPES.find((item) => item.id === selectedType), [selectedType])
-  const levels = LEVELS_BY_CERTIFICATE[selectedType] ?? []
+function CertificateDetailModal({ certificate, selectedStar, onSelectStar, onClose, returnFocusRef }) {
+  const closeButtonRef = useRef(null)
+  const dialogRef = useRef(null)
+  const levels = certificate ? LEVELS_BY_CERTIFICATE[certificate.id] ?? [] : []
   const level = levels.find((item) => item.star === selectedStar)
 
-  const selectCertificate = (type) => {
+  useEffect(() => {
+    if (!certificate) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    const returnFocusTarget = returnFocusRef.current
+    document.body.style.overflow = 'hidden'
+    window.setTimeout(() => closeButtonRef.current?.focus(), 0)
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+
+      if (event.key !== 'Tab') return
+      const focusableElements = dialogRef.current?.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')
+      if (!focusableElements?.length) return
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+      window.setTimeout(() => returnFocusTarget?.focus(), 0)
+    }
+  }, [certificate, onClose, returnFocusRef])
+
+  if (!certificate) return null
+
+  return <div className="fixed inset-0 z-[90] flex items-end justify-center overflow-y-auto bg-slate-950/65 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <section ref={dialogRef} id="certificate-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="certificate-detail-heading" className="relative max-h-[92dvh] w-full max-w-6xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:my-6 sm:rounded-3xl">
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-7 sm:py-5">
+        <div className="min-w-0">
+          <p className={`text-xs font-bold tracking-[.14em] ${certificate.accent}`}>CERTIFICATE DETAILS</p>
+          <h2 id="certificate-detail-heading" className="mt-1 text-xl font-bold leading-7 text-bingo-dark sm:text-2xl">{certificate.name}{level && <span className="ml-2 text-primary">{level.star} 星</span>}</h2>
+        </div>
+        <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="关闭证书详情" className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><CloseOutlined /></button>
+      </div>
+
+      <div className="grid gap-7 p-5 sm:p-7 lg:grid-cols-[minmax(300px,5fr)_minmax(0,6fr)] lg:items-start lg:gap-9">
+        <CertificateSample certificateName={certificate.name} />
+        <div className="min-w-0">
+          {certificate.introductionSections ? (
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6" aria-label="证书内容">
+              <p className={`text-xs font-bold ${certificate.accent}`}>证书介绍</p>
+              <p className="mt-3 text-sm leading-8 text-slate-600">{certificate.introductionSections.map((section) => section.text).join(' ')}</p>
+            </section>
+          ) : (
+            <p className="text-sm leading-7 text-slate-600">{certificate.description}</p>
+          )}
+          <div className="mt-6 flex flex-wrap gap-2">{certificate.abilities.map((ability) => <span key={ability} className={`rounded-full border px-3 py-1.5 text-xs ${certificate.soft} ${certificate.accent}`}>{ability}</span>)}</div>
+          <div className="mt-7 border-y border-slate-200 py-5">
+            {level ? <>
+              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold text-bingo-dark">选择认证等级</h3><span className="text-sm text-slate-500">{level.stage} · {level.title}</span></div>
+              <div className="mt-4 grid grid-cols-9 gap-2" role="radiogroup" aria-label="选择证书星级">
+                {levels.map((item) => <button key={item.star} type="button" role="radio" aria-checked={selectedStar === item.star} onClick={() => onSelectStar(item.star)} className={`flex aspect-square min-h-10 cursor-pointer items-center justify-center rounded-lg text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary ${selectedStar === item.star ? `bg-gradient-to-br ${certificate.gradient} text-white shadow-md` : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{item.star}</button>)}
+              </div>
+              <p className="mt-4 text-sm leading-6 text-slate-600"><span className="font-semibold text-bingo-dark">{level.star} 星 · {level.title}：</span>{level.note}</p>
+            </> : <>
+              <h3 className="font-bold text-bingo-dark">认证等级</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">该认证方向的等级设置正在确认中，将以最终发布的认证标准为准。</p>
+            </>}
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+}
+
+export default function Certification() {
+  const [selectedType, setSelectedType] = useState(null)
+  const [selectedStar, setSelectedStar] = useState(1)
+  const certificateTriggerRef = useRef(null)
+  const certificate = CERTIFICATE_TYPES.find((item) => item.id === selectedType) ?? null
+
+  const openCertificate = (type, trigger) => {
+    certificateTriggerRef.current = trigger
     setSelectedType(type)
     setSelectedStar((LEVELS_BY_CERTIFICATE[type] ?? [])[0]?.star ?? null)
   }
+
+  const closeCertificate = useCallback(() => setSelectedType(null), [])
 
   return (
     <main className="bg-[#f8fafc] pb-16">
       <section className="relative overflow-hidden bg-[#0b1730] text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_22%,rgba(45,212,191,.26),transparent_24%),radial-gradient(circle_at_70%_90%,rgba(99,102,241,.25),transparent_30%)]" />
-        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
-          <p className="text-sm font-semibold tracking-[0.18em] text-cyan-200">BINGO AI CREDENTIALS</p>
+        <div className="absolute -left-16 top-12 h-52 w-52 rounded-full border border-white/10" aria-hidden="true" />
+        <div className="absolute -left-4 top-28 h-24 w-24 rounded-full border border-cyan-300/15" aria-hidden="true" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pb-24 sm:pt-20">
+          <p className="text-sm font-semibold tracking-[0.18em] text-cyan-200">综合素质评价 · AI 成长档案</p>
           <div className="mt-5 grid items-end gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)]">
             <div>
-              <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">让每一份 AI 成长，<br />都有可被看见的证明</h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">缤果成果认证以“类别 + 分级标准 + 作品成果”构建清晰的能力成长档案。人工智能素养认证已确认采用九星等级；其他方向将按最终发布的认证标准设置等级。</p>
+              <h1 className="max-w-4xl text-4xl font-bold leading-tight sm:text-5xl">让 AI 学训成果，<br className="hidden sm:block" />成为综评档案的写实支撑</h1>
+              <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300">顺应素质教育改革，系统记录课程学习、项目实践与原创作品，沉淀真实、完整、可追溯的 AI 成长材料。</p>
             </div>
             <div className="grid grid-cols-3 gap-3 border-t border-white/15 pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-              {[['4', '认证类别'], ['9', '人工智能等级'], ['1', '份成长档案']].map(([number, label]) => <div key={label}><p className="text-3xl font-bold text-white">{number}</p><p className="mt-1 text-xs text-slate-400">{label}</p></div>)}
+              {[['3', '学段政策'], ['9', '认证方向'], ['9', 'AI 能力等级']].map(([number, label]) => <div key={label}><p className="text-3xl font-bold text-white">{number}</p><p className="mt-1 text-xs leading-5 text-slate-400">{label}</p></div>)}
             </div>
           </div>
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6" aria-labelledby="policy-guidance-heading">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,.10)] sm:p-8 lg:p-10">
+          <div>
+            <div className="inline-flex min-h-8 items-center gap-2 rounded-full bg-blue-50 px-3 text-xs font-bold tracking-[.12em] text-blue-700"><FileTextOutlined aria-hidden="true" />政策导向</div>
+            <h2 id="policy-guidance-heading" className="mt-4 max-w-5xl text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">政策导向：综合素质评价逐步成为育人与升学重要参考</h2>
+            <div className="mt-5 max-w-5xl space-y-3 text-base leading-8 text-slate-600">
+              <p>国家持续推进素质教育转型，以高考、中考改革为抓手，落实“两依据一参考”“基于学考成绩、结合综合素质评价”招生制度，综合素质评价在人才选拔中的作用持续提升。</p>
+              <p>依据《深化新时代教育评价改革总体方案》《中小学人工智能通识教育指南（2025年版）》，鼓励探索将AI素养纳入综合素质评价创新实践、社会实践观测维度，AI素养将在学生综合素养体系中发挥越来越重要的参考价值。</p>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {POLICY_GUIDES.map((item, index) => {
+              const Icon = item.icon
+              return <Link key={item.stage} to={item.path} aria-label={`查看${item.title}政策详情`} className={`group flex min-h-full cursor-pointer flex-col rounded-2xl border p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600 motion-reduce:transform-none motion-reduce:transition-none sm:p-6 ${item.tone}`}>
+                <div className="flex items-start justify-between gap-4">
+                  <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-xl ${item.iconTone}`} aria-hidden="true"><Icon /></span>
+                  <span className="text-3xl font-bold tabular-nums opacity-20">0{index + 1}</span>
+                </div>
+                <p className="mt-5 text-xs font-bold tracking-[.12em] opacity-80">{item.stage} · {item.eyebrow}</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-950">{item.title}</h3>
+                <p className="mt-3 flex-1 text-sm leading-7 text-slate-700">{item.description}</p>
+                <p className="mt-5 border-t border-current/15 pt-4 text-xs font-semibold leading-6">{item.note}</p>
+                <span className="mt-4 inline-flex min-h-11 items-center gap-2 self-start text-sm font-bold">查看政策详情<ArrowRightOutlined className="transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none" aria-hidden="true" /></span>
+              </Link>
+            })}
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14">
         <section aria-labelledby="type-heading">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div><p className="text-sm font-medium text-primary">CERTIFICATION CATALOGUE</p><h2 id="type-heading" className="mt-1 text-2xl font-bold text-bingo-dark">选择你的认证方向</h2></div>
-            <p className="text-sm text-slate-500">人工智能素养认证设 1–9 星；其他方向等级以最终标准为准</p>
+            <p className="text-sm text-slate-500">自主学认证系统课证书设 1–9 星；其他方向等级以最终标准为准</p>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {CERTIFICATE_TYPES.map((item) => {
-              const active = item.id === selectedType
-              return <button key={item.id} type="button" onClick={() => selectCertificate(item.id)} className={`min-h-44 rounded-2xl border p-5 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${active ? `${item.soft} shadow-md` : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm'}`}>
+              return <button key={item.id} type="button" aria-haspopup="dialog" aria-controls="certificate-detail-dialog" onClick={(event) => openCertificate(item.id, event.currentTarget)} className="min-h-44 cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600 motion-reduce:transform-none motion-reduce:transition-none">
                 <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${item.gradient} text-xs font-bold text-white shadow-sm`}>{item.short}</div>
                 <h3 className="mt-5 font-bold text-bingo-dark">{item.name}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">{item.subtitle}</p>
-                <p className={`mt-4 text-xs font-semibold ${item.accent}`}>{active ? '正在查看证书样板' : '查看证书样板 →'}</p>
+                <p className={`mt-4 text-xs font-semibold ${item.accent}`}>查看证书详情 →</p>
               </button>
             })}
           </div>
         </section>
 
-        <section className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-center" aria-labelledby="sample-heading">
-          <CertificateSample />
-          <div>
-            <p className={`text-sm font-semibold ${certificate.accent}`}>CERTIFICATE PREVIEW</p>
-            <h2 id="sample-heading" className="mt-2 text-3xl font-bold text-bingo-dark">{certificate.name}{level && <span className="ml-3 text-primary">{level.star} 星</span>}</h2>
-            {certificate.introductionSections ? (
-              <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6" aria-label="证书内容">
-                <p className={`text-xs font-bold ${certificate.accent}`}>证书介绍</p>
-                <p className="mt-3 text-sm leading-8 text-slate-600">{certificate.introductionSections.map((section) => section.text).join(' ')}</p>
-              </section>
-            ) : (
-              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">{certificate.description}</p>
-            )}
-            <div className="mt-6 flex flex-wrap gap-2">{certificate.abilities.map((ability) => <span key={ability} className={`rounded-full border px-3 py-1.5 text-xs ${certificate.soft} ${certificate.accent}`}>{ability}</span>)}</div>
-            <div className="mt-8 border-y border-slate-200 py-5">
-              {level ? <>
-                <div className="flex items-center justify-between"><h3 className="font-bold text-bingo-dark">选择认证等级</h3><span className="text-sm text-slate-500">{level.stage} · {level.title}</span></div>
-                <div className="mt-4 grid grid-cols-9 gap-2" role="radiogroup" aria-label="选择证书星级">
-                  {levels.map((item) => <button key={item.star} type="button" role="radio" aria-checked={selectedStar === item.star} onClick={() => setSelectedStar(item.star)} className={`flex aspect-square min-h-10 items-center justify-center rounded-lg text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary ${selectedStar === item.star ? `bg-gradient-to-br ${certificate.gradient} text-white shadow-md` : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{item.star}</button>)}
-                </div>
-                <p className="mt-4 text-sm leading-6 text-slate-600"><span className="font-semibold text-bingo-dark">{level.star} 星 · {level.title}：</span>{level.note}</p>
-              </> : <>
-                <h3 className="font-bold text-bingo-dark">认证等级</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">该认证方向的等级设置正在确认中，将以最终发布的认证标准为准。</p>
-              </>}
-            </div>
-          </div>
-        </section>
+        <CertificateDetailModal certificate={certificate} selectedStar={selectedStar} onSelectStar={setSelectedStar} onClose={closeCertificate} returnFocusRef={certificateTriggerRef} />
 
         <AchievementShowcase />
+
+        <section className="mt-16 rounded-3xl border border-amber-200 bg-amber-50/80 p-5 sm:p-7 lg:p-8" aria-labelledby="important-notice-heading">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-500 text-lg text-white" aria-hidden="true"><InfoCircleOutlined /></span>
+            <div><p className="text-xs font-bold tracking-[.14em] text-amber-700">IMPORTANT NOTICE</p><h2 id="important-notice-heading" className="mt-1 text-xl font-bold text-slate-950">重要提示</h2></div>
+          </div>
+          <ol className="mt-6 grid gap-4 lg:grid-cols-2">
+            <li className="flex gap-4 rounded-2xl border border-amber-200/80 bg-white/80 p-4 text-sm leading-7 text-slate-700 sm:p-5"><span className="font-bold tabular-nums text-amber-700">01</span><p>根据国家政策，综合素质评价档案由属地学校、教育主管部门审核生成；学生可将本平台实践成果作为写实材料，按当地规则填报至官方综评系统，最终以学校及教育部门审核结果为准。</p></li>
+            <li className="flex gap-4 rounded-2xl border border-amber-200/80 bg-white/80 p-4 text-sm leading-7 text-slate-700 sm:p-5"><span className="font-bold tabular-nums text-amber-700">02</span><p>AI素养属于政策鼓励探索纳入综合素质评价的观测方向，各地实施细则存在差异，具体以本省、本市教育部门发布文件为准。</p></li>
+          </ol>
+        </section>
 
       </div>
     </main>
