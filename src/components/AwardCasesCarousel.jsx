@@ -35,7 +35,7 @@ export default function AwardCasesCarousel() {
         <div>
           <p className="text-xs font-black tracking-[.16em] text-[#087e72]">AWARD STORIES</p>
           <h2 id="award-cases-title" className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">赛事荣誉，见证每一次成长</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">真实证书与学生成长评语，持续记录每一次实践成果。以下姓名已作隐私化展示。</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">真实证书与学生成长评语，持续记录每一次实践成果。</p>
         </div>
       </div>
 
