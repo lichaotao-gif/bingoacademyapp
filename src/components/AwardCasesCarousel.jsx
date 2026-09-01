@@ -37,7 +37,6 @@ export default function AwardCasesCarousel() {
           <h2 id="award-cases-title" className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">赛事荣誉，见证每一次成长</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">真实证书与学生成长评语，持续记录每一次实践成果。以下姓名已作隐私化展示。</p>
         </div>
-        <span className="self-start rounded-full border border-emerald-100 bg-white/80 px-3 py-1.5 text-xs font-bold text-[#087e72] sm:self-auto">向左滚动查看全部证书</span>
       </div>
 
       <div className="award-marquee" role="region" aria-label="赛事获奖证书滚动展示" tabIndex="0">
