@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import AwardCasesCarousel from '../components/AwardCasesCarousel'
 
 const EVENTS = [
   { id: 'ai-competition', name: '全国青少年人工智能大赛', subtitle: '自然科学素养类 · 第18项', status: 'open', cover: '/events/ai-creative-competition.jpg', deadline: '距离报名截止 46 天', period: '2026.07.20 – 2026.09.10', audience: '适配 L1-L9', organizer: '中国福利会、中国妇女发展基金会', count: '2025-2028', description: '上海地区唯一国家级 AI 白名单赛事，区分低龄启蒙、初高中科创两大赛道，支持 AIGC 人机协同创作。' },
@@ -90,6 +91,9 @@ export default function EventWhitelist() {
         </div>
         {visibleOtherEvents.length === 0 && <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">当前分类暂无其他赛事，可切换筛选条件查看。</div>}
       </section>
+      <div className="order-40 mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6">
+        <AwardCasesCarousel />
+      </div>
     </main>
   )
 }

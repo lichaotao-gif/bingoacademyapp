@@ -67,18 +67,12 @@ const PARTNERS = [
 ]
 
 const TEXTBOOK_SAMPLES = [
-  { province: '广东', title: '人工智能启蒙与实践', tone: ['#2563eb', '#06b6d4'] },
-  { province: '浙江', title: '智能创想与项目学习', tone: ['#7c3aed', '#ec4899'] },
-  { province: '江苏', title: 'AI基础与编程思维', tone: ['#0f766e', '#22c55e'] },
-  { province: '北京', title: '人工智能素养读本', tone: ['#dc2626', '#f97316'] },
-  { province: '上海', title: 'AI创新实践手册', tone: ['#4f46e5', '#8b5cf6'] },
-  { province: '四川', title: '智能科技探索', tone: ['#ea580c', '#facc15'] },
-  { province: '湖北', title: '人工智能基础课程', tone: ['#0284c7', '#2dd4bf'] },
-  { province: '山东', title: 'AI与科学实践', tone: ['#0369a1', '#6366f1'] },
-  { province: '湖南', title: '智能创造入门', tone: ['#9333ea', '#f43f5e'] },
-  { province: '福建', title: '人工智能应用启蒙', tone: ['#059669', '#14b8a6'] },
-  { province: '河南', title: 'AI思维训练', tone: ['#c2410c', '#fb7185'] },
-  { province: '陕西', title: '智能技术与未来', tone: ['#4338ca', '#0ea5e9'] },
+  { province: '北京', title: '《人工智能教育 跟我玩AI》五年级上册', cover: '/textbooks/beijing-grade5.png', width: 592, height: 840 },
+  { province: '广东', title: '《人工智能》五年级上册', cover: '/textbooks/guangdong-grade5.png', width: 614, height: 865 },
+  { province: '福建', title: '《人工智能学习丛书》五年级上册', cover: '/textbooks/fujian-grade5.png', width: 630, height: 890 },
+  { province: '湖南', title: '《人工智能》五年级上册', cover: '/textbooks/hunan-grade5.png', width: 621, height: 876 },
+  { province: '重庆', title: '《人工智能》九年级全一册', cover: '/textbooks/chongqing-grade9.png', width: 684, height: 1000 },
+  { province: '四川', title: '《人工智能学习丛书》五年级上册', cover: '/textbooks/sichuan-grade5.jpg', width: 706, height: 1000 },
 ]
 
 function SectionHeading({ eyebrow, title, subtitle, dark = false }) {
@@ -100,36 +94,21 @@ const PROVINCE_CELLS = [
 const COVERED_PROVINCES = new Set(TEXTBOOK_SAMPLES.map(({ province }) => province))
 
 function CoverageMap() {
-  return <svg viewBox="0 0 600 420" className="h-full w-full" role="img" aria-labelledby="coverage-map-title coverage-map-desc"><title id="coverage-map-title">全国教材省份覆盖地图</title><desc id="coverage-map-desc">省级板块地图重点标注广东、浙江、江苏、北京、上海、四川、湖北和山东等教材覆盖省份</desc><defs><linearGradient id="coverage-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#eff6ff"/><stop offset=".55" stopColor="#f5f3ff"/><stop offset="1" stopColor="#ecfeff"/></linearGradient><linearGradient id="coverage-active" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2563eb"/><stop offset="1" stopColor="#7c3aed"/></linearGradient><filter id="coverage-shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#2563eb" floodOpacity=".25"/></filter></defs><rect width="600" height="420" rx="30" fill="url(#coverage-bg)"/><circle cx="515" cy="64" r="92" fill="#fff" opacity=".35"/><circle cx="88" cy="350" r="116" fill="#bfdbfe" opacity=".18"/><path d="M56 326C158 255 212 116 356 80c79-20 142 13 180 78" fill="none" stroke="#93c5fd" strokeWidth="1.5" strokeDasharray="5 8" opacity=".55"/><g transform="translate(24 24)"><rect width="144" height="48" rx="15" fill="#fff" stroke="#dbeafe"/><text x="18" y="20" fill="#64748b" fontSize="10" fontWeight="700" letterSpacing="1.2">TEXTBOOK REACH</text><text x="18" y="38" fill="#1e3a8a" fontSize="16" fontWeight="800">全国 12 省覆盖</text></g><g aria-hidden="true">{PROVINCE_CELLS.map(([name,x,y]) => { const covered = COVERED_PROVINCES.has(name); const compact = name.length > 2; return <g key={name} transform={`translate(${x} ${y})`} filter={covered ? 'url(#coverage-shadow)' : undefined}><rect x="-24" y="-16" width="48" height="32" rx="9" fill={covered ? 'url(#coverage-active)' : '#fff'} stroke={covered ? '#fff' : '#cbd5e1'} strokeWidth={covered ? '2' : '1'}/><text x="0" y={covered ? '6' : '4'} textAnchor="middle" fill={covered ? '#fff' : '#64748b'} fontSize={covered ? '18' : compact ? '9' : '10.5'} fontWeight={covered ? '800' : '600'}>{name}</text>{covered ? <circle cx="18" cy="-11" r="4" fill="#fbbf24" stroke="#fff" strokeWidth="1.5"/> : null}</g>})}</g><g transform="translate(28 388)"><circle cx="6" cy="0" r="6" fill="#4f46e5"/><text x="18" y="4" fill="#475569" fontSize="11" fontWeight="700">重点覆盖省份</text><rect x="116" y="-6" width="12" height="12" rx="4" fill="#fff" stroke="#cbd5e1"/><text x="138" y="4" fill="#64748b" fontSize="11">全国省级版图</text></g></svg>
+  return <svg viewBox="0 0 600 420" className="h-full w-full" role="img" aria-labelledby="coverage-map-title coverage-map-desc"><title id="coverage-map-title">全国教材省份覆盖地图</title><desc id="coverage-map-desc">省级板块地图重点标注北京、广东、福建、湖南、重庆和四川六个教材覆盖省份</desc><defs><linearGradient id="coverage-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#eff6ff"/><stop offset=".55" stopColor="#f5f3ff"/><stop offset="1" stopColor="#ecfeff"/></linearGradient><linearGradient id="coverage-active" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2563eb"/><stop offset="1" stopColor="#7c3aed"/></linearGradient><filter id="coverage-shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#2563eb" floodOpacity=".25"/></filter></defs><rect width="600" height="420" rx="30" fill="url(#coverage-bg)"/><circle cx="515" cy="64" r="92" fill="#fff" opacity=".35"/><circle cx="88" cy="350" r="116" fill="#bfdbfe" opacity=".18"/><path d="M56 326C158 255 212 116 356 80c79-20 142 13 180 78" fill="none" stroke="#93c5fd" strokeWidth="1.5" strokeDasharray="5 8" opacity=".55"/><g transform="translate(24 24)"><rect width="144" height="48" rx="15" fill="#fff" stroke="#dbeafe"/><text x="18" y="20" fill="#64748b" fontSize="10" fontWeight="700" letterSpacing="1.2">TEXTBOOK REACH</text><text x="18" y="38" fill="#1e3a8a" fontSize="16" fontWeight="800">全国 {TEXTBOOK_SAMPLES.length} 省覆盖</text></g><g aria-hidden="true">{PROVINCE_CELLS.map(([name,x,y]) => { const covered = COVERED_PROVINCES.has(name); const compact = name.length > 2; return <g key={name} transform={`translate(${x} ${y})`} filter={covered ? 'url(#coverage-shadow)' : undefined}><rect x="-24" y="-16" width="48" height="32" rx="9" fill={covered ? 'url(#coverage-active)' : '#fff'} stroke={covered ? '#fff' : '#cbd5e1'} strokeWidth={covered ? '2' : '1'}/><text x="0" y={covered ? '6' : '4'} textAnchor="middle" fill={covered ? '#fff' : '#64748b'} fontSize={covered ? '18' : compact ? '9' : '10.5'} fontWeight={covered ? '800' : '600'}>{name}</text>{covered ? <circle cx="18" cy="-11" r="4" fill="#fbbf24" stroke="#fff" strokeWidth="1.5"/> : null}</g>})}</g><g transform="translate(28 388)"><circle cx="6" cy="0" r="6" fill="#4f46e5"/><text x="18" y="4" fill="#475569" fontSize="11" fontWeight="700">重点覆盖省份</text><rect x="116" y="-6" width="12" height="12" rx="4" fill="#fff" stroke="#cbd5e1"/><text x="138" y="4" fill="#64748b" fontSize="11">全国省级版图</text></g></svg>
 }
 
-function TextbookCover({ sample, index }) {
-  const [from, to] = sample.tone
-  const patternId = `textbook-pattern-${index}`
+function TextbookCover({ sample }) {
   return <figure className="group min-w-0">
-    <div className="relative aspect-[3/4] overflow-hidden rounded-[18px] border border-white/80 bg-white shadow-[0_10px_26px_rgba(15,23,42,.12)] transition duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_16px_32px_rgba(37,99,235,.17)]">
-      <svg viewBox="0 0 180 240" className="absolute inset-0 h-full w-full" role="img" aria-label={`${sample.province}${sample.title}教材封面`}>
-        <defs><linearGradient id={patternId} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={from}/><stop offset="1" stopColor={to}/></linearGradient></defs>
-        <rect width="180" height="240" fill="#fff"/>
-        <rect width="180" height="64" fill={`url(#${patternId})`}/>
-        <path d="M0 64 180 78v12L0 76Z" fill={`url(#${patternId})`} opacity=".14"/>
-        <rect x="18" y="96" width="4" height="84" rx="2" fill={`url(#${patternId})`}/>
-        <rect x="30" y="198" width="76" height="3" rx="1.5" fill={`url(#${patternId})`} opacity=".18"/>
-      </svg>
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 py-3 text-white"><span className="text-[9px] font-black tracking-[.12em]">BINGO AI</span><span className="rounded-full bg-white/20 px-2 py-1 text-[9px] font-black backdrop-blur-sm">{sample.province}</span></div>
-      <div className="absolute inset-x-6 top-[42%] text-left"><p className="text-[9px] font-bold leading-4 tracking-[.08em] text-slate-500">青少年人工智能素养系列教材</p></div>
-      <div className="absolute inset-x-3 bottom-3 flex items-center justify-between border-t border-slate-200 pt-2 text-[9px] font-bold text-slate-500"><span>地方教材</span><span>{String(index + 1).padStart(2, '0')}</span></div>
+    <div className="relative aspect-[5/7] overflow-hidden rounded-[16px] border border-slate-200/60 bg-white p-0.5 shadow-[0_7px_20px_rgba(15,23,42,.08)] transition duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_12px_26px_rgba(37,99,235,.12)] motion-reduce:transform-none motion-reduce:transition-none">
+      <img src={sample.cover} alt={`${sample.province}${sample.title}教材封面`} width={sample.width} height={sample.height} loading="lazy" className="h-full w-full rounded-[14px] object-contain"/>
     </div>
     <figcaption className="mt-2 text-center text-xs font-black text-slate-700">{sample.province}教材</figcaption>
   </figure>
 }
 
-function TextbookMarquee() {
-  return <div className="textbook-marquee" role="region" aria-label="地方教材自动轮播" tabIndex="0">
-    <div className="textbook-marquee-track">
-      <div className="textbook-marquee-group">{TEXTBOOK_SAMPLES.map((sample, index) => <div key={sample.province} className="w-[112px] shrink-0"><TextbookCover sample={sample} index={index}/></div>)}</div>
-      <div className="textbook-marquee-group" aria-hidden="true">{TEXTBOOK_SAMPLES.map((sample, index) => <div key={`duplicate-${sample.province}`} className="w-[112px] shrink-0"><TextbookCover sample={sample} index={index + TEXTBOOK_SAMPLES.length}/></div>)}</div>
-    </div>
+function TextbookGallery() {
+  return <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-6 sm:gap-3" role="region" aria-label="六省地方教材封面展示">
+    {TEXTBOOK_SAMPLES.map((sample) => <TextbookCover key={sample.province} sample={sample}/>) }
   </div>
 }
 
@@ -214,7 +193,7 @@ export default function Home() {
 
       <section className="py-16 sm:py-24"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><SectionHeading eyebrow="TRUST & EXPERTISE" title="权威背书，专业可信赖" subtitle="以国内教育要求为基础，吸收国际AI素养框架的先进理念。"/><div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-5">{[['UNESCO','学生人工智能能力框架'],['OECD','AI素养评估研究'],['IOAI','国际人工智能教育实践'],['新课标','国内人工智能教育要求']].map(([name,desc]) => <div key={name} className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 text-center"><strong className="text-lg text-blue-700 sm:text-xl">{name}</strong><p className="mt-2 text-xs leading-5 text-slate-600">{desc}</p></div>)}</div><h3 className="mb-6 mt-14 text-center text-xl font-black text-slate-950">政策与学习指南</h3><GuideMarquee/>
         <div className="mt-14 overflow-hidden rounded-[32px] border border-blue-100 bg-gradient-to-br from-white via-blue-50/35 to-violet-50/50 shadow-[0_14px_36px_rgba(37,99,235,.08)]">
-          <div className="grid items-center gap-8 p-6 sm:p-9 lg:grid-cols-[.9fr_1.1fr]"><div className="aspect-[10/7] overflow-hidden rounded-2xl"><CoverageMap/></div><div className="min-w-0"><p className="text-xs font-black tracking-[0.15em] text-blue-600">TEACHING MATERIALS</p><h3 className="mt-3 text-2xl font-black text-slate-950 sm:text-3xl">配套教材覆盖全国12个省份</h3><p className="mt-4 text-sm leading-7 text-slate-600">联合专业出版与教育合作伙伴推进AI素养配套教材，让体系化课程走进更多学校和课堂。下方按地区展示代表性教材，形成清晰的全国教材成果矩阵。</p><div className="mb-4 mt-6"><h3 className="text-xl font-black text-slate-950">地方教材展示</h3></div><TextbookMarquee/></div></div>
+          <div className="grid items-center gap-8 p-6 sm:p-9 lg:grid-cols-[.9fr_1.1fr]"><div className="aspect-[10/7] overflow-hidden rounded-2xl"><CoverageMap/></div><div className="min-w-0"><p className="text-xs font-black tracking-[0.15em] text-blue-600">TEACHING MATERIALS</p><h3 className="mt-3 text-2xl font-black text-slate-950 sm:text-3xl">配套教材覆盖全国6个省份</h3><p className="mt-4 text-sm leading-7 text-slate-600">联合专业出版与教育合作伙伴推进AI素养配套教材，让体系化课程走进更多学校和课堂。下方按地区展示代表性教材，形成清晰的全国教材成果矩阵。</p><div className="mb-4 mt-6"><h3 className="text-xl font-black text-slate-950">地方教材展示</h3></div><TextbookGallery/></div></div>
         </div>
       </div></section>
 
