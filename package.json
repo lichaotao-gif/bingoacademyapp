@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "dev:open": "vite --open",
+    "work:start": "bash scripts/work-start.sh",
+    "sync:down": "bash scripts/sync-down.sh",
+    "sync:up": "bash scripts/sync-up.sh",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
