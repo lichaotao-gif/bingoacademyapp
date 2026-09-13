@@ -10,13 +10,17 @@ export default function Layout({ children }) {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const franchisePartnerPortal = loc.pathname.startsWith('/franchise-partner')
   const institutionHqPortal = loc.pathname.startsWith('/institution-hq')
+  const schoolAdminPortal = loc.pathname.startsWith('/school')
   /** 已登录加盟商工作台：隐藏官网顶栏/底栏与悬浮营销，沉浸后台 */
   const franchiseWorkspace =
     (franchisePartnerPortal && !loc.pathname.startsWith('/franchise-partner/login')) ||
-    (institutionHqPortal && !loc.pathname.startsWith('/institution-hq/login'))
-  /** 加盟商 / 机构总管理登录页：与后台一致不叠悬浮按钮/底栏/客服，避免挡住「登录」 */
+    (institutionHqPortal && !loc.pathname.startsWith('/institution-hq/login')) ||
+    (schoolAdminPortal && !loc.pathname.startsWith('/school/login'))
+  /** 加盟商 / 机构总管理 / 学校端登录页：与后台一致不叠悬浮按钮/底栏/客服，避免挡住「登录」 */
   const franchisePartnerLoginPage =
-    loc.pathname.includes('/franchise-partner/login') || loc.pathname.includes('/institution-hq/login')
+    loc.pathname.includes('/franchise-partner/login') ||
+    loc.pathname.includes('/institution-hq/login') ||
+    loc.pathname.includes('/school/login')
   // 首页采用内容导向的沉浸式版式，避免通用悬浮营销入口打断首屏与模块浏览。
   const showPublicMarketingLayers =
     !franchiseWorkspace && !franchisePartnerLoginPage && !['/', '/franchise'].includes(loc.pathname)

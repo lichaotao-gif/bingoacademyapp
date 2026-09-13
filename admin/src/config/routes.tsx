@@ -6,6 +6,7 @@ import {
   ShoppingOutlined,
   GiftOutlined,
   BankOutlined,
+  HomeOutlined,
   DashboardOutlined,
   SettingOutlined,
   FileTextOutlined,
@@ -111,6 +112,16 @@ export const routes: RouteConfig[] = [
       { path: '/franchise/qualification', name: '资质审核' },
       { path: '/franchise/teaching-products', name: '学具商品配置' },
       { path: '/franchise/detail', name: '加盟商详情', hideInMenu: true },
+    ],
+  },
+  {
+    path: '/school',
+    name: '学校管理',
+    icon: <HomeOutlined />,
+    children: [
+      { path: '/school/list', name: '学校列表' },
+      { path: '/school/cert-review', name: '结课发证审核' },
+      { path: '/school/detail', name: '学校详情', hideInMenu: true },
     ],
   },
   {

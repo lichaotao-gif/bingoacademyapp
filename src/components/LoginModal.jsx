@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { saveSessionUser } from '../utils/sessionUser'
 
 export default function LoginModal({ open, onClose }) {
   const navigate = useNavigate()
@@ -16,17 +17,11 @@ export default function LoginModal({ open, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (loginType === 'code') {
-      if (phone && code) {
-        onClose?.()
-        navigate('/')
-      }
-    } else {
-      if (phone && password) {
-        onClose?.()
-        navigate('/')
-      }
-    }
+    const filled = loginType === 'code' ? Boolean(phone && code) : Boolean(phone && password)
+    if (!filled) return
+    saveSessionUser({ phone })
+    onClose?.()
+    navigate('/')
   }
 
   if (!open) return null

@@ -3,6 +3,15 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import ShareActionPopover from '../components/ShareActionPopover'
 import { CourseFinalExamListCard } from '../components/CourseFinalExamBlock'
+import { getSessionUser } from '../utils/sessionUser'
+import {
+  CERT_SOURCE,
+  CLASS_STATUS,
+  findStudentByPhoneForSite,
+  fmtDateTime,
+  getStudentSchoolCourseAccess,
+  listCertificates,
+} from '../utils/schoolAdminStorage'
 
 // ─── 课时环节类型（与后台一致：视频+互动含判断题+游戏+AI实验 任意组合） ─────────────────
 const SEGMENT_LABELS = {
@@ -3050,6 +3059,101 @@ function CourseCard({ course, onPlayLesson, onShowCourseSummary, courseReviews, 
   )
 }
 
+/** 会话手机号匹配到的学校端学生（未登录或非学校学生时为 null） */
+function readSchoolStudent() {
+  const phone = getSessionUser().phone
+  return phone ? findStudentByPhoneForSite(phone) : null
+}
+
+/** 会话手机号 → 学校端学生 → 其班级带来的有效课程权限 */
+function readSchoolCourseAccess() {
+  const student = readSchoolStudent()
+  return student ? getStudentSchoolCourseAccess(student.id) : []
+}
+
+/** 学校端签发的全量证书，包含学生转校前已获得的历史证书 */
+function readSchoolCertificates() {
+  const student = readSchoolStudent()
+  return student ? listCertificates({ studentId: student.id }) : []
+}
+
+/** 学校班级带来的课程权限卡片：权限、进度与证书均来自学校端数据层 */
+function SchoolClassCourseCard({ row, onPlayLesson }) {
+  const siteCourse = MY_COURSES.find((c) => c.id === row.courseId)
+  const nextLesson = siteCourse?.lessons?.find((l) => !l.watched) || siteCourse?.lessons?.[0] || null
+  const cert = row.certificate
+  const statusTone =
+    row.classStatus === CLASS_STATUS.ONGOING
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : 'bg-slate-100 text-slate-600 border-slate-200'
+
+  return (
+    <div className="card p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-bingo-dark">{row.courseName}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {row.schoolName} · {row.className}
+            <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 ${statusTone}`}>
+              {row.classStatus}
+            </span>
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={!nextLesson}
+          onClick={() => nextLesson && onPlayLesson(nextLesson)}
+          className="shrink-0 rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {nextLesson ? '开始学习' : '课程内容准备中'}
+        </button>
+      </div>
+
+      <div className="mt-4">
+        <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
+          <span>
+            学习进度 {row.progressPct}%
+            {row.progressPct !== row.realProgress ? `（真实进度 ${row.realProgress}%）` : ''}
+          </span>
+          <span>
+            {row.lessonsDone}/{row.totalLessons} 课时
+          </span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${row.progressPct}%` }} />
+        </div>
+        <p className="mt-1.5 text-xs text-slate-400">
+          最后学习时间：{row.lastStudyAt ? fmtDateTime(row.lastStudyAt) : '暂无学习记录'}
+        </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50/80 px-4 py-3">
+        {cert ? (
+          <>
+            <p className="text-sm text-emerald-700">
+              🎓 已获学习证书
+              <span className="ml-1 text-xs text-slate-500">
+                {cert.source === CERT_SOURCE.MANUAL ? '学校结课发证' : '自学完成发证'} · 完成时间{' '}
+                {fmtDateTime(cert.completedAt)}
+              </span>
+            </p>
+            <Link
+              to="/cert"
+              className="rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-600"
+            >
+              查看证书 →
+            </Link>
+          </>
+        ) : (
+          <p className="text-xs text-slate-500">
+            学完全部课时并通过考核后自动发证；也可由学校提交结课发证申请，平台审核通过后发放。
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── 主页面 ─────────────────────────────────────────────────
 export default function Study() {
   const navigate = useNavigate()
@@ -3057,6 +3161,10 @@ export default function Study() {
   const [courseSummaryCourse, setCourseSummaryCourse] = useState(null)
   const [extraReviewsByCourse, setExtraReviewsByCourse] = useState({})
   const [reviewModal, setReviewModal] = useState(null)
+
+  /** 学校班级课程权限：按会话手机号匹配学校端学生档案，每次渲染实时重算 */
+  const schoolCourses = readSchoolCourseAccess()
+  const schoolCertCount = readSchoolCertificates().length
 
   const openReviewForCourse = (courseId) => {
     setReviewModal({ courseId, allowSwitch: false })
@@ -3094,9 +3202,20 @@ export default function Study() {
       {/* 总览统计 */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
-          { label: '已购课程', value: MY_COURSES.length + ' 门', color: 'text-primary' },
-          { label: '已完成', value: MY_COURSES.filter(c => c.progress === 100).length + ' 门', color: 'text-emerald-600' },
-          { label: '已获证书', value: MY_COURSES.filter(c => c.cert).length + ' 张', color: 'text-amber-600' },
+          { label: '在学课程', value: MY_COURSES.length + schoolCourses.length + ' 门', color: 'text-primary' },
+          {
+            label: '已完成',
+            value:
+              MY_COURSES.filter((c) => c.progress === 100).length +
+              schoolCourses.filter((r) => r.progressPct === 100).length +
+              ' 门',
+            color: 'text-emerald-600',
+          },
+          {
+            label: '已获证书',
+            value: MY_COURSES.filter((c) => c.cert).length + schoolCertCount + ' 张',
+            color: 'text-amber-600',
+          },
         ].map((s, i) => (
           <div key={i} className="card p-4 text-center">
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -3104,6 +3223,24 @@ export default function Study() {
           </div>
         ))}
       </div>
+
+      {/* 学校班级带来的课程权限 */}
+      {schoolCourses.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="section-title mb-0">🏫 学校班级课程</h2>
+            <span className="text-xs text-slate-400">共 {schoolCourses.length} 门</span>
+          </div>
+          <p className="text-slate-500 text-sm mb-4">
+            由所在学校的班级开通，班级停用或未到开课日期时不在此显示；结课发证后可直接查看证书
+          </p>
+          <div className="space-y-3">
+            {schoolCourses.map((row) => (
+              <SchoolClassCourseCard key={row.classId} row={row} onPlayLesson={setPlayingLesson} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 我的课程列表 */}
       <section className="mb-10">

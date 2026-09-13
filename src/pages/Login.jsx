@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { saveSessionUser } from '../utils/sessionUser'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [role] = useState('student') // 默认身份，提交时传给后端
   const [loginType, setLoginType] = useState('code') // 'code' | 'password'
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -17,11 +17,10 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault()
     // TODO: 调用登录接口，验证码或密码登录，带上 role
-    if (loginType === 'code') {
-      if (phone && code) navigate('/')
-    } else {
-      if (phone && password) navigate('/')
-    }
+    const filled = loginType === 'code' ? Boolean(phone && code) : Boolean(phone && password)
+    if (!filled) return
+    saveSessionUser({ phone })
+    navigate('/')
   }
 
   return (

@@ -4,7 +4,7 @@ import { http } from '@/utils/request'
 export type StudentStatus = 1 | 2 | 3 | 4
 
 export interface Student {
-  student_id: number
+  student_id: number | string
   real_name: string
   phone: string
   grade?: string
@@ -15,6 +15,11 @@ export interface Student {
   commission_balance?: number
   create_time: string
   source?: string
+  school_student_id?: string
+  school_id?: string | null
+  school_name?: string
+  school_enroll_status?: string | null
+  school_certificate_count?: number
 }
 
 export function getStudentList(params: {

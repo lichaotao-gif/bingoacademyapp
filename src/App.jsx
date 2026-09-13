@@ -84,6 +84,16 @@ import InstitutionHqFinance from './pages/institution-hq/InstitutionHqFinance'
 import InstitutionHqSettings from './pages/institution-hq/InstitutionHqSettings'
 import InstitutionHqCampusAccounts from './pages/institution-hq/InstitutionHqCampusAccounts'
 import InstitutionHqStaffAccounts from './pages/institution-hq/InstitutionHqStaffAccounts'
+import SchoolAdminLogin from './pages/school-admin/SchoolAdminLogin'
+import SchoolAdminLayout from './pages/school-admin/SchoolAdminLayout'
+import SchoolAdminDashboard from './pages/school-admin/SchoolAdminDashboard'
+import SchoolAdminSettings from './pages/school-admin/SchoolAdminSettings'
+import SchoolAdminAccounts from './pages/school-admin/SchoolAdminAccounts'
+import SchoolAdminClasses from './pages/school-admin/SchoolAdminClasses'
+import SchoolAdminClassDetail from './pages/school-admin/SchoolAdminClassDetail'
+import SchoolAdminStudents from './pages/school-admin/SchoolAdminStudents'
+import SchoolAdminStudentProfile from './pages/school-admin/SchoolAdminStudentProfile'
+import SchoolAdminCertificates from './pages/school-admin/SchoolAdminCertificates'
 
 export default function App() {
   return (
@@ -155,6 +165,18 @@ export default function App() {
           <Route path="settings" element={<InstitutionHqSettings />} />
           <Route path="campus-accounts" element={<InstitutionHqCampusAccounts />} />
           <Route path="hq-staff-accounts" element={<InstitutionHqStaffAccounts />} />
+        </Route>
+        <Route path="/school/login" element={<SchoolAdminLogin />} />
+        <Route path="/school" element={<SchoolAdminLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<SchoolAdminDashboard />} />
+          <Route path="classes" element={<SchoolAdminClasses />} />
+          <Route path="classes/:classId" element={<SchoolAdminClassDetail />} />
+          <Route path="students" element={<SchoolAdminStudents />} />
+          <Route path="students/:studentId" element={<SchoolAdminStudentProfile />} />
+          <Route path="certificates" element={<SchoolAdminCertificates />} />
+          <Route path="accounts" element={<SchoolAdminAccounts />} />
+          <Route path="settings" element={<SchoolAdminSettings />} />
         </Route>
         <Route path="/franchise-partner" element={<FranchisePartnerLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />

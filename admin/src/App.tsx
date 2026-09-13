@@ -30,6 +30,9 @@ import FranchisePartnerList from '@/pages/Franchise/List'
 import FranchiseQualification from '@/pages/Franchise/Qualification'
 import FranchisePartnerDetailPage from '@/pages/Franchise/Detail'
 import FranchiseTeachingProducts from '@/pages/Franchise/TeachingProducts'
+import SchoolList from '@/pages/School/List'
+import SchoolDetail from '@/pages/School/Detail'
+import SchoolCertReview from '@/pages/School/CertReview'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (!getToken()) return <Navigate to="/login" replace />
@@ -78,6 +81,9 @@ export default function App() {
           <Route path="franchise/qualification" element={<FranchiseQualification />} />
           <Route path="franchise/detail" element={<FranchisePartnerDetailPage />} />
           <Route path="franchise/teaching-products" element={<FranchiseTeachingProducts />} />
+          <Route path="school/list" element={<SchoolList />} />
+          <Route path="school/detail" element={<SchoolDetail />} />
+          <Route path="school/cert-review" element={<SchoolCertReview />} />
           <Route path="cooperation/list" element={<Navigate to="/franchise/list" replace />} />
           <Route path="cooperation/settlement" element={<Navigate to="/finance/settlement" replace />} />
           <Route path="*" element={<div style={{ padding: 24 }}>功能开发中</div>} />

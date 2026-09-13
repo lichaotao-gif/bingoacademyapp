@@ -6,6 +6,12 @@ export const DEFAULT_AVATAR_PATH = '/default-avatar.svg'
 
 const STORAGE_KEY = 'bingo_session_user'
 
+/** 会话手机号只保留数字，用于与学校端学生记录按手机号匹配 */
+function normalizeSessionPhone(v) {
+  if (typeof v !== 'string' && typeof v !== 'number') return ''
+  return String(v).replace(/\D/g, '').slice(0, 11)
+}
+
 function isNonEmptyHttpOrPath(s) {
   if (typeof s !== 'string') return false
   const t = s.trim()
@@ -25,7 +31,7 @@ export function dicebearAvatarUrl(seed, size = 128) {
 }
 
 export function getSessionUser() {
-  if (typeof window === 'undefined') return { ...DEFAULT_USER, avatarUrl: '' }
+  if (typeof window === 'undefined') return { ...DEFAULT_USER, avatarUrl: '', phone: '' }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (raw) {
@@ -33,17 +39,17 @@ export function getSessionUser() {
       const nickname = typeof p?.nickname === 'string' && p.nickname.trim() ? p.nickname.trim() : DEFAULT_USER.nickname
       const seed = typeof p?.avatarSeed === 'string' && p.avatarSeed.trim() ? p.avatarSeed.trim() : nickname
       const avatarUrl = typeof p?.avatarUrl === 'string' ? p.avatarUrl.trim() : ''
-      return { nickname, avatarSeed: seed, avatarUrl }
+      return { nickname, avatarSeed: seed, avatarUrl, phone: normalizeSessionPhone(p?.phone) }
     }
   } catch {
     /* ignore */
   }
-  return { ...DEFAULT_USER, avatarUrl: '' }
+  return { ...DEFAULT_USER, avatarUrl: '', phone: '' }
 }
 
 /**
  * 合并写入本机学员信息（演示用 localStorage）
- * @param {Partial<{ nickname: string, avatarSeed: string, avatarUrl: string }>} partial
+ * @param {Partial<{ nickname: string, avatarSeed: string, avatarUrl: string, phone: string }>} partial
  */
 export function saveSessionUser(partial) {
   if (typeof window === 'undefined') return
@@ -58,6 +64,7 @@ export function saveSessionUser(partial) {
         ? String(partial.avatarSeed).trim() || cur.avatarSeed
         : cur.avatarSeed,
     avatarUrl: partial.avatarUrl !== undefined ? String(partial.avatarUrl).trim() : cur.avatarUrl,
+    phone: partial.phone !== undefined ? normalizeSessionPhone(partial.phone) : cur.phone,
   }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))

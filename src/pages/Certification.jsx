@@ -2,6 +2,12 @@ import { ArrowRightOutlined, BookOutlined, CheckCircleOutlined, CloseOutlined, D
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dicebearAvatarUrl, getSessionUser, sessionUserDisplayAvatarUrl } from '../utils/sessionUser'
+import {
+  CERT_SOURCE,
+  findStudentByPhoneForSite,
+  fmtDateTime,
+  listCertificates,
+} from '../utils/schoolAdminStorage'
 
 const CERTIFICATE_TYPES = [
   {
@@ -502,11 +508,19 @@ function CertificateDetailModal({ certificate, selectedStar, onSelectStar, onClo
   </div>
 }
 
+function readSchoolCertificates() {
+  const phone = getSessionUser().phone
+  if (!phone) return []
+  const student = findStudentByPhoneForSite(phone)
+  return student ? listCertificates({ studentId: student.id }) : []
+}
+
 export default function Certification() {
   const [selectedType, setSelectedType] = useState(null)
   const [selectedStar, setSelectedStar] = useState(1)
   const certificateTriggerRef = useRef(null)
   const certificate = CERTIFICATE_TYPES.find((item) => item.id === selectedType) ?? null
+  const schoolCertificates = readSchoolCertificates()
 
   const openCertificate = (type, trigger) => {
     certificateTriggerRef.current = trigger
@@ -536,7 +550,53 @@ export default function Certification() {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6" aria-labelledby="policy-guidance-heading">
+      {schoolCertificates.length > 0 ? (
+        <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6" aria-labelledby="school-certificate-heading">
+          <div className="rounded-3xl border border-emerald-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,.10)] sm:p-8">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold tracking-[.12em] text-emerald-700">MY SCHOOL CERTIFICATES</p>
+                <h2 id="school-certificate-heading" className="mt-2 text-2xl font-bold text-slate-950">
+                  我的学校结业证书
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  由学校提交结课申请并经平台审核，或完成课程学习后系统自动签发；转校后历史证书仍会保留。
+                </p>
+              </div>
+              <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
+                共 {schoolCertificates.length} 张
+              </span>
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {schoolCertificates.map((item) => (
+                <article key={item.id} className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-bold leading-6 text-slate-950">{item.courseName}结业证书</h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {item.schoolName || '学校课程'} · {item.className}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                      {item.source === CERT_SOURCE.MANUAL ? '学校结课发证' : '系统自动发证'}
+                    </span>
+                  </div>
+                  <dl className="mt-5 space-y-2 text-sm">
+                    <div className="flex justify-between gap-4"><dt className="text-slate-500">完成时间</dt><dd className="text-right text-slate-700">{fmtDateTime(item.completedAt)}</dd></div>
+                    <div className="flex justify-between gap-4"><dt className="text-slate-500">签发时间</dt><dd className="text-right text-slate-700">{fmtDateTime(item.issuedAt)}</dd></div>
+                    <div className="flex justify-between gap-4"><dt className="text-slate-500">证书编号</dt><dd className="max-w-[13rem] truncate text-right font-mono text-xs text-slate-600" title={item.id}>{item.id}</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section
+        className={`relative z-10 mx-auto max-w-7xl px-4 sm:px-6 ${schoolCertificates.length > 0 ? 'mt-8' : '-mt-8'}`}
+        aria-labelledby="policy-guidance-heading"
+      >
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,.10)] sm:p-8 lg:p-10">
           <div>
             <div className="inline-flex min-h-8 items-center gap-2 rounded-full bg-blue-50 px-3 text-xs font-bold tracking-[.12em] text-blue-700"><FileTextOutlined aria-hidden="true" />政策导向</div>

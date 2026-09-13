@@ -1,10 +1,17 @@
 import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
-import { Button, Space, Tag, Modal, Form, Input, Select, message, Empty } from 'antd'
+import { Button, Space, Tag, Modal, Form, Input, Select, message, Empty, Descriptions, Table } from 'antd'
 import { PlusOutlined, LockOutlined, UnlockOutlined, DownloadOutlined } from '@ant-design/icons'
 import { mockPage } from '@/api/mock'
 import type { Student, StudentStatus } from '@/api/student'
+import {
+  getStudentSchoolHistory,
+  listSchools,
+  listSiteStudentsWithSchool,
+  type StudentEnrollmentHistoryRow,
+} from '@/mock/schools'
 import { fmtTime, fmtMoney, maskPhone } from '@/utils/format'
 import AuthButton from '@/components/common/AuthButton'
 import { PERM } from '@/utils/auth'
@@ -14,6 +21,12 @@ const STATUS_MAP: Record<StudentStatus, { text: string; color: string }> = {
   2: { text: '冻结', color: 'orange' },
   3: { text: '待审核', color: 'blue' },
   4: { text: '注销', color: 'red' },
+}
+
+const SCHOOL_ENROLL_STATUS_MAP: Record<string, { text: string; color: string }> = {
+  active: { text: '在读', color: 'green' },
+  suspended: { text: '已暂停', color: 'orange' },
+  removed: { text: '已转出', color: 'default' },
 }
 
 const GRADE_OPTIONS = [
@@ -48,8 +61,9 @@ const mockList: Student[] = [
 const phoneReg = /^1[3-9]\d{9}$/
 
 export default function StudentList() {
+  const navigate = useNavigate()
   const toast = message
-  const actionRef = useRef<ActionType>()
+  const actionRef = useRef<ActionType>(undefined)
   const [addForm] = Form.useForm()
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
@@ -61,7 +75,12 @@ export default function StudentList() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [addLoading, setAddLoading] = useState(false)
   const [addFormGrade, setAddFormGrade] = useState<string | undefined>()
+  const [schoolHistoryTarget, setSchoolHistoryTarget] = useState<Student | null>(null)
   const addFormClassOptions = addFormGrade ? (CLASS_BY_GRADE[addFormGrade] || []) : []
+  const schoolValueEnum = Object.fromEntries(listSchools().map((s) => [s.id, { text: s.name }]))
+  const schoolHistory = schoolHistoryTarget?.school_student_id
+    ? getStudentSchoolHistory(schoolHistoryTarget.school_student_id)
+    : []
 
   const handleFreeze = (record: Student, type: 'freeze' | 'unfreeze') => {
     setFreezeRecord(record)
@@ -129,14 +148,67 @@ export default function StudentList() {
   )
 
   const columns: ProColumns<Student>[] = [
-    { title: '学员ID', dataIndex: 'student_id', width: 90, sorter: true, hideInSearch: true },
+    { title: '学员ID', dataIndex: 'student_id', width: 110, sorter: true, hideInSearch: true },
     { title: '关键词', dataIndex: 'keyword', hideInTable: true, fieldProps: { placeholder: '姓名/手机号' } },
-    { title: '状态', dataIndex: 'status', width: 90, valueType: 'select', valueEnum: statusValueEnum, render: (_, r) => {
-      const s = STATUS_MAP[r.status as StudentStatus] || STATUS_MAP[1]
-      return <Tag color={s.color}>{s.text}</Tag>
-    }},
+    {
+      title: '所属学校',
+      dataIndex: 'school_id',
+      valueType: 'select',
+      valueEnum: schoolValueEnum,
+      hideInTable: true,
+      fieldProps: { placeholder: '全部学校' },
+    },
+    {
+      title: '归属状态',
+      dataIndex: 'school_enroll_status',
+      valueType: 'select',
+      valueEnum: Object.fromEntries(
+        Object.entries(SCHOOL_ENROLL_STATUS_MAP).map(([key, value]) => [key, { text: value.text }])
+      ),
+      hideInTable: true,
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      width: 90,
+      valueType: 'select',
+      valueEnum: statusValueEnum,
+      render: (_, r) => {
+        const s = STATUS_MAP[r.status as StudentStatus] || STATUS_MAP[1]
+        return <Tag color={s.color}>{s.text}</Tag>
+      },
+    },
     { title: '姓名', dataIndex: 'real_name', width: 100, hideInSearch: true },
     { title: '手机号', dataIndex: 'phone', width: 130, hideInSearch: true, render: (_, r) => maskPhone(r.phone) },
+    {
+      title: '所属学校',
+      dataIndex: 'school_name',
+      width: 180,
+      hideInSearch: true,
+      render: (_, r) =>
+        r.school_id ? (
+          <a onClick={() => navigate(`/school/detail?id=${r.school_id}`)}>{r.school_name}</a>
+        ) : (
+          <span style={{ color: '#999' }}>非学校学员</span>
+        ),
+    },
+    {
+      title: '归属状态',
+      dataIndex: 'school_enroll_status',
+      width: 100,
+      hideInSearch: true,
+      render: (_, r) => {
+        const status = r.school_enroll_status ? SCHOOL_ENROLL_STATUS_MAP[r.school_enroll_status] : null
+        return status ? <Tag color={status.color}>{status.text}</Tag> : '—'
+      },
+    },
+    {
+      title: '学校证书',
+      dataIndex: 'school_certificate_count',
+      width: 100,
+      hideInSearch: true,
+      render: (_, r) => (r.school_student_id ? `${r.school_certificate_count || 0} 张` : '—'),
+    },
     { title: '年级', dataIndex: 'grade', width: 110, hideInSearch: true },
     { title: '测评等级', dataIndex: 'ai_test_level', width: 90 },
     { title: '公益积分', dataIndex: 'total_points', width: 90 },
@@ -145,11 +217,12 @@ export default function StudentList() {
     {
       title: '操作',
       valueType: 'option',
-      width: 220,
+      width: 280,
       render: (_, r) => (
         <Space>
           <a>编辑</a>
           <a>详情</a>
+          {r.school_student_id ? <a onClick={() => setSchoolHistoryTarget(r)}>学校档案</a> : null}
           {(r.status === 1 || r.status === 3) && (
             <AuthButton permCode={PERM.STUDENT_FREEZE}>
               <a style={{ color: '#fa8c16' }} onClick={(e) => { e.stopPropagation(); handleFreeze(r, 'freeze'); }}>冻结</a>
@@ -165,13 +238,47 @@ export default function StudentList() {
     },
   ]
 
-  const request = async (params: { current?: number; pageSize?: number; keyword?: string; status?: number }) => {
-    const { current = 1, pageSize = 10, keyword, status } = params
-    let list = [...mockList]
-    if (status) list = list.filter((s) => s.status === status)
+  const request = async (params: {
+    current?: number
+    pageSize?: number
+    keyword?: string
+    status?: number
+    school_id?: string
+    school_enroll_status?: string
+  }) => {
+    const { current = 1, pageSize = 10, keyword, status, school_id, school_enroll_status } = params
+    const schoolStudents: Student[] = listSiteStudentsWithSchool().map((student) => ({
+      student_id: `school_${student.id}`,
+      school_student_id: student.id,
+      real_name: student.name,
+      phone: student.phone,
+      grade: '—',
+      status: student.status === 'disabled' ? 2 : 1,
+      ai_test_level: '—',
+      total_points: 0,
+      commission_balance: 0,
+      create_time: student.createdAt,
+      source: student.source === 'site' ? '官网' : '学校录入',
+      school_id: student.schoolId,
+      school_name: student.schoolName,
+      school_enroll_status: student.enrollStatus,
+      school_certificate_count: student.certificateCount,
+    }))
+    const schoolPhones = new Set(schoolStudents.map((student) => student.phone))
+    let list: Student[] = [...mockList.filter((student) => !schoolPhones.has(student.phone)), ...schoolStudents]
+    if (status) list = list.filter((student) => student.status === status)
+    if (school_id) list = list.filter((student) => student.school_id === school_id)
+    if (school_enroll_status) {
+      list = list.filter((student) => student.school_enroll_status === school_enroll_status)
+    }
     if (keyword) {
       const k = String(keyword).toLowerCase()
-      list = list.filter((s) => s.real_name?.toLowerCase().includes(k) || s.phone?.includes(k))
+      list = list.filter(
+        (student) =>
+          student.real_name?.toLowerCase().includes(k) ||
+          student.phone?.includes(k) ||
+          student.school_name?.toLowerCase().includes(k)
+      )
     }
     const res = mockPage(list, current, pageSize)
     return { data: res.data as Student[], total: res.total, success: true }
@@ -210,6 +317,86 @@ export default function StudentList() {
           </AuthButton>,
         ]}
       />
+
+      <Modal
+        title={schoolHistoryTarget ? `学校档案：${schoolHistoryTarget.real_name}` : '学校档案'}
+        open={!!schoolHistoryTarget}
+        onCancel={() => setSchoolHistoryTarget(null)}
+        footer={null}
+        width={920}
+        destroyOnHidden
+      >
+        {schoolHistoryTarget ? (
+          <>
+            <Descriptions bordered size="small" column={3} style={{ marginBottom: 16 }}>
+              <Descriptions.Item label="当前学校">
+                {schoolHistoryTarget.school_id ? (
+                  <a
+                    onClick={() => {
+                      setSchoolHistoryTarget(null)
+                      navigate(`/school/detail?id=${schoolHistoryTarget.school_id}`)
+                    }}
+                  >
+                    {schoolHistoryTarget.school_name}
+                  </a>
+                ) : (
+                  '未归属学校'
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label="归属状态">
+                {schoolHistoryTarget.school_enroll_status ? (
+                  <Tag color={SCHOOL_ENROLL_STATUS_MAP[schoolHistoryTarget.school_enroll_status]?.color}>
+                    {SCHOOL_ENROLL_STATUS_MAP[schoolHistoryTarget.school_enroll_status]?.text || '—'}
+                  </Tag>
+                ) : (
+                  '—'
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label="学校证书">
+                {schoolHistoryTarget.school_certificate_count || 0} 张
+              </Descriptions.Item>
+            </Descriptions>
+            <Table<StudentEnrollmentHistoryRow>
+              rowKey="id"
+              size="small"
+              pagination={false}
+              scroll={{ x: 780 }}
+              locale={{ emptyText: '暂无学校归属历史' }}
+              columns={[
+                {
+                  title: '学校',
+                  dataIndex: 'schoolName',
+                  key: 'schoolName',
+                  width: 180,
+                  render: (_, r) => <a onClick={() => navigate(`/school/detail?id=${r.schoolId}`)}>{r.schoolName}</a>,
+                },
+                {
+                  title: '状态',
+                  key: 'status',
+                  width: 100,
+                  render: (_, r) => {
+                    const status = SCHOOL_ENROLL_STATUS_MAP[r.status]
+                    return <Tag color={status?.color}>{status?.text || r.status}</Tag>
+                  },
+                },
+                { title: '加入时间', key: 'joinedAt', width: 170, render: (_, r) => fmtTime(r.joinedAt) },
+                {
+                  title: '转出时间',
+                  key: 'removedAt',
+                  width: 170,
+                  render: (_, r) => (r.removedAt ? fmtTime(r.removedAt) : '—'),
+                },
+                {
+                  title: '关联班级',
+                  key: 'classes',
+                  render: (_, r) => (r.classes.length ? r.classes.map((item) => item.name).join('、') : '未分班'),
+                },
+              ]}
+              dataSource={schoolHistory}
+            />
+          </>
+        ) : null}
+      </Modal>
 
       {/* 冻结/解冻弹窗 */}
       <Modal
