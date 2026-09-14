@@ -15,6 +15,8 @@ export const SCHOOL_DB_EVENT = 'bingo-school-admin-db-changed'
 export const SCHOOL_LOGIN_PATH = '/school/login'
 export const SCHOOL_DEMO_OWNER_PHONE = '13900001111'
 export const SCHOOL_DEMO_OWNER_PASSWORD = 'school123'
+export const SCHOOL_DEMO_TEACHER_PHONE = '13900002222'
+export const SCHOOL_DEMO_TEACHER_PASSWORD = 'teacher123'
 
 export const SCHOOL_ROLE = { OWNER: 'owner', TEACHER: 'teacher' }
 export const SCHOOL_STATUS = { ACTIVE: 'active', DISABLED: 'disabled' }
@@ -1974,8 +1976,8 @@ function buildSeedDb() {
       id: teacherA1,
       schoolId: schoolA,
       name: '张老师',
-      phone: '13900002222',
-      password: 'teacher123',
+      phone: SCHOOL_DEMO_TEACHER_PHONE,
+      password: SCHOOL_DEMO_TEACHER_PASSWORD,
       role: SCHOOL_ROLE.TEACHER,
       status: ACCOUNT_STATUS.ACTIVE,
       createdAt: iso(-50),

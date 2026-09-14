@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   SCHOOL_DEMO_OWNER_PASSWORD,
   SCHOOL_DEMO_OWNER_PHONE,
+  SCHOOL_DEMO_TEACHER_PASSWORD,
+  SCHOOL_DEMO_TEACHER_PHONE,
   getSchoolSession,
   setSchoolSession,
   validateSession,
@@ -58,6 +60,23 @@ export default function SchoolAdminLogin() {
     },
     [kickedMsg, location.pathname, navigate, password, phone],
   )
+
+  const enterTeacherDemo = useCallback(() => {
+    setErr('')
+    if (kickedMsg) navigate(location.pathname, { replace: true, state: {} })
+    const r = verifySchoolLogin(SCHOOL_DEMO_TEACHER_PHONE, SCHOOL_DEMO_TEACHER_PASSWORD)
+    if (!r.ok) {
+      setErr(r.msg || '进入老师端失败')
+      return
+    }
+    try {
+      setSchoolSession(r.session)
+      navigate('/school', { replace: true })
+    } catch (e) {
+      console.error(e)
+      setErr(e?.message || '进入老师端失败：浏览器存储不可用')
+    }
+  }, [kickedMsg, location.pathname, navigate])
 
   return (
     <div className="relative z-20 flex min-h-screen items-center justify-center px-4 py-12 touch-manipulation">
@@ -127,6 +146,23 @@ export default function SchoolAdminLogin() {
               登录
             </button>
           </form>
+
+          <div className="border-t border-slate-100 pt-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">老师端演示</p>
+                <p className="mt-0.5 text-xs text-slate-500">无需输入账号密码，直接查看老师工作台</p>
+              </div>
+              <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">快捷入口</span>
+            </div>
+            <button
+              type="button"
+              onClick={enterTeacherDemo}
+              className="w-full cursor-pointer select-none rounded-xl border border-cyan-200 bg-cyan-50 py-3 text-sm font-semibold text-cyan-800 transition hover:border-cyan-300 hover:bg-cyan-100"
+            >
+              进入老师端页面
+            </button>
+          </div>
         </div>
 
         <p className="mt-4 text-center text-sm text-slate-500">
