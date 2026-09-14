@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
+  SCHOOL_DEMO_OWNER_PASSWORD,
+  SCHOOL_DEMO_OWNER_PHONE,
   getSchoolSession,
   setSchoolSession,
   validateSession,
@@ -25,8 +27,8 @@ function LoginFeedback({ message }) {
 export default function SchoolAdminLogin() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState(SCHOOL_DEMO_OWNER_PHONE)
+  const [password, setPassword] = useState(SCHOOL_DEMO_OWNER_PASSWORD)
   const [err, setErr] = useState('')
 
   useEffect(() => {
