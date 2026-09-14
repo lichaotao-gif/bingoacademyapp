@@ -66,7 +66,7 @@ const SCHOOL_CASES = [
 
 // B端 — 机构加盟
 const FRANCHISE_CASES = [
-  { name: 'XX少儿编程机构', region: '杭州', months: 6, students: 210, events: 3, revenue: '营收提升72%', review: '加盟6个月，招生翻倍，赛事资源是最大亮点！' },
+  { name: 'XX少儿编程机构', region: '杭州', months: 6, students: 210, events: 3, revenue: '营收提升72%', review: '合作6个月，招生翻倍，赛事资源是最大亮点！' },
   { name: 'XX教培连锁中心', region: '成都', months: 8, students: 350, events: 5, revenue: '月均营收+15万', review: '全套运营支持，省去了大量试错成本，值！' },
   { name: 'XX素质教育中心', region: '南京', months: 4, students: 150, events: 2, revenue: '回本周期4个月', review: '课程体系成熟，家长口碑好，续费率很高。' },
 ]
@@ -463,7 +463,7 @@ function BSection({ onLead }) {
       <div className="flex gap-2 flex-wrap mb-8">
         {[
           { key: 'school', label: '🏫 学校合作成果' },
-          { key: 'franchise', label: '🤝 机构加盟成果' },
+          { key: 'franchise', label: '🤝 机构赋能成果' },
           { key: 'oem', label: '⚙️ OEM定制成果' },
         ].map(item => (
           <button key={item.key} onClick={() => setSub(item.key)}
@@ -533,7 +533,7 @@ function BSection({ onLead }) {
             <p className="text-xs text-emerald-600 font-bold mb-1">痛点</p>
             <p className="text-sm text-slate-700 mb-3">教培机构转型AI教育，无成熟课程体系，无品牌背书，无运营方法，如何快速盈利？</p>
             <p className="text-xs font-bold text-slate-700 mb-1">解决方案</p>
-            <p className="text-sm text-slate-700">缤果线下加盟商全赋能：品牌授权+课程体系+师训+赛事资源+运营支持一站式合作</p>
+            <p className="text-sm text-slate-700">缤果线下合作伙伴全赋能：品牌授权+课程体系+师训+赛事资源+运营支持一站式合作</p>
           </div>
 
           {/* 盈利数据 */}
@@ -552,7 +552,7 @@ function BSection({ onLead }) {
 
           {/* 赋能流程 */}
           <div>
-            <p className="text-xs font-bold text-slate-500 mb-3 tracking-wider">缤果加盟商全赋能流程</p>
+            <p className="text-xs font-bold text-slate-500 mb-3 tracking-wider">缤果合作伙伴全赋能流程</p>
             <div className="flex flex-wrap gap-2">
               {FRANCHISE_FLOW.map((f, i) => (
                 <div key={i} className="flex items-center gap-1">
@@ -570,7 +570,7 @@ function BSection({ onLead }) {
                 <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                   <div>
                     <p className="font-bold text-bingo-dark text-sm">{c.name} · {c.region}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">加盟{c.months}个月</p>
+                    <p className="text-xs text-slate-400 mt-0.5">合作{c.months}个月</p>
                   </div>
                   <div className="flex gap-3 text-center text-xs">
                     <div><p className="font-bold text-emerald-600">{c.students}+人</p><p className="text-slate-400">招生量</p></div>
@@ -584,9 +584,9 @@ function BSection({ onLead }) {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button onClick={() => onLead('加盟合作咨询')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition">加盟合作咨询</button>
-            <button onClick={() => onLead('加盟费测算')} className="border border-emerald-400 text-emerald-600 hover:bg-emerald-50 px-5 py-2.5 rounded-xl text-sm font-medium transition">加盟费测算</button>
-            <button onClick={() => onLead('区域加盟名额查询')} className="border border-slate-200 text-slate-600 hover:bg-slate-50 px-5 py-2.5 rounded-xl text-sm transition">区域名额查询</button>
+            <button onClick={() => onLead('赋能合作咨询')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition">赋能合作咨询</button>
+            <button onClick={() => onLead('合作成本测算')} className="border border-emerald-400 text-emerald-600 hover:bg-emerald-50 px-5 py-2.5 rounded-xl text-sm font-medium transition">合作成本测算</button>
+            <button onClick={() => onLead('区域合作名额查询')} className="border border-slate-200 text-slate-600 hover:bg-slate-50 px-5 py-2.5 rounded-xl text-sm transition">区域名额查询</button>
           </div>
         </div>
       )}

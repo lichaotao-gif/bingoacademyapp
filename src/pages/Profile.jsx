@@ -270,7 +270,7 @@ function ScoreBank() {
 
       <div className="mt-4 card p-5 border-primary/20 bg-slate-50">
         <h3 className="font-semibold text-bingo-dark mb-2">B端 · 机构学分管理</h3>
-        <p className="text-sm text-slate-600 mb-3">加盟/合作机构可自定义旗下学员学分任务与兑换权益，赋能机构学员激励与留存</p>
+        <p className="text-sm text-slate-600 mb-3">赋能合作机构可自定义旗下学员学分任务与兑换权益，提升机构学员激励与留存</p>
         <div className="flex gap-3">
           <Link to="/franchise" className="btn-primary text-sm px-4 py-2">机构学分后台</Link>
           <button type="button" className="rounded-lg border border-primary text-primary px-4 py-2 text-sm">学分规则说明</button>
@@ -1225,6 +1225,7 @@ export default function Profile() {
             <div className="min-w-0">
               <p className="text-xs font-bold tracking-[0.16em] text-[#7588ae]">MY WORKSPACE</p>
               <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#203252] sm:text-3xl">你好，{sessionUser.nickname}</h1>
+              <p className="mt-1 text-xs font-semibold text-[#7588ae]">UID：{sessionUser.uid || '未分配'}</p>
               <p className="mt-2 max-w-xl text-sm leading-6 text-[#66799a]">今天也向 AI 小达人更进一步吧。你的学习、赛事与成长成果，都在这里持续记录。</p>
             </div>
           </div>

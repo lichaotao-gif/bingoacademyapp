@@ -178,7 +178,7 @@ export default function Layout({ children }) {
             </div>
             <div>
               <div className="text-white font-medium mb-2">B端合作</div>
-              <Link to="/franchise" className="block hover:text-white">加盟合作</Link>
+              <Link to="/franchise" className="block hover:text-white">赋能合作</Link>
               <a href="/#/b" className="block hover:text-white">学校/机构</a>
               <a href="/#/b" className="block hover:text-white">赛事合作方</a>
               <Link to="/franchise" className="inline-block mt-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition">商务洽谈</Link>

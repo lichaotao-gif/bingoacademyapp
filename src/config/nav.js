@@ -7,7 +7,7 @@ export const mainNavGroups = [
   [{ path: '/tools', label: 'AI探索活动' }],
   [{ path: '/cert', label: '综评认证' }],
   [{ path: '/mall', label: '资源商城' }],
-  [{ path: '/franchise', label: '加盟合作' }],
+  [{ path: '/franchise', label: '赋能合作' }],
   [{ path: '/profile', label: '我的工作台' }],
 ]
 

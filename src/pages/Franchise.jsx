@@ -11,7 +11,7 @@ import { createElement, useState } from 'react'
 import { Link } from 'react-router-dom'
 import FranchiseLegacyLeadModal from '../components/FranchiseLegacyLeadModal'
 
-const STATS = [['500+', '全国合作机构'], ['60%', '营收平均提升'], ['100+', '品牌加盟商'], ['92%', '家长满意度']]
+const STATS = [['500+', '全国合作机构'], ['60%', '营收平均提升'], ['100+', '品牌合作伙伴'], ['92%', '家长满意度']]
 
 const TRACK_REASONS = [
   { title: '确定性成长刚需', desc: 'AI素养是数字时代青少年核心能力，家长认知度与学习需求持续增长。', icon: LineChartOutlined },
@@ -20,7 +20,7 @@ const TRACK_REASONS = [
 ]
 
 const OFFLINE_TYPES = [
-  { title: '种子合作机构', badge: '全国限量50家', icon: CrownOutlined, threshold: '零加盟费，低额课时预充，通过总部标准化师训考核', rights: ['终身享有专项课程分润', '优先锁定所在区域代理权', '总部一对一运营陪跑', '深圳试点享驻场帮扶'], fit: '有存量学员基础、希望快速打造本地标杆的优质机构', featured: true },
+  { title: '种子合作机构', badge: '全国限量50家', icon: CrownOutlined, threshold: '零合作服务费，低额课时预充，通过总部标准化师训考核', rights: ['终身享有专项课程分润', '优先锁定所在区域代理权', '总部一对一运营陪跑', '深圳试点享驻场帮扶'], fit: '有存量学员基础、希望快速打造本地标杆的优质机构', featured: true },
   { title: '普通合作机构', icon: BankOutlined, threshold: '可退履约保证金，低额课时预充，通过标准化师训考核', rights: ['享受标准课程分润比例', '全品类素养产品授权', '总部标准化全链路扶持', '规范区域保护政策'], fit: '希望新增素养品类、盘活存量学员的线下教育机构' },
   { title: '城市区域代理', icon: GlobalOutlined, threshold: '合规押金制，具备属地运营服务能力与本地教育资源', rights: ['独家管辖属地线下合作机构', '辖区线下业务固定分润', '招商与运营双重收益', '总部招商流量倾斜支持'], fit: '具备本地教育资源、希望深耕区域市场的合作方' },
 ]
@@ -85,7 +85,7 @@ const SUPPORT_COLUMNS = [
 const PARTNERSHIP_FLOW = [['提交申请', '填写基本信息并选择线下机构或线上渠道合作类型'], ['资质审核', '总部评估合作基础、资源条件与合规资质'], ['方案匹配', '按合作类型确认课程、渠道与对应支持方案'], ['签约开通', '签订合作协议并开通专属管理后台'], ['培训部署', '完成师训或运营培训，交付课程与推广资源'], ['启动运营', '正式开展业务，总部持续督导并支持结算']]
 
 const POLICIES = [
-  { title: '线下机构专属福利', icon: BankOutlined, items: ['新签约种子机构免加盟费，赠送首期师资培训名额', '深圳试点机构享总部驻场帮扶，落地首期标杆班', '前20家签约机构赠送招生运营物料包与运营诊断'] },
+  { title: '线下机构专属福利', icon: BankOutlined, items: ['新签约种子机构免合作服务费，赠送首期师资培训名额', '深圳试点机构享总部驻场帮扶，落地首期标杆班', '前20家签约机构赠送招生运营物料包与运营诊断'] },
   { title: '线上渠道专属福利', icon: ShareAltOutlined, items: ['前50名入驻渠道免首年渠道服务费，保证金减半', '新入驻渠道首月达标，获得流量扶持与素材定制', '优质渠道可升级战略伙伴，享受更高分润与专属陪跑'] },
 ]
 
@@ -122,7 +122,7 @@ export default function Franchise() {
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-4 py-2 text-xs font-bold text-blue-700 shadow-sm"><StarOutlined aria-hidden="true" className="text-amber-500"/>青少年完整AI素养成长体系</span>
           <h1 className="mt-6 text-4xl font-black leading-[1.12] tracking-[-.045em] text-slate-950 sm:text-6xl">AI时代素养教育<br/><span className="bg-gradient-to-r from-blue-600 via-violet-600 to-emerald-500 bg-clip-text text-transparent">机构增长确定未来</span></h1>
-          <p className="mt-6 text-base font-medium leading-8 text-slate-600 sm:text-lg">L1–L9 九级星级成长闭环 · 线上线下双轨盈利<br className="hidden sm:block"/>零加盟费轻量入局 · 全链路总部一站式支持</p>
+          <p className="mt-6 text-base font-medium leading-8 text-slate-600 sm:text-lg">L1–L9 九级星级成长闭环 · 线上线下双轨盈利<br className="hidden sm:block"/>零合作服务费轻量入局 · 全链路总部一站式支持</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <a href="#offline" className="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-black text-white shadow-[0_12px_28px_rgba(79,70,229,.24)] transition hover:-translate-y-0.5">线下机构合作方案 <ArrowRightOutlined aria-hidden="true"/></a>
             <a href="#online" className="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-white px-6 font-black text-blue-700 shadow-sm transition hover:bg-blue-50">线上渠道入驻申请 <ArrowRightOutlined aria-hidden="true"/></a>
@@ -133,7 +133,7 @@ export default function Franchise() {
         </div>
       </div>
       <div className="relative mx-auto mt-14 grid max-w-7xl grid-cols-2 gap-3 px-5 sm:grid-cols-4 sm:px-8 lg:px-10">{STATS.map(([value,label]) => <div key={label} className="rounded-2xl border border-slate-100 bg-white p-5 text-center shadow-[0_10px_28px_rgba(15,23,42,.07)]"><strong className="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-3xl font-black text-transparent sm:text-4xl">{value}</strong><p className="mt-2 text-xs font-semibold text-slate-500 sm:text-sm">{label}</p></div>)}</div>
-      <div className="relative mx-auto mt-8 flex flex-wrap items-center justify-center gap-3 px-5 sm:px-8"><Link to="/franchise-partner/login" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 px-7 text-sm font-black text-white shadow-[0_12px_28px_rgba(16,185,129,.28)] transition hover:-translate-y-0.5 hover:from-emerald-600 hover:to-cyan-600 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-emerald-500"><LockOutlined aria-hidden="true"/>加盟商登录 <ArrowRightOutlined aria-hidden="true" className="transition group-hover:translate-x-1"/></Link><Link to="/school/login" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 px-7 text-sm font-black text-white shadow-[0_12px_28px_rgba(37,99,235,.28)] transition hover:-translate-y-0.5 hover:from-blue-700 hover:to-violet-700 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600"><BankOutlined aria-hidden="true"/>学校管理登录 <ArrowRightOutlined aria-hidden="true" className="transition group-hover:translate-x-1"/></Link></div>
+      <div className="relative mx-auto mt-8 flex flex-wrap items-center justify-center gap-3 px-5 sm:px-8"><Link to="/franchise-partner/login" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 px-7 text-sm font-black text-white shadow-[0_12px_28px_rgba(16,185,129,.28)] transition hover:-translate-y-0.5 hover:from-emerald-600 hover:to-cyan-600 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-emerald-500"><LockOutlined aria-hidden="true"/>合作伙伴登录 <ArrowRightOutlined aria-hidden="true" className="transition group-hover:translate-x-1"/></Link><Link to="/school/login" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 px-7 text-sm font-black text-white shadow-[0_12px_28px_rgba(37,99,235,.28)] transition hover:-translate-y-0.5 hover:from-blue-700 hover:to-violet-700 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-blue-600"><BankOutlined aria-hidden="true"/>学校管理登录 <ArrowRightOutlined aria-hidden="true" className="transition group-hover:translate-x-1"/></Link></div>
       <p className="relative mx-auto mt-3 max-w-2xl px-5 text-center text-xs leading-5 text-slate-500 sm:px-8">学校管理后台需由平台开通账号后使用，用于管理本校老师、班级与学生学习进度。</p>
     </header>
 

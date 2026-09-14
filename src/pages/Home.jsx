@@ -62,7 +62,7 @@ const ADVANTAGES = [
 
 const PARTNERS = [
   { title: '公立校进校合作', desc: '标准化课程体系输出、师资培训与赛事活动共建', icon: ReadOutlined },
-  { title: '教培机构加盟', desc: '课程授权、师训运营、品牌支持与赛事资源对接', icon: TeamOutlined },
+  { title: '教培机构赋能', desc: '课程授权、师训运营、品牌支持与赛事资源对接', icon: TeamOutlined },
   { title: '活动定制合作', desc: 'AI营地、科普讲座、校园科技节与赛事承办', icon: RocketOutlined },
 ]
 

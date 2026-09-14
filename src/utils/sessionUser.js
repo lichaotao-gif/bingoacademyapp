@@ -12,6 +12,11 @@ function normalizeSessionPhone(v) {
   return String(v).replace(/\D/g, '').slice(0, 11)
 }
 
+function normalizeUid(v) {
+  if (typeof v !== 'string' && typeof v !== 'number') return ''
+  return String(v).trim().slice(0, 64)
+}
+
 function isNonEmptyHttpOrPath(s) {
   if (typeof s !== 'string') return false
   const t = s.trim()
@@ -31,7 +36,7 @@ export function dicebearAvatarUrl(seed, size = 128) {
 }
 
 export function getSessionUser() {
-  if (typeof window === 'undefined') return { ...DEFAULT_USER, avatarUrl: '', phone: '' }
+  if (typeof window === 'undefined') return { ...DEFAULT_USER, avatarUrl: '', phone: '', uid: '' }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (raw) {
@@ -39,17 +44,17 @@ export function getSessionUser() {
       const nickname = typeof p?.nickname === 'string' && p.nickname.trim() ? p.nickname.trim() : DEFAULT_USER.nickname
       const seed = typeof p?.avatarSeed === 'string' && p.avatarSeed.trim() ? p.avatarSeed.trim() : nickname
       const avatarUrl = typeof p?.avatarUrl === 'string' ? p.avatarUrl.trim() : ''
-      return { nickname, avatarSeed: seed, avatarUrl, phone: normalizeSessionPhone(p?.phone) }
+      return { nickname, avatarSeed: seed, avatarUrl, phone: normalizeSessionPhone(p?.phone), uid: normalizeUid(p?.uid) }
     }
   } catch {
     /* ignore */
   }
-  return { ...DEFAULT_USER, avatarUrl: '', phone: '' }
+  return { ...DEFAULT_USER, avatarUrl: '', phone: '', uid: '' }
 }
 
 /**
  * 合并写入本机学员信息（演示用 localStorage）
- * @param {Partial<{ nickname: string, avatarSeed: string, avatarUrl: string, phone: string }>} partial
+ * @param {Partial<{ nickname: string, avatarSeed: string, avatarUrl: string, phone: string, uid: string }>} partial
  */
 export function saveSessionUser(partial) {
   if (typeof window === 'undefined') return
@@ -65,6 +70,7 @@ export function saveSessionUser(partial) {
         : cur.avatarSeed,
     avatarUrl: partial.avatarUrl !== undefined ? String(partial.avatarUrl).trim() : cur.avatarUrl,
     phone: partial.phone !== undefined ? normalizeSessionPhone(partial.phone) : cur.phone,
+    uid: partial.uid !== undefined ? normalizeUid(partial.uid) : cur.uid,
   }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))

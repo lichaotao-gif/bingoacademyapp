@@ -2,24 +2,23 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { saveSessionUser } from '../utils/sessionUser'
 
+const DEFAULT_LOGIN_ACCOUNT = '13910001001'
+const DEFAULT_LOGIN_PASSWORD = 'student123'
+
 export default function Login() {
   const navigate = useNavigate()
-  const [loginType, setLoginType] = useState('code') // 'code' | 'password'
-  const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')
+  const [loginType, setLoginType] = useState('password') // 'code' | 'password'
+  const [account, setAccount] = useState(DEFAULT_LOGIN_ACCOUNT)
+  const [password, setPassword] = useState(DEFAULT_LOGIN_PASSWORD)
   const [code, setCode] = useState('')
-
-  const handleWechatLogin = () => {
-    // TODO: 微信开放平台 / 公众号内 H5 授权或扫码，获取 code 换 token
-    navigate('/')
-  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     // TODO: 调用登录接口，验证码或密码登录，带上 role
-    const filled = loginType === 'code' ? Boolean(phone && code) : Boolean(phone && password)
+    const filled = loginType === 'code' ? Boolean(account && code) : Boolean(account && password)
     if (!filled) return
-    saveSessionUser({ phone })
+    const isPhone = /^1\d{10}$/.test(account.trim())
+    saveSessionUser(isPhone ? { phone: account } : { uid: account, phone: '' })
     navigate('/')
   }
 
@@ -27,20 +26,6 @@ export default function Login() {
     <div className="max-w-md mx-auto px-4 py-12">
       <h1 className="text-2xl font-bold text-bingo-dark mb-2">登录</h1>
       <p className="text-slate-600 mb-6">登录后即可使用学习、赛事、购买、分享推广等核心功能；未登录可浏览首页</p>
-
-      <button
-        type="button"
-        onClick={handleWechatLogin}
-        className="w-full py-3 rounded-xl bg-[#07c160] text-white font-medium mb-6 hover:opacity-90 transition"
-      >
-        微信一键登录
-      </button>
-
-      <div className="flex items-center gap-3 mb-6">
-        <span className="flex-1 h-px bg-slate-200" />
-        <span className="text-slate-500 text-sm">或</span>
-        <span className="flex-1 h-px bg-slate-200" />
-      </div>
 
       <div className="mb-3 flex gap-2">
         <button
@@ -61,12 +46,12 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">手机号</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1">{loginType === 'code' ? '手机号' : '登录账户'}</label>
           <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="请输入手机号"
+            type={loginType === 'code' ? 'tel' : 'text'}
+            value={account}
+            onChange={(e) => setAccount(e.target.value)}
+            placeholder={loginType === 'code' ? '请输入手机号' : '请输入手机号/UID 登录账户'}
             className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
             required
           />
